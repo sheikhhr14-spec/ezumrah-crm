@@ -1,7 +1,7 @@
 import { login } from '@/lib/auth-actions';
 import Link from 'next/link';
 
-export default function LoginPage({ searchParams }: { searchParams: { error?: string } }) {
+export default function LoginPage({ searchParams }: { searchParams: { error?: string; env?: string } }) {
   return (
     <main className="flex min-h-screen items-center justify-center bg-slate-50 px-4">
       <div className="w-full max-w-md">
@@ -11,6 +11,16 @@ export default function LoginPage({ searchParams }: { searchParams: { error?: st
           <p className="mt-1 text-sm text-slate-500">Umrah & Hajj agency management</p>
         </div>
         <form action={login} className="card space-y-4 p-6">
+          {searchParams?.env === 'missing' && (
+            <p className="rounded-lg bg-amber-50 px-3 py-2 text-sm text-amber-700">
+              Server not configured: Supabase environment variables are missing in the deployment. Add them in Vercel → Settings → Environment Variables, then redeploy.
+            </p>
+          )}
+          {searchParams?.env === 'error' && (
+            <p className="rounded-lg bg-amber-50 px-3 py-2 text-sm text-amber-700">
+              Could not verify your session. Check that the Supabase URL and anon key are set correctly in Vercel, then redeploy.
+            </p>
+          )}
           {searchParams?.error && (
             <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-600">{searchParams.error}</p>
           )}

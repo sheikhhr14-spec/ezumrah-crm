@@ -4,36 +4,56 @@ import { NextResponse, type NextRequest } from 'next/server';
 export async function middleware(request: NextRequest) {
   let response = NextResponse.next({ request });
 
-  const supabase = createServerClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-    {
+  // Graceful degradation: if env vars are missing, bounce to /login instead
+  // of throwing (prevents MIDDLEWARE_INVOCATION_FAILED 500s on Vercel).
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const anon = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+  if (!url || !anon) {
+    const target = request.nextUrl.clone();
+    target.pathname = '/login';
+    target.searchParams.set('env', 'missing');
+    return NextResponse.redirect(target);
+  }
+
+  try {
+    const supabase = createServerClient(url, anon, {
       cookies: {
         getAll() {
           return request.cookies.getAll();
         },
         setAll(cookiesToSet: { name: string; value: string; options: CookieOptions }[]) {
-          cookiesToSet.forEach(({ name, value }) =>
-            request.cookies.set(name, value)
-          );
-          response = NextResponse.next({ request });
-          cookiesToSet.forEach(({ name, value, options }) =>
-            response.cookies.set(name, value, options)
-          );
+          try {
+            cookiesToSet.forEach(({ name, value }) =>
+              request.cookies.set(name, value)
+            );
+            response = NextResponse.next({ request });
+            cookiesToSet.forEach(({ name, value, options }) =>
+              response.cookies.set(name, value, options)
+            );
+          } catch {
+            // called from a Server Component — safe to ignore
+          }
         },
       },
+    });
+
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+
+    if (!user) {
+      const target = request.nextUrl.clone();
+      target.pathname = '/login';
+      return NextResponse.redirect(target);
     }
-  );
-
-  const { data: { user } } = await supabase.auth.getUser();
-
-  if (!user && (request.nextUrl.pathname.startsWith('/dashboard') || request.nextUrl.pathname.startsWith('/admin'))) {
-    const url = request.nextUrl.clone();
-    url.pathname = '/login';
-    return NextResponse.redirect(url);
+    return response;
+  } catch (err) {
+    console.error('middleware error:', err);
+    const target = request.nextUrl.clone();
+    target.pathname = '/login';
+    target.searchParams.set('env', 'error');
+    return NextResponse.redirect(target);
   }
-
-  return response;
 }
 
 export const config = {
