@@ -1,10 +1,10 @@
 import { createAdminClient } from '@/lib/supabase/admin';
-import { requireActiveAgency } from '@/lib/data';
+import { requireModule } from '@/lib/data';
 import { createTask, toggleTask } from '@/lib/crm-actions';
 import { PageHeader, Table, Empty, StatusBadge, AddPanel, Field } from '@/components/ui';
 
 export default async function TasksPage() {
-  const ctx = await requireActiveAgency();
+  const ctx = await requireModule('tasks');
   const aid = ctx.profile.agency_id;
   const db = createAdminClient();
   const [{ data: tasks }, { data: bookings }] = await Promise.all([

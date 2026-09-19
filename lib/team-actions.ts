@@ -1,7 +1,7 @@
 'use server';
 
 import { createAdminClient } from '@/lib/supabase/admin';
-import { requireRole } from '@/lib/data';
+import { requireRole, defaultModulesForRole } from '@/lib/data';
 import { revalidatePath } from 'next/cache';
 
 export async function inviteMember(fd: FormData) {
@@ -25,6 +25,7 @@ export async function inviteMember(fd: FormData) {
     agency_id: ctx.profile.agency_id,
     full_name: fullName,
     role,
+    modules: defaultModulesForRole(role),
   });
   revalidatePath('/dashboard/team');
 }
@@ -51,5 +52,17 @@ export async function removeMember(fd: FormData) {
   if (!member) throw new Error('Member not found in your agency.');
   await db.from('profiles').delete().eq('id', id);
   await db.auth.admin.deleteUser(id);
+  revalidatePath('/dashboard/team');
+}
+
+// Owner assigns which modules a member can access
+export async function setMemberModules(fd: FormData) {
+  const ctx = await requireRole('owner');
+  const db = createAdminClient();
+  const id = String(fd.get('id'));
+  if (id === ctx.user.id) throw new Error('Owners always have full access.');
+  const selected = fd.getAll('modules').map(String);
+  await db.from('profiles').update({ modules: selected })
+    .eq('id', id).eq('agency_id', ctx.profile.agency_id);
   revalidatePath('/dashboard/team');
 }

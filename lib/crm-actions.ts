@@ -233,3 +233,28 @@ export async function toggleTask(fd: FormData) {
   await db.from('tasks').update({ status: next }).eq('id', id);
   revalidatePath('/dashboard/tasks');
 }
+
+// ---------- FLIGHT / HOTEL / VISA / TRANSPORT status + delete ----------
+export async function setRecordStatus(fd: FormData) {
+  const db = createAdminClient();
+  const table = String(fd.get('table')); // flights | hotels | visas | transports
+  const id = String(fd.get('id'));
+  if (!['flights', 'hotels', 'visas', 'transports'].includes(table)) throw new Error('bad table');
+  const aid = await agencyId();
+  const { data: rec } = await db.from(table).select('id, agency_id').eq('id', id).single();
+  if (!rec || rec.agency_id !== aid) throw new Error('Record not found in your agency.');
+  await db.from(table).update({ status: String(fd.get('status')), updated_at: new Date().toISOString() }).eq('id', id);
+  revalidatePath(`/dashboard/${table}`);
+}
+
+export async function deleteRecord(fd: FormData) {
+  const db = createAdminClient();
+  const table = String(fd.get('table'));
+  const id = String(fd.get('id'));
+  if (!['flights', 'hotels', 'visas', 'transports'].includes(table)) throw new Error('bad table');
+  const aid = await agencyId();
+  const { data: rec } = await db.from(table).select('id, agency_id').eq('id', id).single();
+  if (!rec || rec.agency_id !== aid) throw new Error('Record not found in your agency.');
+  await db.from(table).delete().eq('id', id);
+  revalidatePath(`/dashboard/${table}`);
+}

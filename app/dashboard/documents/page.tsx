@@ -1,10 +1,10 @@
 import { createAdminClient } from '@/lib/supabase/admin';
-import { requireActiveAgency } from '@/lib/data';
+import { requireModule } from '@/lib/data';
 import { addDocument } from '@/lib/crm-actions';
 import { PageHeader, Table, Empty, AddPanel, Field } from '@/components/ui';
 
 export default async function DocumentsPage() {
-  const ctx = await requireActiveAgency();
+  const ctx = await requireModule('documents');
   const aid = ctx.profile.agency_id;
   const db = createAdminClient();
   const [{ data: documents }, { data: bookings }] = await Promise.all([

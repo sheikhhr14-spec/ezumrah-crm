@@ -48,6 +48,51 @@ export async function requireRole(min: 'owner' | 'manager' | 'staff') {
   return ctx;
 }
 
+/* ============ Per-user module permissions ============ */
+// All tenant modules. 'min' = minimum role that can ever be granted it.
+export const MODULES: { key: string; label: string; icon: string; min: 'staff' | 'manager' }[] = [
+  { key: 'customers', label: 'Customers', icon: '👥', min: 'staff' },
+  { key: 'bookings', label: 'Bookings', icon: '🧾', min: 'staff' },
+  { key: 'packages', label: 'Packages', icon: '📦', min: 'staff' },
+  { key: 'flights', label: 'Flights', icon: '✈️', min: 'staff' },
+  { key: 'hotels', label: 'Hotels', icon: '🏨', min: 'staff' },
+  { key: 'visas', label: 'Visas', icon: '🛂', min: 'staff' },
+  { key: 'transports', label: 'Transports', icon: '🚌', min: 'staff' },
+  { key: 'documents', label: 'Documents', icon: '🗄️', min: 'staff' },
+  { key: 'tasks', label: 'Tasks', icon: '✅', min: 'staff' },
+  { key: 'support', label: 'Support', icon: '🎧', min: 'staff' },
+  { key: 'invoices', label: 'Invoices', icon: '💰', min: 'manager' },
+  { key: 'quotations', label: 'Quotations', icon: '📝', min: 'manager' },
+  { key: 'reports', label: 'Reports', icon: '📊', min: 'manager' },
+];
+
+export const MODULE_KEYS = MODULES.map((m) => m.key);
+
+// modules a user can access. Owner: everything. null modules: everything for their rank.
+export function allowedModules(profile: any, role: string): string[] {
+  if (role === 'owner') return MODULE_KEYS;
+  const set = Array.isArray(profile?.modules) && profile.modules.length ? profile.modules : MODULE_KEYS;
+  return set.filter((k: string) =>
+    MODULES.some((m) => m.key === k && RANK[role] >= RANK[m.min]));
+
+}
+
+// gate for a specific module page
+export async function requireModule(key: string) {
+  const ctx = await requireActiveAgency();
+  if (!allowedModules(ctx.profile, ctx.role).includes(key)) {
+    redirect('/dashboard?denied=' + key);
+  }
+  return ctx;
+}
+
+// default modules for a new member by role
+export function defaultModulesForRole(role: string): string[] | null {
+  if (role === 'owner') return null; // all
+  const base = ['customers', 'bookings', 'packages', 'flights', 'hotels', 'visas', 'transports', 'documents', 'tasks', 'support'];
+  return role === 'manager' ? [...base, 'invoices', 'quotations', 'reports'] : base;
+}
+
 // Super-admin portal gate
 export async function requireSuperadmin() {
   const ctx = await requireUser();

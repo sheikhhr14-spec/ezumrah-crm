@@ -1,12 +1,12 @@
 import { createAdminClient } from '@/lib/supabase/admin';
-import { requireActiveAgency } from '@/lib/data';
+import { requireModule } from '@/lib/data';
 import { createPackage } from '@/lib/crm-actions';
 import { PageHeader, Table, Empty, AddPanel, Field } from '@/components/ui';
 
 const TYPES = ['umrah', 'hajj', 'ziyarah', 'hotel', 'flight', 'transport', 'holiday'];
 
 export default async function PackagesPage() {
-  const ctx = await requireActiveAgency();
+  const ctx = await requireModule('packages');
   const db = createAdminClient();
   const { data: packages } = await db
     .from('packages').select('*').eq('agency_id', ctx.profile.agency_id)

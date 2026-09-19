@@ -1,5 +1,5 @@
 import { createAdminClient } from '@/lib/supabase/admin';
-import { requireActiveAgency } from '@/lib/data';
+import { requireModule } from '@/lib/data';
 import { updateBookingStatus, addFlight, addHotel, addVisa, addTransport } from '@/lib/crm-actions';
 import { Table, Empty, StatusBadge, AddPanel, Field } from '@/components/ui';
 import Link from 'next/link';
@@ -13,7 +13,7 @@ const Section = ({ title, children }: { title: string; children: React.ReactNode
 );
 
 export default async function BookingDetail({ params }: { params: { id: string } }) {
-  const ctx = await requireActiveAgency();
+  const ctx = await requireModule('bookings');
   const aid = ctx.profile.agency_id;
   const db = createAdminClient();
 

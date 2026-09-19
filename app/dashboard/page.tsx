@@ -3,7 +3,7 @@ import { requireActiveAgency } from '@/lib/data';
 import { PageHeader, StatusBadge, Table, Empty } from '@/components/ui';
 import Link from 'next/link';
 
-export default async function Overview() {
+export default async function Overview({ searchParams }: { searchParams: { denied?: string } }) {
   const ctx = await requireActiveAgency();
   const aid = ctx.profile.agency_id!;
   const db = createAdminClient();
@@ -29,6 +29,19 @@ export default async function Overview() {
   return (
     <div>
       <PageHeader title={`Welcome back, ${ctx.profile?.full_name?.split(' ')[0] || ''}`} subtitle={`${ctx.agency.name} — Umrah, Hajj, Ziyarah operations`} />
+
+      {searchParams?.denied && (
+        <div className="mb-4 rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-700">
+          🔒 You don&rsquo;t have access to the <b>{searchParams.denied}</b> module. Ask your agency owner to enable it for you in Team &amp; Permissions.
+        </div>
+      )}
+
+      <div className="mb-6 flex flex-wrap gap-2 text-xs">
+        <Link href="/dashboard/bookings" className="btn-secondary px-3 py-1.5 text-xs">+ New booking</Link>
+        <Link href="/dashboard/customers" className="btn-secondary px-3 py-1.5 text-xs">+ New customer</Link>
+        <Link href="/dashboard/packages" className="btn-secondary px-3 py-1.5 text-xs">+ New package</Link>
+        <Link href="/dashboard/tasks" className="btn-secondary px-3 py-1.5 text-xs">+ New task</Link>
+      </div>
       <div className="mb-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         {stats.map((s) => (
           <Link key={s.label} href={s.href} className="card p-5 transition hover:shadow-md">

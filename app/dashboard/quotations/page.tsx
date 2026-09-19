@@ -1,10 +1,10 @@
 import { createAdminClient } from '@/lib/supabase/admin';
-import { requireActiveAgency, requireRole } from '@/lib/data';
+import { requireModule } from '@/lib/data';
 import { createQuotation } from '@/lib/crm-actions';
 import { PageHeader, Table, Empty, StatusBadge, AddPanel, Field } from '@/components/ui';
 
 export default async function QuotationsPage() {
-  const ctx = await requireRole('manager');
+  const ctx = await requireModule('quotations');
   const aid = ctx.profile.agency_id;
   const db = createAdminClient();
   const [{ data: quotations }, { data: customers }] = await Promise.all([

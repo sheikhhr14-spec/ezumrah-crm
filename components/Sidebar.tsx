@@ -1,23 +1,13 @@
 import Link from 'next/link';
 import { logout } from '@/lib/auth-actions';
+import { MODULES, allowedModules } from '@/lib/data';
 
-export default function Sidebar({ agencyName, userName, isAdmin, role, accentColor, label }: {
+export default function Sidebar({ agencyName, userName, isAdmin, role, accentColor, label, profile }: {
   agencyName: string; userName: string; isAdmin?: boolean; role?: string; accentColor?: string | null; label?: string | null;
+  profile?: any;
 }) {
-  const rank = role === 'owner' ? 3 : role === 'manager' ? 2 : 1;
-  const visible = (min: number) => rank >= min;
-  const NAV = [
-    { href: '/dashboard', label: 'Overview', icon: '📊', min: 1 },
-    { href: '/dashboard/customers', label: 'Customers', icon: '👥', min: 1 },
-    { href: '/dashboard/bookings', label: 'Bookings', icon: '🧾', min: 1 },
-    { href: '/dashboard/packages', label: 'Packages', icon: '📦', min: 1 },
-    { href: '/dashboard/invoices', label: 'Invoices', icon: '💰', min: 2 },
-    { href: '/dashboard/quotations', label: 'Quotations', icon: '📝', min: 2 },
-    { href: '/dashboard/documents', label: 'Documents', icon: '🗄️', min: 1 },
-    { href: '/dashboard/tasks', label: 'Tasks', icon: '✅', min: 1 },
-    { href: '/dashboard/support', label: 'Support', icon: '🎧', min: 1 },
-    { href: '/dashboard/team', label: 'Team', icon: '🧑‍🤝‍🧑', min: 3 },
-  ].filter((n) => visible(n.min));
+  const allowed = allowedModules(profile, role || 'staff');
+  const NAV = MODULES.filter((m) => allowed.includes(m.key));
 
   return (
     <aside className="flex w-60 shrink-0 flex-col border-r border-slate-200 bg-white"
@@ -32,13 +22,27 @@ export default function Sidebar({ agencyName, userName, isAdmin, role, accentCol
           </p>
         </div>
       </div>
-      <nav className="flex-1 space-y-1 p-3">
+      <nav className="flex-1 space-y-1 overflow-y-auto p-3">
+        <Link href="/dashboard"
+          className="flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium text-slate-600 accent-hover transition">
+          <span>📊</span> Overview
+        </Link>
+        <div className="my-2 border-t border-slate-100" />
         {NAV.map((item) => (
-          <Link key={item.href} href={item.href}
+          <Link key={item.key} href={`/dashboard/${item.key}`}
             className="flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium text-slate-600 accent-hover transition">
             <span>{item.icon}</span> {item.label}
           </Link>
         ))}
+        {role === 'owner' && (
+          <Link href="/dashboard/team"
+            className="flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium text-slate-600 accent-hover">
+            <span>🧑‍🤝‍🧑</span> Team & Permissions
+          </Link>
+        )}
+        {isAdmin && (
+          <div className="my-2 border-t border-slate-100" />
+        )}
         {isAdmin && (
           <Link href="/admin" className="flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-semibold accent accent-hover">
             <span>🛡️</span> Admin Portal

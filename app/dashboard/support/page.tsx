@@ -1,5 +1,5 @@
 import { createClient } from '@/lib/supabase/server';
-import { requireActiveAgency } from '@/lib/data';
+import { requireModule } from '@/lib/data';
 import { createTenantTicket, replyTenantTicket } from '@/lib/support-actions';
 import { PageHeader, StatusBadge, Empty, AddPanel, Field } from '@/components/ui';
 
@@ -9,7 +9,7 @@ const PRIO: Record<string, string> = {
 };
 
 export default async function SupportPage() {
-  const ctx = await requireActiveAgency();
+  const ctx = await requireModule('support');
   const db = await createClient();
   const { data: tickets } = await db.from('support_tickets')
     .select('*').eq('agency_id', (ctx.agency as any).id)

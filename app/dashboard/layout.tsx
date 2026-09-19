@@ -22,9 +22,10 @@ export default async function DashboardLayout({ children }: { children: React.Re
         agencyName={agency.name}
         userName={ctx.profile?.full_name || ctx.user.email || ''}
         role={ctx.role}
-        isAdmin={ctx.role === 'owner'}
+        isAdmin={ctx.profile?.role === 'superadmin'}
         accentColor={agency.brand_color}
         label={agency.label}
+        profile={ctx.profile}
       />
       <main className="flex-1 overflow-x-auto bg-slate-50 p-8">
         {latest && (
