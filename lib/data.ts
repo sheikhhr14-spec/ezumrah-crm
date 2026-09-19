@@ -51,6 +51,7 @@ export async function requireRole(min: 'owner' | 'manager' | 'staff') {
 /* ============ Per-user module permissions ============ */
 // All tenant modules. 'min' = minimum role that can ever be granted it.
 export const MODULES: { key: string; label: string; icon: string; min: 'staff' | 'manager' }[] = [
+  { key: 'leads', label: 'Leads', icon: '🎯', min: 'staff' },
   { key: 'customers', label: 'Customers', icon: '👥', min: 'staff' },
   { key: 'bookings', label: 'Bookings', icon: '🧾', min: 'staff' },
   { key: 'packages', label: 'Packages', icon: '📦', min: 'staff' },
@@ -64,6 +65,8 @@ export const MODULES: { key: string; label: string; icon: string; min: 'staff' |
   { key: 'invoices', label: 'Invoices', icon: '💰', min: 'manager' },
   { key: 'quotations', label: 'Quotations', icon: '📝', min: 'manager' },
   { key: 'reports', label: 'Reports', icon: '📊', min: 'manager' },
+  { key: 'hr', label: 'HR', icon: '🧑‍💼', min: 'manager' },
+  { key: 'accounts', label: 'Accounts', icon: '🏦', min: 'manager' },
 ];
 
 export const MODULE_KEYS = MODULES.map((m) => m.key);
@@ -89,7 +92,7 @@ export async function requireModule(key: string) {
 // default modules for a new member by role
 export function defaultModulesForRole(role: string): string[] | null {
   if (role === 'owner') return null; // all
-  const base = ['customers', 'bookings', 'packages', 'flights', 'hotels', 'visas', 'transports', 'documents', 'tasks', 'support'];
+  const base = ['leads', 'customers', 'bookings', 'packages', 'flights', 'hotels', 'visas', 'transports', 'documents', 'tasks', 'support'];
   return role === 'manager' ? [...base, 'invoices', 'quotations', 'reports'] : base;
 }
 

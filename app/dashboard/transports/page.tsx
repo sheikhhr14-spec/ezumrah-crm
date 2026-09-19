@@ -8,7 +8,7 @@ export default async function TransportsPage({ searchParams }: { searchParams: {
   const ctx = await requireModule('transports');
   const db = createAdminClient();
   const [{ data: records }, { data: bookings }] = await Promise.all([
-    db.from('transports').select('*, bookings(booking_ref, id)').eq('agency_id', ctx.profile.agency_id)
+    db.from('transports').select('*, bookings(booking_ref, customers(full_name))').eq('agency_id', ctx.profile.agency_id)
       .order('created_at', { ascending: false }),
     db.from('bookings').select('id, booking_ref, package_name').eq('agency_id', ctx.profile.agency_id)
       .order('created_at', { ascending: false }).limit(100),

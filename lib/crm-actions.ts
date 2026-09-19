@@ -67,7 +67,25 @@ export async function createBooking(fd: FormData) {
     source: str(fd, 'source'),
     notes: str(fd, 'notes'),
   }).select('id').single();
+
+  // AUTOMATION: auto-generate operations checklist for every new booking
+  if (data) {
+    const dep = str(fd, 'departure_date');
+    const d = (offset: number) => {
+      if (!dep) return null;
+      const dt = new Date(dep); dt.setDate(dt.getDate() - offset);
+      return dt.toISOString().slice(0, 10);
+    };
+    await db.from('tasks').insert([
+      { agency_id: aid, related_booking_id: data.id, title: `Collect passports & documents (${ref})`, priority: 'high', status: 'todo', due_date: d(21) },
+      { agency_id: aid, related_booking_id: data.id, title: `Apply for visas (${ref})`, priority: 'high', status: 'todo', due_date: d(18) },
+      { agency_id: aid, related_booking_id: data.id, title: `Confirm hotels in Makkah & Madinah (${ref})`, priority: 'medium', status: 'todo', due_date: d(14) },
+      { agency_id: aid, related_booking_id: data.id, title: `Issue flight tickets (${ref})`, priority: 'medium', status: 'todo', due_date: d(10) },
+      { agency_id: aid, related_booking_id: data.id, title: `Arrange airport transfer (${ref})`, priority: 'low', status: 'todo', due_date: d(5) },
+    ]);
+  }
   revalidatePath('/dashboard/bookings');
+  revalidatePath('/dashboard/tasks');
   if (data) redirect(`/dashboard/bookings/${data.id}`);
 }
 
@@ -257,4 +275,236 @@ export async function deleteRecord(fd: FormData) {
   if (!rec || rec.agency_id !== aid) throw new Error('Record not found in your agency.');
   await db.from(table).delete().eq('id', id);
   revalidatePath(`/dashboard/${table}`);
+}
+
+// ---------- LEADS (sales pipeline) ----------
+export async function createLead(fd: FormData) {
+  const db = createAdminClient();
+  await db.from('leads').insert({
+    agency_id: await agencyId(),
+    full_name: str(fd, 'full_name'),
+    phone: str(fd, 'phone'),
+    whatsapp: str(fd, 'whatsapp'),
+    email: str(fd, 'email'),
+    country: str(fd, 'country'),
+    source: str(fd, 'source') || 'website',
+    interest: str(fd, 'interest') || 'umrah',
+    budget: num(fd, 'budget'),
+    assigned_to: str(fd, 'assigned_to'),
+    notes: str(fd, 'notes'),
+  });
+  revalidatePath('/dashboard/leads');
+}
+
+export async function setLeadStatus(fd: FormData) {
+  const db = createAdminClient();
+  const aid = await agencyId();
+  const { data: lead } = await db.from('leads').select('id, agency_id').eq('id', String(fd.get('id'))).single();
+  if (!lead || lead.agency_id !== aid) throw new Error('Lead not found.');
+  await db.from('leads').update({ status: String(fd.get('status')) }).eq('id', lead.id);
+  revalidatePath('/dashboard/leads');
+}
+
+export async function deleteLead(fd: FormData) {
+  const db = createAdminClient();
+  const aid = await agencyId();
+  await db.from('leads').delete().eq('id', String(fd.get('id'))).eq('agency_id', aid);
+  revalidatePath('/dashboard/leads');
+}
+
+// AUTOMATION: convert lead -> customer, mark converted
+export async function convertLead(fd: FormData) {
+  const db = createAdminClient();
+  const aid = await agencyId();
+  const { data: lead } = await db.from('leads').select('*').eq('id', String(fd.get('id'))).eq('agency_id', aid).single();
+  if (!lead) throw new Error('Lead not found.');
+  await db.from('customers').insert({
+    agency_id: aid,
+    full_name: lead.full_name,
+    email: lead.email,
+    phone: lead.phone,
+    whatsapp: lead.whatsapp,
+    country: lead.country,
+    notes: `Converted from lead (${lead.interest}). ${lead.notes || ''}`.trim(),
+  });
+  await db.from('leads').update({ status: 'converted' }).eq('id', lead.id);
+  revalidatePath('/dashboard/leads');
+  revalidatePath('/dashboard/customers');
+}
+
+// ---------- HR: EMPLOYEES ----------
+export async function addEmployee(fd: FormData) {
+  const db = createAdminClient();
+  await db.from('employees').insert({
+    agency_id: await agencyId(),
+    full_name: str(fd, 'full_name'),
+    email: str(fd, 'email'),
+    phone: str(fd, 'phone'),
+    designation: str(fd, 'designation'),
+    department: str(fd, 'department'),
+    join_date: str(fd, 'join_date'),
+    monthly_salary: num(fd, 'monthly_salary'),
+  });
+  revalidatePath('/dashboard/hr');
+}
+
+export async function setEmployeeStatus(fd: FormData) {
+  const db = createAdminClient();
+  const aid = await agencyId();
+  const { data: emp } = await db.from('employees').select('id, agency_id').eq('id', String(fd.get('id'))).single();
+  if (!emp || emp.agency_id !== aid) throw new Error('Employee not found.');
+  await db.from('employees').update({ status: String(fd.get('status')) }).eq('id', emp.id);
+  revalidatePath('/dashboard/hr');
+}
+
+export async function deleteEmployee(fd: FormData) {
+  const db = createAdminClient();
+  const aid = await agencyId();
+  await db.from('employees').delete().eq('id', String(fd.get('id'))).eq('agency_id', aid);
+  revalidatePath('/dashboard/hr');
+}
+
+// ---------- HR: ATTENDANCE ----------
+export async function markAttendance(fd: FormData) {
+  const db = createAdminClient();
+  await db.from('attendance').upsert({
+    agency_id: await agencyId(),
+    employee_id: str(fd, 'employee_id'),
+    att_date: str(fd, 'att_date') || new Date().toISOString().slice(0, 10),
+    check_in: str(fd, 'check_in'),
+    check_out: str(fd, 'check_out'),
+    status: str(fd, 'status') || 'present',
+  }, { onConflict: 'employee_id,att_date' });
+  revalidatePath('/dashboard/hr/attendance');
+}
+
+// ---------- HR: LEAVES ----------
+export async function applyLeave(fd: FormData) {
+  const db = createAdminClient();
+  await db.from('leaves').insert({
+    agency_id: await agencyId(),
+    employee_id: str(fd, 'employee_id'),
+    leave_type: str(fd, 'leave_type') || 'annual',
+    leave_from: str(fd, 'leave_from'),
+    leave_to: str(fd, 'leave_to'),
+    days: num(fd, 'days', 1),
+    reason: str(fd, 'reason'),
+  });
+  revalidatePath('/dashboard/hr/leaves');
+}
+
+export async function setLeaveStatus(fd: FormData) {
+  const db = createAdminClient();
+  const aid = await agencyId();
+  const { data: lv } = await db.from('leaves').select('id, agency_id').eq('id', String(fd.get('id'))).single();
+  if (!lv || lv.agency_id !== aid) throw new Error('Leave not found.');
+  await db.from('leaves').update({ status: String(fd.get('status')) }).eq('id', lv.id);
+  revalidatePath('/dashboard/hr/leaves');
+}
+
+// ---------- HR: PAYROLL ----------
+export async function runPayroll(fd: FormData) {
+  const db = createAdminClient();
+  const aid = await agencyId();
+  const month = str(fd, 'pay_month') || new Date().toISOString().slice(0, 7);
+  const { data: emps } = await db.from('employees').select('id, monthly_salary').eq('agency_id', aid).eq('status', 'active');
+  if (!emps?.length) throw new Error('No active employees.');
+  await db.from('payroll').upsert(
+    (emps || []).map((e) => ({
+      agency_id: aid,
+      employee_id: e.id,
+      pay_month: month,
+      basic: Number(e.monthly_salary) || 0,
+      allowances: 0,
+      deductions: 0,
+      net: Number(e.monthly_salary) || 0,
+    })),
+    { onConflict: 'employee_id,pay_month' }
+  );
+  revalidatePath('/dashboard/hr/payroll');
+}
+
+export async function updatePayrollLine(fd: FormData) {
+  const db = createAdminClient();
+  const aid = await agencyId();
+  const id = String(fd.get('id'));
+  const { data: line } = await db.from('payroll').select('id, agency_id, basic').eq('id', id).single();
+  if (!line || line.agency_id !== aid) throw new Error('Payroll record not found.');
+  const allowances = num(fd, 'allowances');
+  const deductions = num(fd, 'deductions');
+  await db.from('payroll').update({
+    allowances, deductions,
+    net: Number(line.basic) + allowances - deductions,
+  }).eq('id', id);
+  revalidatePath('/dashboard/hr/payroll');
+}
+
+export async function markPayrollPaid(fd: FormData) {
+  const db = createAdminClient();
+  const aid = await agencyId();
+  const id = String(fd.get('id'));
+  const { data: line } = await db.from('payroll').select('id, agency_id').eq('id', id).single();
+  if (!line || line.agency_id !== aid) throw new Error('Payroll record not found.');
+  await db.from('payroll').update({ status: 'paid', paid_on: new Date().toISOString().slice(0, 10) }).eq('id', id);
+  revalidatePath('/dashboard/hr/payroll');
+}
+
+// ---------- ACCOUNTS ----------
+export async function addExpense(fd: FormData) {
+  const db = createAdminClient();
+  await db.from('expenses').insert({
+    agency_id: await agencyId(),
+    category: str(fd, 'category') || 'other',
+    description: str(fd, 'description'),
+    amount: num(fd, 'amount'),
+    expense_date: str(fd, 'expense_date'),
+    payment_method: str(fd, 'payment_method') || 'bank',
+    reference: str(fd, 'reference'),
+  });
+  revalidatePath('/dashboard/accounts');
+}
+
+export async function deleteExpense(fd: FormData) {
+  const db = createAdminClient();
+  const aid = await agencyId();
+  await db.from('expenses').delete().eq('id', String(fd.get('id'))).eq('agency_id', aid);
+  revalidatePath('/dashboard/accounts');
+}
+
+// AUTOMATION: record payment -> invoice goes partial/paid, booking paid_amount syncs
+export async function recordPayment(fd: FormData) {
+  const db = createAdminClient();
+  const aid = await agencyId();
+  const invoiceId = str(fd, 'invoice_id');
+  const amount = num(fd, 'amount');
+
+  const { data: invoice } = await db.from('invoices').select('*, bookings(id, paid_amount)').eq('id', invoiceId!).eq('agency_id', aid).single();
+  if (!invoice) throw new Error('Invoice not found in your agency.');
+
+  await db.from('payments').insert({
+    agency_id: aid,
+    invoice_id: invoice.id,
+    booking_id: invoice.booking_id,
+    amount,
+    payment_date: str(fd, 'payment_date'),
+    method: str(fd, 'method') || 'bank',
+    reference: str(fd, 'reference'),
+  });
+
+  // recalc invoice status from all payments
+  const { data: allPays } = await db.from('payments').select('amount').eq('invoice_id', invoice.id);
+  const paidTotal = (allPays || []).reduce((s, p) => s + Number(p.amount), 0);
+  const invTotal = Number(invoice.total);
+  const newStatus = paidTotal >= invTotal ? 'paid' : paidTotal > 0 ? 'partial' : invoice.status;
+  await db.from('invoices').update({ status: newStatus }).eq('id', invoice.id);
+
+  // sync booking paid_amount
+  if (invoice.booking_id) {
+    const { data: bkPays } = await db.from('payments').select('amount').eq('booking_id', invoice.booking_id);
+    const bookingPaid = (bkPays || []).reduce((s, p) => s + Number(p.amount), 0);
+    await db.from('bookings').update({ paid_amount: bookingPaid }).eq('id', invoice.booking_id);
+  }
+  revalidatePath('/dashboard/accounts');
+  revalidatePath('/dashboard/invoices');
+  revalidatePath(`/dashboard/bookings/${invoice.booking_id}`);
 }
