@@ -2,6 +2,14 @@ import Link from 'next/link';
 import { logout } from '@/lib/auth-actions';
 import { MODULES, allowedModules } from '@/lib/data';
 
+// some module keys differ from their route slugs
+const ROUTE: Record<string, string> = {
+  flightsales: 'flight-sales',
+  hotelsales: 'hotel-sales',
+  visasales: 'visa-sales',
+  transportsales: 'transport-sales',
+};
+
 export default function Sidebar({ agencyName, userName, isAdmin, role, accentColor, label, profile }: {
   agencyName: string; userName: string; isAdmin?: boolean; role?: string; accentColor?: string | null; label?: string | null;
   profile?: any;
@@ -43,7 +51,7 @@ export default function Sidebar({ agencyName, userName, isAdmin, role, accentCol
             <div key={group.label} className="mb-1">
               <p className="px-3 pb-1 pt-3 text-[10px] font-bold uppercase tracking-wider text-slate-400">{group.label}</p>
               {items.map((item) => (
-                <Link key={item.key} href={`/dashboard/${item.key}`}
+                <Link key={item.key} href={`/dashboard/${ROUTE[item.key] || item.key}`}
                   className="flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium text-slate-600 accent-hover transition">
                   <span>{item.icon}</span> {item.label}
                 </Link>
