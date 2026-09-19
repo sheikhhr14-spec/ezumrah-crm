@@ -1,5 +1,8 @@
 import { NextResponse } from 'next/server';
 
+// Always run at request time (never statically cached)
+export const dynamic = 'force-dynamic';
+
 // Diagnostics only — reports presence of env vars, never their values.
 export async function GET() {
   return NextResponse.json({
