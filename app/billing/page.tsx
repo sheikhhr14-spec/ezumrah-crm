@@ -1,11 +1,14 @@
-import { getCurrentUser } from '@/lib/data';
+import { getCurrentUser, requireUser } from '@/lib/data';
+import { redirect } from 'next/navigation';
+
 import { PLANS, PLAN_IDS, type PlanId } from '@/lib/billing';
 import { logout } from '@/lib/auth-actions';
 import { createCheckout } from '@/lib/stripe-actions';
 import Link from 'next/link';
 
 export default async function BillingPage() {
-  const ctx = await getCurrentUser();
+  const ctx = await requireUser();
+  if (ctx.profile?.role !== 'owner' && ctx.profile?.role !== 'superadmin') redirect('/dashboard?denied=1');
   const agency = ctx?.profile?.agencies;
   const currentPlan = (agency?.plan as PlanId) || 'starter';
   const status = agency?.subscription_status || 'incomplete';

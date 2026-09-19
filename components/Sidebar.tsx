@@ -1,18 +1,22 @@
 import Link from 'next/link';
 import { logout } from '@/lib/auth-actions';
 
-const NAV = [
-  { href: '/dashboard', label: 'Overview', icon: '📊' },
-  { href: '/dashboard/customers', label: 'Customers', icon: '👥' },
-  { href: '/dashboard/bookings', label: 'Bookings', icon: '🧾' },
-  { href: '/dashboard/packages', label: 'Packages', icon: '📦' },
-  { href: '/dashboard/invoices', label: 'Invoices', icon: '💰' },
-  { href: '/dashboard/quotations', label: 'Quotations', icon: '📝' },
-  { href: '/dashboard/documents', label: 'Documents', icon: '🗄️' },
-  { href: '/dashboard/tasks', label: 'Tasks', icon: '✅' },
-];
 
-export default function Sidebar({ agencyName, userName }: { agencyName: string; userName: string }) {
+export default function Sidebar({ agencyName, userName, isAdmin, role }: { agencyName: string; userName: string; isAdmin?: boolean; role?: string }) {
+  const rank = role === 'owner' ? 3 : role === 'manager' ? 2 : 1;
+  const visible = (min: number) => rank >= min;
+  const NAV = [
+    { href: '/dashboard', label: 'Overview', icon: '📊', min: 1 },
+    { href: '/dashboard/customers', label: 'Customers', icon: '👥', min: 1 },
+    { href: '/dashboard/bookings', label: 'Bookings', icon: '🧾', min: 1 },
+    { href: '/dashboard/packages', label: 'Packages', icon: '📦', min: 1 },
+    { href: '/dashboard/invoices', label: 'Invoices', icon: '💰', min: 2 },
+    { href: '/dashboard/quotations', label: 'Quotations', icon: '📝', min: 2 },
+    { href: '/dashboard/documents', label: 'Documents', icon: '🗄️', min: 1 },
+    { href: '/dashboard/tasks', label: 'Tasks', icon: '✅', min: 1 },
+    { href: '/dashboard/team', label: 'Team', icon: '🧑‍🤝‍🧑', min: 3 },
+  ].filter((n) => visible(n.min));
+
   return (
     <aside className="flex w-60 shrink-0 flex-col border-r border-slate-200 bg-white">
       <div className="flex items-center gap-2 border-b border-slate-200 px-5 py-4">
@@ -32,6 +36,11 @@ export default function Sidebar({ agencyName, userName }: { agencyName: string; 
             <span>{item.icon}</span> {item.label}
           </Link>
         ))}
+        {isAdmin && (
+          <Link href="/admin" className="flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-semibold text-gold hover:bg-gold/10">
+            <span>🛡️</span> Admin Portal
+          </Link>
+        )}
       </nav>
       <div className="border-t border-slate-200 p-3">
         <p className="px-3 pb-2 text-xs text-slate-400">{userName}</p>
