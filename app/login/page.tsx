@@ -1,5 +1,6 @@
 import { login } from '@/lib/auth-actions';
 import Link from 'next/link';
+import SubmitButton from '@/components/submit-button';
 
 export default function LoginPage({ searchParams }: { searchParams: { error?: string; env?: string } }) {
   return (
@@ -32,7 +33,7 @@ export default function LoginPage({ searchParams }: { searchParams: { error?: st
             <label className="label" htmlFor="password">Password</label>
             <input className="input" id="password" name="password" type="password" required />
           </div>
-          <button className="btn-primary w-full" type="submit">Sign in</button>
+          <SubmitButton className="btn-primary w-full" >Sign in</SubmitButton>
           <p className="text-center text-sm text-slate-500">
             New agency? <Link className="font-semibold text-gold hover:underline" href="/signup">Create account</Link>
           </p>

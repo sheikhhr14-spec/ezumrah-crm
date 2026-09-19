@@ -4,6 +4,7 @@ import { Table, Empty, StatusBadge } from '@/components/ui';
 import { updateSale, updateSaleLeg, addSaleLeg, deleteSaleLeg, deleteRecord } from '@/lib/crm-actions';
 import Link from 'next/link';
 import SaleDocuments from '@/components/sale-documents';
+import SubmitButton from '@/components/submit-button';
 import { notFound } from 'next/navigation';
 
 const L = ({ label, name, def, type = 'text', ph = '' }: { label: string; name: string; def?: string | null; type?: string; ph?: string }) => (
@@ -102,7 +103,7 @@ export default async function FlightSaleDetail({ params }: { params: { id: strin
               <L label="Tax" name="tax" def={l.tax} type="number" />
               <L label="Cost (our price)" name="cost" def={l.cost} type="number" />
               <div className="flex items-end gap-3">
-                <button className="btn-primary px-4 py-2 text-xs" type="submit">Save leg</button>
+                <SubmitButton className="btn-primary px-4 py-2 text-xs">Save leg</SubmitButton>
               </div>
               <div className="flex items-end">
                 <span className="text-xs font-semibold accent">Leg profit: ${(Number(l.fare) + Number(l.tax) - Number(l.cost)).toFixed(2)}</span>
@@ -131,7 +132,7 @@ export default async function FlightSaleDetail({ params }: { params: { id: strin
           <L label="Fare (sale)" name="fare" type="number" />
           <L label="Tax" name="tax" type="number" />
           <L label="Cost" name="cost" type="number" />
-          <div className="flex items-end"><button className="btn-primary px-4 py-2 text-xs" type="submit">Add leg</button></div>
+          <div className="flex items-end"><SubmitButton className="btn-primary px-4 py-2 text-xs">Add leg</SubmitButton></div>
         </form>
       </details>
 
@@ -170,7 +171,7 @@ export default async function FlightSaleDetail({ params }: { params: { id: strin
           </select>
         </label>
         <L label="Notes" name="notes" def={sale.notes} />
-        <div className="flex items-end"><button className="btn-primary px-4 py-2 text-xs" type="submit">Save payment</button></div>
+        <div className="flex items-end"><SubmitButton className="btn-primary px-4 py-2 text-xs">Save payment</SubmitButton></div>
         <div className="flex items-end"><span className="text-xs"><StatusBadge status={sale.payment_status} /> · Profit <b className="accent">${profit.toFixed(2)}</b></span></div>
       </form>
 

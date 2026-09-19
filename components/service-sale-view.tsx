@@ -5,6 +5,7 @@ import { updateServiceSale, deleteRecord } from '@/lib/crm-actions';
 import { SERVICE_SALES, SALE_PAYMENT_FIELDS } from '@/lib/service-sales';
 import Link from 'next/link';
 import SaleDocuments from '@/components/sale-documents';
+import SubmitButton from '@/components/submit-button';
 import { notFound } from 'next/navigation';
 
 const MODULE_KEY: Record<string, string> = {
@@ -140,7 +141,7 @@ export default async function ServiceSaleView({ table, id }: { table: string; id
           <label className="block"><span className="text-xs text-slate-500">Notes</span>
             <input className="input" name="notes" defaultValue={rec.notes || ''} />
           </label>
-          <div className="flex items-end"><button className="btn-primary px-4 py-2 text-xs" type="submit">Save changes</button></div>
+          <div className="flex items-end"><SubmitButton className="btn-primary px-4 py-2 text-xs">Save changes</SubmitButton></div>
           <div className="flex items-end"><span className="text-xs"><StatusBadge status={rec.payment_status} /> · Profit <b className="accent">${profit.toFixed(2)}</b></span></div>
         </div>
       </form>

@@ -1,6 +1,7 @@
 import { signup } from '@/lib/auth-actions';
 import { PLANS, PLAN_IDS } from '@/lib/billing';
 import Link from 'next/link';
+import SubmitButton from '@/components/submit-button';
 
 export default function SignupPage({ searchParams }: { searchParams: { error?: string; plan?: string } }) {
   const selected = searchParams?.plan || 'starter';
@@ -52,7 +53,7 @@ export default function SignupPage({ searchParams }: { searchParams: { error?: s
             </div>
           </div>
 
-          <button className="btn-primary w-full" type="submit">Continue to payment →</button>
+          <SubmitButton className="btn-primary w-full" >Continue to payment →</SubmitButton>
           <p className="text-center text-sm text-slate-500">
             Already have an account? <Link className="font-semibold text-gold hover:underline" href="/login">Sign in</Link>
           </p>

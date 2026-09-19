@@ -1,4 +1,5 @@
 import { updateRecord } from '@/lib/crm-actions';
+import SubmitButton from '@/components/submit-button';
 
 export default function RowEdit({ table, id, children }: { table: string; id: string; children: React.ReactNode }) {
   return (
@@ -8,7 +9,7 @@ export default function RowEdit({ table, id, children }: { table: string; id: st
         <input type="hidden" name="table" value={table} />
         <input type="hidden" name="id" value={id} />
         {children}
-        <button className="btn-primary w-full px-3 py-1.5 text-xs" type="submit">Save changes</button>
+        <SubmitButton className="btn-primary w-full px-3 py-1.5 text-xs">Save changes</SubmitButton>
       </form>
     </details>
   );

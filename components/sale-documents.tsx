@@ -1,4 +1,5 @@
 import { uploadSaleDocument, deleteSaleDocument } from '@/lib/crm-actions';
+import SubmitButton from '@/components/submit-button';
 
 type Doc = { id: string; file_name: string; size_bytes: number | null; created_at: string };
 
@@ -12,7 +13,7 @@ export default function SaleDocuments({ table, saleId, docs }: { table: string; 
         <input type="hidden" name="sale_id" value={saleId} />
         <input type="file" name="file" accept=".pdf,.jpg,.jpeg,.png" required
           className="block w-full max-w-xs cursor-pointer rounded-lg border border-slate-200 p-2 text-xs" />
-        <button className="btn-primary px-4 py-2 text-xs" type="submit">⬆ Upload</button>
+        <SubmitButton className="btn-primary px-4 py-2 text-xs" pendingText="Uploading…">⬆ Upload</SubmitButton>
       </form>
       {docs.length ? (
         <ul className="space-y-2">

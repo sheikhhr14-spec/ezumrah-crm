@@ -1,6 +1,7 @@
 'use client';
 import { useState } from 'react';
 import { createServiceSale } from '@/lib/crm-actions';
+import SubmitButton from '@/components/submit-button';
 import type { SvcField } from '@/lib/service-sales';
 
 export default function ServiceSaleForm({
@@ -100,7 +101,7 @@ export default function ServiceSaleForm({
         </div>
       </div>
 
-      <button className="btn-primary" type="submit">Save sale</button>
+      <SubmitButton pendingText="Saving sale…">Save sale</SubmitButton>
     </form>
   );
 }

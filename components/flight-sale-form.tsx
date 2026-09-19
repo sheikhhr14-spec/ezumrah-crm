@@ -1,6 +1,7 @@
 'use client';
 import { useState } from 'react';
 import { createFlightSale } from '@/lib/crm-actions';
+import SubmitButton from '@/components/submit-button';
 
 type Leg = { fare: string; tax: string; cost: string };
 const emptyLeg = () => ({ fare: '', tax: '', cost: '' });
@@ -152,7 +153,7 @@ export default function FlightSaleForm({ customers }: { customers: { id: string;
         <p className="mt-2 text-xs font-semibold text-slate-500">Payment status: <span className="accent">{pStatus}</span></p>
       </div>
 
-      <button className="btn-primary" type="submit">Save flight sale</button>
+      <SubmitButton pendingText="Saving flight sale…">Save flight sale</SubmitButton>
     </form>
   );
 }
