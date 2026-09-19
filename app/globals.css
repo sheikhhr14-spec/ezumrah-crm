@@ -27,3 +27,13 @@ body {
 .badge {
   @apply inline-flex rounded-full px-2.5 py-0.5 text-xs font-semibold;
 }
+
+/* ===== Portal accent theming (super-admin + agency branding) ===== */
+.accent { color: var(--portal-accent, #b8923f); }
+.accent-bg { background-color: var(--portal-accent, #b8923f); }
+.accent-soft-bg { background-color: color-mix(in srgb, var(--portal-accent, #b8923f) 12%, white); }
+.accent-border { border-color: var(--portal-accent, #b8923f); }
+.accent-hover:hover { background-color: color-mix(in srgb, var(--portal-accent, #b8923f) 12%, white); color: var(--portal-accent, #b8923f); }
+.nav-active { background-color: color-mix(in srgb, var(--portal-accent, #b8923f) 14%, white); color: var(--portal-accent, #b8923f); font-weight: 600; }
+.stat-num { @apply text-2xl font-bold text-slate-900; }
+.stat-label { @apply text-xs font-medium uppercase tracking-wide text-slate-400; }

@@ -1,8 +1,9 @@
 import Link from 'next/link';
 import { logout } from '@/lib/auth-actions';
 
-
-export default function Sidebar({ agencyName, userName, isAdmin, role }: { agencyName: string; userName: string; isAdmin?: boolean; role?: string }) {
+export default function Sidebar({ agencyName, userName, isAdmin, role, accentColor, label }: {
+  agencyName: string; userName: string; isAdmin?: boolean; role?: string; accentColor?: string | null; label?: string | null;
+}) {
   const rank = role === 'owner' ? 3 : role === 'manager' ? 2 : 1;
   const visible = (min: number) => rank >= min;
   const NAV = [
@@ -14,30 +15,32 @@ export default function Sidebar({ agencyName, userName, isAdmin, role }: { agenc
     { href: '/dashboard/quotations', label: 'Quotations', icon: '📝', min: 2 },
     { href: '/dashboard/documents', label: 'Documents', icon: '🗄️', min: 1 },
     { href: '/dashboard/tasks', label: 'Tasks', icon: '✅', min: 1 },
+    { href: '/dashboard/support', label: 'Support', icon: '🎧', min: 1 },
     { href: '/dashboard/team', label: 'Team', icon: '🧑‍🤝‍🧑', min: 3 },
   ].filter((n) => visible(n.min));
 
   return (
-    <aside className="flex w-60 shrink-0 flex-col border-r border-slate-200 bg-white">
+    <aside className="flex w-60 shrink-0 flex-col border-r border-slate-200 bg-white"
+      style={{ '--portal-accent': accentColor || '#b8923f' } as React.CSSProperties}>
       <div className="flex items-center gap-2 border-b border-slate-200 px-5 py-4">
-        <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-gold font-bold text-white">E</div>
+        <div className="flex h-9 w-9 items-center justify-center rounded-lg accent-bg font-bold text-white">E</div>
         <div>
           <p className="text-sm font-bold text-slate-900">EzUmrah CRM</p>
-          <p className="text-xs text-slate-400">{agencyName}</p>
+          <p className="flex items-center gap-1 text-xs text-slate-400">
+            {agencyName}
+            {label && <span className="badge accent-soft-bg accent">{label}</span>}
+          </p>
         </div>
       </div>
       <nav className="flex-1 space-y-1 p-3">
         {NAV.map((item) => (
-          <Link
-            key={item.href}
-            href={item.href}
-            className="flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium text-slate-600 hover:bg-gold/10 hover:text-gold"
-          >
+          <Link key={item.href} href={item.href}
+            className="flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium text-slate-600 accent-hover transition">
             <span>{item.icon}</span> {item.label}
           </Link>
         ))}
         {isAdmin && (
-          <Link href="/admin" className="flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-semibold text-gold hover:bg-gold/10">
+          <Link href="/admin" className="flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-semibold accent accent-hover">
             <span>🛡️</span> Admin Portal
           </Link>
         )}
