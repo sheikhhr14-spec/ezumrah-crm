@@ -536,12 +536,15 @@ const EDITABLE: Record<string, string[]> = {
   expenses: ['category', 'description', 'amount', 'expense_date', 'payment_method', 'reference'],
   payments: ['amount', 'payment_date', 'method', 'reference', 'notes'],
   leaves: ['leave_type', 'leave_from', 'leave_to', 'days', 'reason'],
+  flight_sales: ['trip_kind', 'pax', 'admin_fee', 'amount_paid', 'payment_method', 'notes', 'status', 'customer_id'],
 };
 
 function pathFor(table: string): string {
   if (table === 'employees') return '/dashboard/hr';
   if (table === 'leaves') return '/dashboard/hr/leaves';
   if (table === 'expenses' || table === 'payments') return '/dashboard/accounts';
+  if (table === 'flight_sales') return '/dashboard/flight-sales';
+  if (table === 'flight_sale_legs') return '/dashboard/flight-sales';
   return `/dashboard/${table}`;
 }
 
@@ -562,4 +565,135 @@ export async function updateRecord(fd: FormData) {
   }
   await db.from(table).update(patch).eq('id', id);
   revalidatePath(pathFor(table));
+}
+
+
+// ================= FLIGHT SALES (standalone, multi-leg) =================
+async function recomputeSale(db: any, aid: string, saleId: string) {
+  const { data: legs } = await db.from('flight_sale_legs').select('fare, tax, cost').eq('agency_id', aid).eq('flight_sale_id', saleId);
+  const { data: sale } = await db.from('flight_sales').select('admin_fee, amount_paid').eq('agency_id', aid).eq('id', saleId).single();
+  if (!sale) return;
+  const saleTotal = (legs || []).reduce((s: number, l: any) => s + Number(l.fare) + Number(l.tax), 0);
+  const costTotal = (legs || []).reduce((s: number, l: any) => s + Number(l.cost), 0);
+  const grand = saleTotal + Number(sale.admin_fee);
+  const paid = Number(sale.amount_paid);
+  const paymentStatus = paid <= 0 ? 'unpaid' : paid >= grand ? 'full' : 'partial';
+  await db.from('flight_sales').update({ sale_total: saleTotal, cost_total: costTotal, payment_status: paymentStatus, updated_at: new Date().toISOString() }).eq('id', saleId);
+}
+
+export async function createFlightSale(fd: FormData) {
+  const db = createAdminClient();
+  const aid = await agencyId();
+  let customerId = String(fd.get('existing_customer_id')) || '';
+  if (!customerId) {
+    const name = str(fd, 'customer_name');
+    if (name) {
+      const { data: c } = await db.from('customers').insert({
+        agency_id: aid, full_name: name, phone: str(fd, 'phone'), whatsapp: str(fd, 'whatsapp'),
+        country: str(fd, 'country'), passport_no: str(fd, 'passport_no'),
+      }).select('id').single();
+      customerId = c?.id || '';
+    }
+  }
+  const adminFee = num(fd, 'admin_fee');
+  const amountPaid = num(fd, 'amount_paid');
+  const legs: Record<string, unknown>[] = [];
+  for (let i = 0; i < 20; i++) {
+    if (fd.get(`leg_airline_${i}`) === null && fd.get(`leg_from_${i}`) === null) continue;
+    if (!str(fd, `leg_airline_${i}`) && !str(fd, `leg_from_${i}`)) continue;
+    legs.push({
+      leg_no: legs.length + 1,
+      airline: str(fd, `leg_airline_${i}`), flight_no: str(fd, `leg_flight_${i}`),
+      from_airport: str(fd, `leg_from_${i}`), to_airport: str(fd, `leg_to_${i}`),
+      depart_at: str(fd, `leg_depart_${i}`) || null, arrive_at: str(fd, `leg_arrive_${i}`) || null,
+      cabin: str(fd, `leg_cabin_${i}`), fare: num(fd, `leg_fare_${i}`),
+      tax: num(fd, `leg_tax_${i}`), cost: num(fd, `leg_cost_${i}`),
+    });
+  }
+  const saleTotal = legs.reduce((s, l) => s + Number(l.fare) + Number(l.tax), 0);
+  const costTotal = legs.reduce((s, l) => s + Number(l.cost), 0);
+  const grand = saleTotal + adminFee;
+  const paymentStatus = amountPaid <= 0 ? 'unpaid' : amountPaid >= grand ? 'full' : 'partial';
+  const { count } = await db.from('flight_sales').select('id', { count: 'exact', head: true }).eq('agency_id', aid);
+  const ref = `FS-${new Date().getFullYear()}-${String((count || 0) + 1).padStart(4, '0')}`;
+  const { data: sale } = await db.from('flight_sales').insert({
+    agency_id: aid, customer_id: customerId || null, ref,
+    trip_kind: str(fd, 'trip_kind') || 'oneway', pax: num(fd, 'pax', 1),
+    sale_total: saleTotal, cost_total: costTotal, admin_fee: adminFee,
+    amount_paid: amountPaid, payment_method: str(fd, 'payment_method'),
+    payment_status: paymentStatus, notes: str(fd, 'notes'),
+  }).select('id').single();
+  if (sale && legs.length) {
+    await db.from('flight_sale_legs').insert(legs.map((l) => ({ ...l, agency_id: aid, flight_sale_id: sale.id })));
+  }
+  revalidatePath('/dashboard/flight-sales');
+}
+
+export async function updateSale(fd: FormData) {
+  const db = createAdminClient();
+  const aid = await agencyId();
+  const id = String(fd.get('id'));
+  const { data: rec } = await db.from('flight_sales').select('id, agency_id').eq('id', id).single();
+  if (!rec || rec.agency_id !== aid) throw new Error('Record not found in your agency.');
+  const amountPaid = num(fd, 'amount_paid');
+  const adminFee = num(fd, 'admin_fee');
+  const patch: Record<string, unknown> = {
+    admin_fee: adminFee, amount_paid: amountPaid,
+    payment_method: str(fd, 'payment_method'), notes: str(fd, 'notes'),
+    status: str(fd, 'status') || 'confirmed',
+    customer_id: String(fd.get('customer_id')) || null,
+    updated_at: new Date().toISOString(),
+  };
+  if (String(fd.get('payment_status'))) patch.payment_status = String(fd.get('payment_status'));
+  await db.from('flight_sales').update(patch).eq('id', id);
+  await recomputeSale(db, aid, id);
+  revalidatePath(`/dashboard/flight-sales`);
+  revalidatePath(`/dashboard/flight-sales/${id}`);
+}
+
+export async function updateSaleLeg(fd: FormData) {
+  const db = createAdminClient();
+  const aid = await agencyId();
+  const id = String(fd.get('leg_id'));
+  const saleId = String(fd.get('sale_id'));
+  const { data: rec } = await db.from('flight_sale_legs').select('id, agency_id').eq('id', id).single();
+  if (!rec || rec.agency_id !== aid) throw new Error('Record not found in your agency.');
+  await db.from('flight_sale_legs').update({
+    airline: str(fd, 'airline'), flight_no: str(fd, 'flight_no'),
+    from_airport: str(fd, 'from_airport'), to_airport: str(fd, 'to_airport'),
+    depart_at: str(fd, 'depart_at') || null, arrive_at: str(fd, 'arrive_at') || null,
+    cabin: str(fd, 'cabin'), fare: num(fd, 'fare'), tax: num(fd, 'tax'), cost: num(fd, 'cost'),
+  }).eq('id', id);
+  await recomputeSale(db, aid, saleId);
+  revalidatePath(`/dashboard/flight-sales/${saleId}`);
+}
+
+export async function addSaleLeg(fd: FormData) {
+  const db = createAdminClient();
+  const aid = await agencyId();
+  const saleId = String(fd.get('sale_id'));
+  const { data: rec } = await db.from('flight_sales').select('id, agency_id').eq('id', saleId).single();
+  if (!rec || rec.agency_id !== aid) throw new Error('Record not found in your agency.');
+  const { count } = await db.from('flight_sale_legs').select('id', { count: 'exact', head: true }).eq('flight_sale_id', saleId);
+  await db.from('flight_sale_legs').insert({
+    agency_id: aid, flight_sale_id: saleId, leg_no: (count || 0) + 1,
+    airline: str(fd, 'airline'), flight_no: str(fd, 'flight_no'),
+    from_airport: str(fd, 'from_airport'), to_airport: str(fd, 'to_airport'),
+    depart_at: str(fd, 'depart_at') || null, arrive_at: str(fd, 'arrive_at') || null,
+    cabin: str(fd, 'cabin'), fare: num(fd, 'fare'), tax: num(fd, 'tax'), cost: num(fd, 'cost'),
+  });
+  await recomputeSale(db, aid, saleId);
+  revalidatePath(`/dashboard/flight-sales/${saleId}`);
+}
+
+export async function deleteSaleLeg(fd: FormData) {
+  const db = createAdminClient();
+  const aid = await agencyId();
+  const id = String(fd.get('leg_id'));
+  const saleId = String(fd.get('sale_id'));
+  const { data: rec } = await db.from('flight_sale_legs').select('id, agency_id').eq('id', id).single();
+  if (!rec || rec.agency_id !== aid) throw new Error('Record not found in your agency.');
+  await db.from('flight_sale_legs').delete().eq('id', id);
+  await recomputeSale(db, aid, saleId);
+  revalidatePath(`/dashboard/flight-sales/${saleId}`);
 }

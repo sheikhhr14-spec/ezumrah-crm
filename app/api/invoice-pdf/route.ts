@@ -15,7 +15,7 @@ export async function GET(req: Request) {
   const url = new URL(req.url);
   const type = url.searchParams.get('type') || '';
   const id = url.searchParams.get('id') || '';
-  const TYPES = ['booking', 'quotation', 'invoice', 'package', 'flight', 'hotel', 'transport', 'visa'];
+  const TYPES = ['booking', 'quotation', 'invoice', 'package', 'flight', 'hotel', 'transport', 'visa', 'flightsale'];
   if (!TYPES.includes(type) || !id) return new Response('Bad request', { status: 400 });
 
   const ctx = await getCurrentUser();
@@ -92,6 +92,19 @@ export async function GET(req: Request) {
     if (!items.length) items.push({ desc: 'Services as agreed', qty: '1', unit: '', amount: Number(inv.subtotal) || 0 });
     total = Number(inv.total) || 0;
     paid = inv.status === 'paid' ? total : null;
+  } else if (type === 'flightsale') {
+    const fs = await one('flight_sales');
+    if (!fs) return new Response('Not found', { status: 404 });
+    ref = fs.ref; docTitle = 'FLIGHT INVOICE';
+    dateStr = (fs.created_at || '').slice(0, 10) || dateStr;
+    if (fs.customer_id) customer = (await db.from('customers').select('*').eq('id', fs.customer_id).maybeSingle()).data;
+    const { data: legs } = await db.from('flight_sale_legs').select('*').eq('agency_id', aid).eq('flight_sale_id', fs.id).order('leg_no');
+    for (const l of legs || []) {
+      items.push({ desc: `Leg ${l.leg_no}: ${l.airline || ''} ${l.flight_no || ''} ${l.from_airport || ''} -> ${l.to_airport || ''} (${fs.trip_kind}, ${fs.pax || 1} pax)`, qty: String(fs.pax || 1), unit: '', amount: (Number(l.fare) + Number(l.tax)) * (fs.pax || 1) * 0 + Number(l.fare) + Number(l.tax) });
+    }
+    if (Number(fs.admin_fee)) items.push({ desc: 'Admin / service fee', qty: '1', unit: '', amount: Number(fs.admin_fee) });
+    total = Number(fs.sale_total) + Number(fs.admin_fee);
+    paid = Number(fs.amount_paid) || 0;
   } else if (type === 'package') {
     const p = await one('packages');
     if (!p) return new Response('Not found', { status: 404 });
