@@ -537,6 +537,9 @@ const EDITABLE: Record<string, string[]> = {
   payments: ['amount', 'payment_date', 'method', 'reference', 'notes'],
   leaves: ['leave_type', 'leave_from', 'leave_to', 'days', 'reason'],
   flight_sales: ['trip_kind', 'pax', 'admin_fee', 'amount_paid', 'payment_method', 'notes', 'status', 'customer_id'],
+  hotel_sales: ['hotel_name', 'city', 'check_in', 'check_out', 'nights', 'room_type', 'rooms_count', 'meal_plan', 'confirmation_code', 'sale_price', 'cost', 'admin_fee', 'amount_paid', 'payment_method', 'notes', 'status', 'customer_id'],
+  visa_sales: ['visa_type', 'application_date', 'visa_no', 'sale_price', 'cost', 'admin_fee', 'amount_paid', 'payment_method', 'notes', 'status', 'customer_id'],
+  transport_sales: ['transport_type', 'from_location', 'to_location', 'transport_date', 'transport_time', 'vehicle_type', 'seats', 'driver_name', 'driver_phone', 'sale_price', 'cost', 'admin_fee', 'amount_paid', 'payment_method', 'notes', 'status', 'customer_id'],
 };
 
 function pathFor(table: string): string {
@@ -545,6 +548,9 @@ function pathFor(table: string): string {
   if (table === 'expenses' || table === 'payments') return '/dashboard/accounts';
   if (table === 'flight_sales') return '/dashboard/flight-sales';
   if (table === 'flight_sale_legs') return '/dashboard/flight-sales';
+  if (table === 'hotel_sales') return '/dashboard/hotel-sales';
+  if (table === 'visa_sales') return '/dashboard/visa-sales';
+  if (table === 'transport_sales') return '/dashboard/transport-sales';
   return `/dashboard/${table}`;
 }
 
@@ -696,4 +702,80 @@ export async function deleteSaleLeg(fd: FormData) {
   await db.from('flight_sale_legs').delete().eq('id', id);
   await recomputeSale(db, aid, saleId);
   revalidatePath(`/dashboard/flight-sales/${saleId}`);
+}
+
+
+// ============ GENERIC STANDALONE SERVICE SALES (hotel / visa / transport) ============
+async function saleCustomer(db: any, aid: string, fd: FormData): Promise<string> {
+  let customerId = String(fd.get('existing_customer_id')) || '';
+  if (!customerId) {
+    const name = str(fd, 'customer_name');
+    if (name) {
+      const { data: c } = await db.from('customers').insert({
+        agency_id: aid, full_name: name, phone: str(fd, 'phone'), whatsapp: str(fd, 'whatsapp'),
+        country: str(fd, 'country'), passport_no: str(fd, 'passport_no'),
+      }).select('id').single();
+      customerId = c?.id || '';
+    }
+  }
+  return customerId || '';
+}
+
+function saleStatus(grand: number, paid: number) {
+  return paid <= 0 ? 'unpaid' : paid >= grand ? 'full' : 'partial';
+}
+
+export async function createServiceSale(fd: FormData) {
+  const { SERVICE_SALES } = await import('@/lib/service-sales');
+  const table = String(fd.get('table'));
+  const cfg = SERVICE_SALES[table];
+  if (!cfg) throw new Error('Unknown service type.');
+  const db = createAdminClient();
+  const aid = await agencyId();
+  const customerId = await saleCustomer(db, aid, fd);
+  const patch: Record<string, unknown> = {};
+  for (const f of cfg.fields) patch[f.name] = f.type === 'number' ? num(fd, f.name) : (str(fd, f.name) || null);
+  const adminFee = num(fd, 'admin_fee');
+  const amountPaid = num(fd, 'amount_paid');
+  const salePrice = num(fd, 'sale_price');
+  const grand = salePrice + adminFee;
+  const { count } = await db.from(table).select('id', { count: 'exact', head: true }).eq('agency_id', aid);
+  const ref = `${cfg.prefix}-${new Date().getFullYear()}-${String((count || 0) + 1).padStart(4, '0')}`;
+  await db.from(table).insert({
+    ...patch, agency_id: aid, customer_id: customerId || null, ref,
+    sale_price: salePrice, cost: num(fd, 'cost'), admin_fee: adminFee,
+    amount_paid: amountPaid, payment_method: str(fd, 'payment_method'),
+    payment_status: saleStatus(grand, amountPaid), notes: str(fd, 'notes'),
+  });
+  revalidatePath(`/dashboard/${cfg.route}`);
+}
+
+export async function updateServiceSale(fd: FormData) {
+  const { SERVICE_SALES } = await import('@/lib/service-sales');
+  const table = String(fd.get('table'));
+  const cfg = SERVICE_SALES[table];
+  if (!cfg) throw new Error('Unknown service type.');
+  const db = createAdminClient();
+  const aid = await agencyId();
+  const id = String(fd.get('id'));
+  const { data: rec } = await db.from(table).select('*').eq('id', id).single();
+  if (!rec || rec.agency_id !== aid) throw new Error('Record not found in your agency.');
+  const patch: Record<string, unknown> = { updated_at: new Date().toISOString() };
+  for (const f of cfg.fields) {
+    const v = fd.get(f.name);
+    if (v !== null) patch[f.name] = f.type === 'number' ? num(fd, f.name) : (str(fd, f.name) || null);
+  }
+  const salePrice = fd.get('sale_price') !== null ? num(fd, 'sale_price') : Number(rec.sale_price);
+  const cost = fd.get('cost') !== null ? num(fd, 'cost') : Number(rec.cost);
+  const adminFee = fd.get('admin_fee') !== null ? num(fd, 'admin_fee') : Number(rec.admin_fee);
+  const amountPaid = fd.get('amount_paid') !== null ? num(fd, 'amount_paid') : Number(rec.amount_paid);
+  if (fd.get('payment_method') !== null) patch.payment_method = str(fd, 'payment_method');
+  if (fd.get('notes') !== null) patch.notes = str(fd, 'notes');
+  if (String(fd.get('status'))) patch.status = String(fd.get('status'));
+  if (String(fd.get('customer_id'))) patch.customer_id = String(fd.get('customer_id'));
+  patch.sale_price = salePrice; patch.cost = cost; patch.admin_fee = adminFee; patch.amount_paid = amountPaid;
+  patch.payment_status = String(fd.get('payment_status')) || saleStatus(salePrice + adminFee, amountPaid);
+  await db.from(table).update(patch).eq('id', id);
+  revalidatePath(`/dashboard/${cfg.route}`);
+  revalidatePath(`/dashboard/${cfg.route}/${id}`);
 }

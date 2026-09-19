@@ -15,7 +15,7 @@ export async function GET(req: Request) {
   const url = new URL(req.url);
   const type = url.searchParams.get('type') || '';
   const id = url.searchParams.get('id') || '';
-  const TYPES = ['booking', 'quotation', 'invoice', 'package', 'flight', 'hotel', 'transport', 'visa', 'flightsale'];
+  const TYPES = ['booking', 'quotation', 'invoice', 'package', 'flight', 'hotel', 'transport', 'visa', 'flightsale', 'hotel_sale', 'visa_sale', 'transport_sale'];
   if (!TYPES.includes(type) || !id) return new Response('Bad request', { status: 400 });
 
   const ctx = await getCurrentUser();
@@ -92,6 +92,23 @@ export async function GET(req: Request) {
     if (!items.length) items.push({ desc: 'Services as agreed', qty: '1', unit: '', amount: Number(inv.subtotal) || 0 });
     total = Number(inv.total) || 0;
     paid = inv.status === 'paid' ? total : null;
+  } else if (type === 'hotel_sale' || type === 'visa_sale' || type === 'transport_sale') {
+    const table = type.replace('_sale', '_sales');
+    const row = await one(table);
+    if (!row) return new Response('Not found', { status: 404 });
+    ref = row.ref;
+    docTitle = (type.startsWith('hotel') ? 'HOTEL' : type.startsWith('visa') ? 'VISA' : 'TRANSPORT') + ' INVOICE';
+    dateStr = (row.created_at || '').slice(0, 10) || dateStr;
+    if (row.customer_id) customer = (await db.from('customers').select('*').eq('id', row.customer_id).maybeSingle()).data;
+    const descMap: Record<string, string> = {
+      hotel_sale: `Hotel: ${row.hotel_name || ''}${row.city ? ', ' + row.city.toUpperCase() : ''} - ${row.nights || 0} night(s), ${row.room_type || ''} room x ${row.rooms_count || 1}`,
+      visa_sale: `Visa service: ${(row.visa_type || '').toUpperCase()} ${row.visa_no ? 'No. ' + row.visa_no : ''}`,
+      transport_sale: `Transport (${(row.transport_type || '').replace(/_/g, ' ')}): ${row.from_location || ''} -> ${row.to_location || ''}${row.transport_date ? ' on ' + row.transport_date : ''}`,
+    };
+    items.push({ desc: descMap[type], qty: '1', unit: '', amount: Number(row.sale_price) || 0 });
+    if (Number(row.admin_fee)) items.push({ desc: 'Admin / service fee', qty: '1', unit: '', amount: Number(row.admin_fee) });
+    total = Number(row.sale_price) + Number(row.admin_fee);
+    paid = Number(row.amount_paid) || 0;
   } else if (type === 'flightsale') {
     const fs = await one('flight_sales');
     if (!fs) return new Response('Not found', { status: 404 });
