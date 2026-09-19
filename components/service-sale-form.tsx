@@ -7,6 +7,9 @@ export default function ServiceSaleForm({
   table, fields, customers,
 }: { table: string; fields: SvcField[]; customers: { id: string; full_name: string }[] }) {
   const [useExisting, setUseExisting] = useState(false);
+  const [dates, setDates] = useState({ ci: '', co: '' });
+  const hasStay = fields.some((f) => f.name === 'check_in') && fields.some((f) => f.name === 'check_out');
+  const nights = dates.ci && dates.co ? Math.round((new Date(dates.co).getTime() - new Date(dates.ci).getTime()) / 86400000) : null;
   const [money, setMoney] = useState({ sale_price: '', cost: '', admin_fee: '', paid: '' });
   const n = (v: string) => Number(v) || 0;
   const grand = n(money.sale_price) + n(money.admin_fee);
@@ -44,7 +47,10 @@ export default function ServiceSaleForm({
       <div className="grid gap-4 sm:grid-cols-3">
         {fields.map((f) => (
           <label key={f.name} className="block"><span className="text-xs font-semibold text-slate-600">{f.label}</span>
-            {f.type === 'select' ? (
+            {hasStay && (f.name === 'check_in' || f.name === 'check_out') ? (
+              <input className="input" name={f.name} type="date" value={f.name === 'check_in' ? dates.ci : dates.co}
+                onChange={(e) => setDates({ ...dates, [f.name === 'check_in' ? 'ci' : 'co']: e.target.value })} />
+            ) : f.type === 'select' ? (
               <select className="input" name={f.name} defaultValue="">
                 {(f.options || []).map((o) => <option key={o} value={o}>{o}</option>)}
               </select>
@@ -55,6 +61,9 @@ export default function ServiceSaleForm({
           </label>
         ))}
       </div>
+      {hasStay && nights !== null && nights > 0 && (
+        <p className="-mt-4 text-xs font-semibold accent">✓ Auto-calculated: {nights} night(s)</p>
+      )}
 
       {/* payment */}
       <div className="rounded-xl border border-slate-200 bg-white p-4">
@@ -74,6 +83,14 @@ export default function ServiceSaleForm({
             </select>
           </label>
           <L label="Notes" name="notes" />
+          <label className="block"><span className="text-xs font-semibold text-slate-600">Sale status</span>
+            <select className="input" name="status" defaultValue="confirmed">
+              <option value="confirmed">Confirmed</option>
+              <option value="pending">Pending</option>
+              <option value="completed">Completed</option>
+              <option value="cancelled">Cancelled</option>
+            </select>
+          </label>
         </div>
         <div className="mt-4 grid gap-3 text-sm sm:grid-cols-4">
           <div className="rounded-lg bg-slate-50 p-3"><p className="text-xs text-slate-400">Grand total (with fee)</p><p className="font-bold">${grand.toFixed(2)}</p></div>

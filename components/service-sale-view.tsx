@@ -118,19 +118,15 @@ export default async function ServiceSaleView({ table, id }: { table: string; id
               <option value="online">Online</option>
             </select>
           </label>
-          <label className="block"><span className="text-xs text-slate-500">Payment status</span>
-            <select className="input" name="payment_status" defaultValue={rec.payment_status}>
-              <option value="unpaid">Unpaid</option>
-              <option value="partial">Partial</option>
-              <option value="full">Full</option>
-            </select>
-          </label>
           <label className="block"><span className="text-xs text-slate-500">Sale status</span>
             <select className="input" name="status" defaultValue={rec.status}>
               <option value="confirmed">Confirmed</option>
+              <option value="pending">Pending</option>
+              <option value="completed">Completed</option>
               <option value="cancelled">Cancelled</option>
             </select>
           </label>
+          <p className="text-xs text-slate-400 sm:col-span-1">Payment status (unpaid / partial / full) is calculated automatically from the amounts.</p>
           <label className="block"><span className="text-xs text-slate-500">Customer (re-link)</span>
             <select className="input" name="customer_id" defaultValue={rec.customer_id || ''}>
               <option value="">— none —</option>

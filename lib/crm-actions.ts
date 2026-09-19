@@ -584,7 +584,11 @@ async function recomputeSale(db: any, aid: string, saleId: string) {
   const grand = saleTotal + Number(sale.admin_fee);
   const paid = Number(sale.amount_paid);
   const paymentStatus = paid <= 0 ? 'unpaid' : paid >= grand ? 'full' : 'partial';
-  await db.from('flight_sales').update({ sale_total: saleTotal, cost_total: costTotal, payment_status: paymentStatus, updated_at: new Date().toISOString() }).eq('id', saleId);
+  await db.from('flight_sales').update({
+    sale_total: saleTotal, cost_total: costTotal, payment_status: paymentStatus,
+    balance: grand - paid, profit: grand - costTotal,
+    updated_at: new Date().toISOString(),
+  }).eq('id', saleId);
 }
 
 export async function createFlightSale(fd: FormData) {
@@ -614,6 +618,7 @@ export async function createFlightSale(fd: FormData) {
       depart_at: str(fd, `leg_depart_${i}`) || null, arrive_at: str(fd, `leg_arrive_${i}`) || null,
       cabin: str(fd, `leg_cabin_${i}`), fare: num(fd, `leg_fare_${i}`),
       tax: num(fd, `leg_tax_${i}`), cost: num(fd, `leg_cost_${i}`),
+      ticket_no: str(fd, `leg_ticket_${i}`), baggage: str(fd, `leg_baggage_${i}`),
     });
   }
   const saleTotal = legs.reduce((s, l) => s + Number(l.fare) + Number(l.tax), 0);
@@ -625,9 +630,12 @@ export async function createFlightSale(fd: FormData) {
   const { data: sale } = await db.from('flight_sales').insert({
     agency_id: aid, customer_id: customerId || null, ref,
     trip_kind: str(fd, 'trip_kind') || 'oneway', pax: num(fd, 'pax', 1),
+    pnr: str(fd, 'pnr'), ticket_numbers: str(fd, 'ticket_numbers'),
     sale_total: saleTotal, cost_total: costTotal, admin_fee: adminFee,
     amount_paid: amountPaid, payment_method: str(fd, 'payment_method'),
     payment_status: paymentStatus, notes: str(fd, 'notes'),
+    status: str(fd, 'status') || 'confirmed',
+    balance: grand - amountPaid, profit: grand - costTotal,
   }).select('id').single();
   if (sale && legs.length) {
     await db.from('flight_sale_legs').insert(legs.map((l) => ({ ...l, agency_id: aid, flight_sale_id: sale.id })));
@@ -650,7 +658,6 @@ export async function updateSale(fd: FormData) {
     customer_id: String(fd.get('customer_id')) || null,
     updated_at: new Date().toISOString(),
   };
-  if (String(fd.get('payment_status'))) patch.payment_status = String(fd.get('payment_status'));
   await db.from('flight_sales').update(patch).eq('id', id);
   await recomputeSale(db, aid, id);
   revalidatePath(`/dashboard/flight-sales`);
@@ -669,6 +676,7 @@ export async function updateSaleLeg(fd: FormData) {
     from_airport: str(fd, 'from_airport'), to_airport: str(fd, 'to_airport'),
     depart_at: str(fd, 'depart_at') || null, arrive_at: str(fd, 'arrive_at') || null,
     cabin: str(fd, 'cabin'), fare: num(fd, 'fare'), tax: num(fd, 'tax'), cost: num(fd, 'cost'),
+    ticket_no: str(fd, 'ticket_no'), baggage: str(fd, 'baggage'),
   }).eq('id', id);
   await recomputeSale(db, aid, saleId);
   revalidatePath(`/dashboard/flight-sales/${saleId}`);
@@ -687,6 +695,7 @@ export async function addSaleLeg(fd: FormData) {
     from_airport: str(fd, 'from_airport'), to_airport: str(fd, 'to_airport'),
     depart_at: str(fd, 'depart_at') || null, arrive_at: str(fd, 'arrive_at') || null,
     cabin: str(fd, 'cabin'), fare: num(fd, 'fare'), tax: num(fd, 'tax'), cost: num(fd, 'cost'),
+    ticket_no: str(fd, 'ticket_no'), baggage: str(fd, 'baggage'),
   });
   await recomputeSale(db, aid, saleId);
   revalidatePath(`/dashboard/flight-sales/${saleId}`);
@@ -735,6 +744,11 @@ export async function createServiceSale(fd: FormData) {
   const customerId = await saleCustomer(db, aid, fd);
   const patch: Record<string, unknown> = {};
   for (const f of cfg.fields) patch[f.name] = f.type === 'number' ? num(fd, f.name) : (str(fd, f.name) || null);
+  // auto: hotel nights from check-in/check-out dates
+  if (table === 'hotel_sales' && patch.check_in && patch.check_out) {
+    const n = Math.round((new Date(String(patch.check_out)).getTime() - new Date(String(patch.check_in)).getTime()) / 86400000);
+    if (n > 0) patch.nights = n;
+  }
   const adminFee = num(fd, 'admin_fee');
   const amountPaid = num(fd, 'amount_paid');
   const salePrice = num(fd, 'sale_price');
@@ -746,6 +760,8 @@ export async function createServiceSale(fd: FormData) {
     sale_price: salePrice, cost: num(fd, 'cost'), admin_fee: adminFee,
     amount_paid: amountPaid, payment_method: str(fd, 'payment_method'),
     payment_status: saleStatus(grand, amountPaid), notes: str(fd, 'notes'),
+    status: str(fd, 'status') || 'confirmed',
+    balance: grand - amountPaid, profit: grand - num(fd, 'cost'),
   });
   revalidatePath(`/dashboard/${cfg.route}`);
 }
@@ -765,6 +781,15 @@ export async function updateServiceSale(fd: FormData) {
     const v = fd.get(f.name);
     if (v !== null) patch[f.name] = f.type === 'number' ? num(fd, f.name) : (str(fd, f.name) || null);
   }
+  // auto: hotel nights from check-in/check-out dates
+  if (table === 'hotel_sales') {
+    const ci = patch.check_in ?? rec.check_in;
+    const co = patch.check_out ?? rec.check_out;
+    if (ci && co) {
+      const n = Math.round((new Date(String(co)).getTime() - new Date(String(ci)).getTime()) / 86400000);
+      if (n > 0) patch.nights = n;
+    }
+  }
   const salePrice = fd.get('sale_price') !== null ? num(fd, 'sale_price') : Number(rec.sale_price);
   const cost = fd.get('cost') !== null ? num(fd, 'cost') : Number(rec.cost);
   const adminFee = fd.get('admin_fee') !== null ? num(fd, 'admin_fee') : Number(rec.admin_fee);
@@ -774,7 +799,9 @@ export async function updateServiceSale(fd: FormData) {
   if (String(fd.get('status'))) patch.status = String(fd.get('status'));
   if (String(fd.get('customer_id'))) patch.customer_id = String(fd.get('customer_id'));
   patch.sale_price = salePrice; patch.cost = cost; patch.admin_fee = adminFee; patch.amount_paid = amountPaid;
-  patch.payment_status = String(fd.get('payment_status')) || saleStatus(salePrice + adminFee, amountPaid);
+  patch.payment_status = saleStatus(salePrice + adminFee, amountPaid); // always auto
+  patch.balance = (salePrice + adminFee) - amountPaid;
+  patch.profit = (salePrice + adminFee) - cost;
   await db.from(table).update(patch).eq('id', id);
   revalidatePath(`/dashboard/${cfg.route}`);
   revalidatePath(`/dashboard/${cfg.route}/${id}`);

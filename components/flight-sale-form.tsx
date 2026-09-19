@@ -65,6 +65,8 @@ export default function FlightSaleForm({ customers }: { customers: { id: string;
           </select>
         </label>
         <L label="Passengers" name="pax" type="number" />
+        <L label="PNR / airline booking ref" name="pnr" ph="XYZ123" />
+        <L label="Ticket numbers" name="ticket_numbers" ph="comma separated" />
       </div>
 
       {/* legs */}
@@ -85,6 +87,8 @@ export default function FlightSaleForm({ customers }: { customers: { id: string;
             <L label="Departure" name={`leg_depart_${i}`} type="datetime-local" />
             <L label="Arrival" name={`leg_arrive_${i}`} type="datetime-local" />
             <L label="Cabin" name={`leg_cabin_${i}`} ph="economy" />
+            <L label="Ticket no." name={`leg_ticket_${i}`} />
+            <L label="Baggage" name={`leg_baggage_${i}`} ph="2 x 23kg" />
             <label className="block"><span className="text-xs font-semibold text-slate-600">Fare (sale)</span>
               <input className="input" name={`leg_fare_${i}`} type="number" step="0.01" value={l.fare}
                 onChange={(e) => setLegs(legs.map((x, j) => j === i ? { ...x, fare: e.target.value } : x))} />
@@ -129,6 +133,14 @@ export default function FlightSaleForm({ customers }: { customers: { id: string;
             </select>
           </label>
           <L label="Notes" name="notes" />
+          <label className="block"><span className="text-xs font-semibold text-slate-600">Sale status</span>
+            <select className="input" name="status" defaultValue="confirmed">
+              <option value="confirmed">Confirmed</option>
+              <option value="pending">Pending</option>
+              <option value="completed">Completed</option>
+              <option value="cancelled">Cancelled</option>
+            </select>
+          </label>
         </div>
         <div className="mt-4 grid gap-3 text-sm sm:grid-cols-5">
           <div className="rounded-lg bg-slate-50 p-3"><p className="text-xs text-slate-400">Sale total</p><p className="font-bold">${saleTotal.toFixed(2)}</p></div>
