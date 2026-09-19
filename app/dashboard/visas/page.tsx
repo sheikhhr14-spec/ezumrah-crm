@@ -1,6 +1,7 @@
 import { createAdminClient } from '@/lib/supabase/admin';
 import { requireModule } from '@/lib/data';
 import { addVisa, setRecordStatus, deleteRecord } from '@/lib/crm-actions';
+import RowEdit from '@/components/row-edit';
 import { PageHeader, Table, Empty, AddPanel, Field, StatusBadge } from '@/components/ui';
 import Link from 'next/link';
 
@@ -19,7 +20,7 @@ export default async function VisasPage({ searchParams }: { searchParams: { q?: 
 
   return (
     <div>
-      <PageHeader title="Visas" subtitle="{{records?.length ?? 0}} visa applications across all bookings" />
+      <PageHeader title="Visas" subtitle={`${records?.length ?? 0} visa applications across all bookings`} />
 
       <AddPanel label="Add visa">
         <form action={addVisa} className="grid gap-4 sm:grid-cols-3">
@@ -69,6 +70,7 @@ export default async function VisasPage({ searchParams }: { searchParams: { q?: 
                   </select>
                   <button className="btn-secondary px-2 py-1 text-xs" type="submit">Set</button>
                 </form>
+                <RowEdit table="visas" id={r.id}><label className="text-[10px] text-slate-400">Visa type</label><input className="input px-2 py-1 text-xs" name="visa_type" defaultValue={r.visa_type || ''} /><label className="text-[10px] text-slate-400">Visa no</label><input className="input px-2 py-1 text-xs" name="visa_no" defaultValue={r.visa_no || ''} /><label className="text-[10px] text-slate-400">Applied</label><input className="input px-2 py-1 text-xs" type="date" name="application_date" defaultValue={r.application_date || ''} /><label className="text-[10px] text-slate-400">Status</label><select className="input px-2 py-1 text-xs" name="status"><option value="applied" selected={r.status === "applied"}> applied</option><option value="processing" selected={r.status === "processing"}> processing</option><option value="issued" selected={r.status === "issued"}> issued</option><option value="rejected" selected={r.status === "rejected"}> rejected</option><option value="expired" selected={r.status === "expired"}> expired</option></select><label className="text-[10px] text-slate-400">Notes</label><input className="input px-2 py-1 text-xs" name="notes" defaultValue={r.notes || ''} /></RowEdit>
                 <form action={deleteRecord}>
                   <input type="hidden" name="table" value="visas" />
                   <input type="hidden" name="id" value={r.id} />

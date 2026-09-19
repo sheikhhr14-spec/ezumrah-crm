@@ -1,6 +1,7 @@
 import { createAdminClient } from '@/lib/supabase/admin';
 import { requireModule } from '@/lib/data';
-import { addExpense, deleteExpense, recordPayment } from '@/lib/crm-actions';
+import { addExpense, deleteExpense, recordPayment, deleteRecord } from '@/lib/crm-actions';
+import RowEdit from '@/components/row-edit';
 import { PageHeader, Table, Empty, AddPanel, Field, StatusBadge } from '@/components/ui';
 
 export default async function AccountsPage({ searchParams }: { searchParams: { month?: string } }) {
@@ -69,7 +70,7 @@ export default async function AccountsPage({ searchParams }: { searchParams: { m
       </AddPanel>
 
       <h2 className="mb-3 text-lg font-semibold">Payments received — {month}</h2>
-      <Table head={['Invoice', 'Amount', 'Date', 'Method', 'Reference']}>
+      <Table head={['Invoice', 'Amount', 'Date', 'Method', 'Reference', 'Actions']}>
         {payments?.length ? payments.map((p) => (
           <tr key={p.id} className="hover:bg-slate-50">
             <td className="px-4 py-2 font-semibold">{(p.invoices as any)?.invoice_no || '—'}</td>
@@ -77,6 +78,10 @@ export default async function AccountsPage({ searchParams }: { searchParams: { m
             <td className="px-4 py-2">{p.payment_date}</td>
             <td className="px-4 py-2 capitalize">{p.method}</td>
             <td className="px-4 py-2 text-xs text-slate-500">{p.reference || '—'}</td>
+            <td className="px-4 py-2"><div className="flex items-center gap-2">
+              <RowEdit table="payments" id={p.id}><label className="text-[10px] text-slate-400">Amount</label><input className="input px-2 py-1 text-xs" name="amount" defaultValue={p.amount || ''} /><label className="text-[10px] text-slate-400">Date</label><input className="input px-2 py-1 text-xs" type="date" name="payment_date" defaultValue={p.payment_date || ''} /><label className="text-[10px] text-slate-400">Method</label><select className="input px-2 py-1 text-xs" name="method"><option value="bank" selected={p.method === "bank"}> bank</option><option value="cash" selected={p.method === "cash"}> cash</option><option value="card" selected={p.method === "card"}> card</option><option value="online" selected={p.method === "online"}> online</option></select><label className="text-[10px] text-slate-400">Reference</label><input className="input px-2 py-1 text-xs" name="reference" defaultValue={p.reference || ''} /></RowEdit>
+              <form action={deleteRecord}><input type="hidden" name="table" value="payments" /><input type="hidden" name="id" value={p.id} /><button className="text-xs font-semibold text-red-500 hover:underline" type="submit">Delete</button></form>
+            </div></td>
           </tr>
         )) : <tr><td colSpan={10}><Empty msg="No payments recorded this month." /></td></tr>}
       </Table>
@@ -110,6 +115,7 @@ export default async function AccountsPage({ searchParams }: { searchParams: { m
             <td className="px-4 py-2">{e.expense_date}</td>
             <td className="px-4 py-2 capitalize">{e.payment_method}</td>
             <td className="px-4 py-2">
+              <RowEdit table="expenses" id={e.id}><label className="text-[10px] text-slate-400">Category</label><select className="input px-2 py-1 text-xs" name="category"><option value="rent" selected={e.category === "rent"}> rent</option><option value="salaries" selected={e.category === "salaries"}> salaries</option><option value="marketing" selected={e.category === "marketing"}> marketing</option><option value="office" selected={e.category === "office"}> office</option><option value="travel" selected={e.category === "travel"}> travel</option><option value="visa_fees" selected={e.category === "visa_fees"}> visa fees</option><option value="hotel_payments" selected={e.category === "hotel_payments"}> hotel payments</option><option value="transport" selected={e.category === "transport"}> transport</option><option value="taxes" selected={e.category === "taxes"}> taxes</option><option value="other" selected={e.category === "other"}> other</option></select><label className="text-[10px] text-slate-400">Description</label><input className="input px-2 py-1 text-xs" name="description" defaultValue={e.description || ''} /><label className="text-[10px] text-slate-400">Amount</label><input className="input px-2 py-1 text-xs" name="amount" defaultValue={e.amount || ''} /><label className="text-[10px] text-slate-400">Date</label><input className="input px-2 py-1 text-xs" type="date" name="expense_date" defaultValue={e.expense_date || ''} /><label className="text-[10px] text-slate-400">Method</label><select className="input px-2 py-1 text-xs" name="payment_method"><option value="bank" selected={e.payment_method === "bank"}> bank</option><option value="cash" selected={e.payment_method === "cash"}> cash</option><option value="card" selected={e.payment_method === "card"}> card</option><option value="online" selected={e.payment_method === "online"}> online</option></select><label className="text-[10px] text-slate-400">Reference</label><input className="input px-2 py-1 text-xs" name="reference" defaultValue={e.reference || ''} /></RowEdit>
               <form action={deleteExpense}>
                 <input type="hidden" name="id" value={e.id} />
                 <button className="text-xs font-semibold text-red-500 hover:underline" type="submit">Delete</button>

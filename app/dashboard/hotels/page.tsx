@@ -1,6 +1,7 @@
 import { createAdminClient } from '@/lib/supabase/admin';
 import { requireModule } from '@/lib/data';
 import { addHotel, setRecordStatus, deleteRecord } from '@/lib/crm-actions';
+import RowEdit from '@/components/row-edit';
 import { PageHeader, Table, Empty, AddPanel, Field, StatusBadge } from '@/components/ui';
 import Link from 'next/link';
 
@@ -19,7 +20,7 @@ export default async function HotelsPage({ searchParams }: { searchParams: { q?:
 
   return (
     <div>
-      <PageHeader title="Hotels" subtitle="{{records?.length ?? 0}} hotel stays across all bookings" />
+      <PageHeader title="Hotels" subtitle={`${records?.length ?? 0} hotel stays across all bookings`} />
 
       <AddPanel label="Add hotel">
         <form action={addHotel} className="grid gap-4 sm:grid-cols-3">
@@ -76,6 +77,7 @@ export default async function HotelsPage({ searchParams }: { searchParams: { q?:
                   </select>
                   <button className="btn-secondary px-2 py-1 text-xs" type="submit">Set</button>
                 </form>
+                <RowEdit table="hotels" id={r.id}><label className="text-[10px] text-slate-400">Hotel</label><input className="input px-2 py-1 text-xs" name="hotel_name" defaultValue={r.hotel_name || ''} /><label className="text-[10px] text-slate-400">City</label><select className="input px-2 py-1 text-xs" name="city"><option value="makkah" selected={r.city === "makkah"}> makkah</option><option value="madinah" selected={r.city === "madinah"}> madinah</option><option value="jeddah" selected={r.city === "jeddah"}> jeddah</option><option value="taif" selected={r.city === "taif"}> taif</option><option value="other" selected={r.city === "other"}> other</option></select><label className="text-[10px] text-slate-400">Check-in</label><input className="input px-2 py-1 text-xs" type="date" name="check_in" defaultValue={r.check_in || ''} /><label className="text-[10px] text-slate-400">Check-out</label><input className="input px-2 py-1 text-xs" type="date" name="check_out" defaultValue={r.check_out || ''} /><label className="text-[10px] text-slate-400">Nights</label><input className="input px-2 py-1 text-xs" name="nights" defaultValue={r.nights || ''} /><label className="text-[10px] text-slate-400">Room type</label><input className="input px-2 py-1 text-xs" name="room_type" defaultValue={r.room_type || ''} /><label className="text-[10px] text-slate-400">Rooms</label><input className="input px-2 py-1 text-xs" name="rooms_count" defaultValue={r.rooms_count || ''} /><label className="text-[10px] text-slate-400">Meal plan</label><input className="input px-2 py-1 text-xs" name="meal_plan" defaultValue={r.meal_plan || ''} /><label className="text-[10px] text-slate-400">Status</label><select className="input px-2 py-1 text-xs" name="status"><option value="pending" selected={r.status === "pending"}> pending</option><option value="confirmed" selected={r.status === "confirmed"}> confirmed</option><option value="cancelled" selected={r.status === "cancelled"}> cancelled</option></select></RowEdit>
                 <form action={deleteRecord}>
                   <input type="hidden" name="table" value="hotels" />
                   <input type="hidden" name="id" value={r.id} />

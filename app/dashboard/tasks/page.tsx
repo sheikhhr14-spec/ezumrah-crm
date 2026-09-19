@@ -1,6 +1,7 @@
 import { createAdminClient } from '@/lib/supabase/admin';
 import { requireModule } from '@/lib/data';
-import { createTask, toggleTask } from '@/lib/crm-actions';
+import { createTask, toggleTask, deleteRecord } from '@/lib/crm-actions';
+import RowEdit from '@/components/row-edit';
 import { PageHeader, Table, Empty, StatusBadge, AddPanel, Field } from '@/components/ui';
 
 export default async function TasksPage() {
@@ -40,6 +41,10 @@ export default async function TasksPage() {
                 <input type="hidden" name="next" value={t.status === 'done' ? 'todo' : 'done'} />
                 <button className="btn-secondary px-3 py-1 text-xs" type="submit">{t.status === 'done' ? 'Reopen' : 'Done ✓'}</button>
               </form>
+              <div className="mt-2 flex items-center gap-2">
+              <RowEdit table="tasks" id={t.id}><label className="text-[10px] text-slate-400">Task</label><input className="input px-2 py-1 text-xs" name="title" defaultValue={t.title || ''} /><label className="text-[10px] text-slate-400">Due</label><input className="input px-2 py-1 text-xs" type="date" name="due_date" defaultValue={t.due_date || ''} /><label className="text-[10px] text-slate-400">Priority</label><select className="input px-2 py-1 text-xs" name="priority"><option value="low" selected={t.priority === "low"}> low</option><option value="medium" selected={t.priority === "medium"}> medium</option><option value="high" selected={t.priority === "high"}> high</option><option value="urgent" selected={t.priority === "urgent"}> urgent</option></select><label className="text-[10px] text-slate-400">Status</label><select className="input px-2 py-1 text-xs" name="status"><option value="todo" selected={t.status === "todo"}> todo</option><option value="in_progress" selected={t.status === "in_progress"}> in progress</option><option value="done" selected={t.status === "done"}> done</option></select><label className="text-[10px] text-slate-400">Assigned to</label><input className="input px-2 py-1 text-xs" name="assigned_to" defaultValue={t.assigned_to || ''} /></RowEdit>
+              <form action={deleteRecord}><input type="hidden" name="table" value="tasks" /><input type="hidden" name="id" value={t.id} /><button className="text-xs font-semibold text-red-500 hover:underline" type="submit">Delete</button></form>
+              </div>
             </td>
           </tr>
         )) : <Empty msg="No tasks yet." />}

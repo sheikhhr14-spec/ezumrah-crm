@@ -1,6 +1,7 @@
 import { createAdminClient } from '@/lib/supabase/admin';
 import { requireModule } from '@/lib/data';
 import { addFlight, setRecordStatus, deleteRecord } from '@/lib/crm-actions';
+import RowEdit from '@/components/row-edit';
 import { PageHeader, Table, Empty, AddPanel, Field, StatusBadge } from '@/components/ui';
 import Link from 'next/link';
 
@@ -19,7 +20,7 @@ export default async function FlightsPage({ searchParams }: { searchParams: { q?
 
   return (
     <div>
-      <PageHeader title="Flights" subtitle="{{records?.length ?? 0}} flight segments across all bookings" />
+      <PageHeader title="Flights" subtitle={`${records?.length ?? 0} flight segments across all bookings`} />
 
       <AddPanel label="Add flight">
         <form action={addFlight} className="grid gap-4 sm:grid-cols-3">
@@ -75,6 +76,7 @@ export default async function FlightsPage({ searchParams }: { searchParams: { q?
                   </select>
                   <button className="btn-secondary px-2 py-1 text-xs" type="submit">Set</button>
                 </form>
+                <RowEdit table="flights" id={r.id}><label className="text-[10px] text-slate-400">Airline</label><input className="input px-2 py-1 text-xs" name="airline" defaultValue={r.airline || ''} /><label className="text-[10px] text-slate-400">Flight no</label><input className="input px-2 py-1 text-xs" name="flight_no" defaultValue={r.flight_no || ''} /><label className="text-[10px] text-slate-400">From</label><input className="input px-2 py-1 text-xs" name="departure_airport" defaultValue={r.departure_airport || ''} /><label className="text-[10px] text-slate-400">To</label><input className="input px-2 py-1 text-xs" name="arrival_airport" defaultValue={r.arrival_airport || ''} /><label className="text-[10px] text-slate-400">Pax</label><input className="input px-2 py-1 text-xs" name="pax_count" defaultValue={r.pax_count || ''} /><label className="text-[10px] text-slate-400">Cabin</label><input className="input px-2 py-1 text-xs" name="cabin_class" defaultValue={r.cabin_class || ''} /><label className="text-[10px] text-slate-400">Confirm code</label><input className="input px-2 py-1 text-xs" name="confirmation_code" defaultValue={r.confirmation_code || ''} /><label className="text-[10px] text-slate-400">Status</label><select className="input px-2 py-1 text-xs" name="status"><option value="scheduled" selected={r.status === "scheduled"}> scheduled</option><option value="confirmed" selected={r.status === "confirmed"}> confirmed</option><option value="cancelled" selected={r.status === "cancelled"}> cancelled</option><option value="completed" selected={r.status === "completed"}> completed</option></select></RowEdit>
                 <form action={deleteRecord}>
                   <input type="hidden" name="table" value="flights" />
                   <input type="hidden" name="id" value={r.id} />

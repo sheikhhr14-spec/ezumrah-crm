@@ -1,6 +1,7 @@
 import { createAdminClient } from '@/lib/supabase/admin';
 import { requireModule } from '@/lib/data';
 import { addEmployee, setEmployeeStatus, deleteEmployee } from '@/lib/crm-actions';
+import RowEdit from '@/components/row-edit';
 import HRTabs from '@/components/hr-tabs';
 import { PageHeader, Table, Empty, AddPanel, Field, StatusBadge } from '@/components/ui';
 
@@ -47,6 +48,7 @@ export default async function HREmployeesPage() {
                   </select>
                   <button className="btn-secondary px-2 py-1 text-xs" type="submit">Set</button>
                 </form>
+                <RowEdit table="employees" id={e.id}><label className="text-[10px] text-slate-400">Name</label><input className="input px-2 py-1 text-xs" name="full_name" defaultValue={e.full_name || ''} /><label className="text-[10px] text-slate-400">Email</label><input className="input px-2 py-1 text-xs" name="email" defaultValue={e.email || ''} /><label className="text-[10px] text-slate-400">Phone</label><input className="input px-2 py-1 text-xs" name="phone" defaultValue={e.phone || ''} /><label className="text-[10px] text-slate-400">Designation</label><input className="input px-2 py-1 text-xs" name="designation" defaultValue={e.designation || ''} /><label className="text-[10px] text-slate-400">Department</label><input className="input px-2 py-1 text-xs" name="department" defaultValue={e.department || ''} /><label className="text-[10px] text-slate-400">Join date</label><input className="input px-2 py-1 text-xs" type="date" name="join_date" defaultValue={e.join_date || ''} /><label className="text-[10px] text-slate-400">Salary</label><input className="input px-2 py-1 text-xs" name="monthly_salary" defaultValue={e.monthly_salary || ''} /></RowEdit>
                 <form action={deleteEmployee}>
                   <input type="hidden" name="id" value={e.id} />
                   <button className="text-xs font-semibold text-red-500 hover:underline" type="submit">Delete</button>

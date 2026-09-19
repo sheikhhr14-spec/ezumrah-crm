@@ -1,6 +1,7 @@
 import { createAdminClient } from '@/lib/supabase/admin';
 import { requireModule } from '@/lib/data';
 import { addTransport, setRecordStatus, deleteRecord } from '@/lib/crm-actions';
+import RowEdit from '@/components/row-edit';
 import { PageHeader, Table, Empty, AddPanel, Field, StatusBadge } from '@/components/ui';
 import Link from 'next/link';
 
@@ -19,7 +20,7 @@ export default async function TransportsPage({ searchParams }: { searchParams: {
 
   return (
     <div>
-      <PageHeader title="Transports" subtitle="{{records?.length ?? 0}} ground transfers across all bookings" />
+      <PageHeader title="Transports" subtitle={`${records?.length ?? 0} ground transfers across all bookings`} />
 
       <AddPanel label="Add transport">
         <form action={addTransport} className="grid gap-4 sm:grid-cols-3">
@@ -76,6 +77,7 @@ export default async function TransportsPage({ searchParams }: { searchParams: {
                   </select>
                   <button className="btn-secondary px-2 py-1 text-xs" type="submit">Set</button>
                 </form>
+                <RowEdit table="transports" id={r.id}><label className="text-[10px] text-slate-400">Type</label><select className="input px-2 py-1 text-xs" name="transport_type"><option value="airport_transfer" selected={r.transport_type === "airport_transfer"}> airport transfer</option><option value="intercity" selected={r.transport_type === "intercity"}> intercity</option><option value="local" selected={r.transport_type === "local"}> local</option><option value="ziyarah" selected={r.transport_type === "ziyarah"}> ziyarah</option></select><label className="text-[10px] text-slate-400">From</label><input className="input px-2 py-1 text-xs" name="from_location" defaultValue={r.from_location || ''} /><label className="text-[10px] text-slate-400">To</label><input className="input px-2 py-1 text-xs" name="to_location" defaultValue={r.to_location || ''} /><label className="text-[10px] text-slate-400">Date</label><input className="input px-2 py-1 text-xs" type="date" name="transport_date" defaultValue={r.transport_date || ''} /><label className="text-[10px] text-slate-400">Time</label><input className="input px-2 py-1 text-xs" name="transport_time" defaultValue={r.transport_time || ''} /><label className="text-[10px] text-slate-400">Vehicle</label><input className="input px-2 py-1 text-xs" name="vehicle_type" defaultValue={r.vehicle_type || ''} /><label className="text-[10px] text-slate-400">Seats</label><input className="input px-2 py-1 text-xs" name="seats" defaultValue={r.seats || ''} /><label className="text-[10px] text-slate-400">Driver</label><input className="input px-2 py-1 text-xs" name="driver_name" defaultValue={r.driver_name || ''} /><label className="text-[10px] text-slate-400">Driver phone</label><input className="input px-2 py-1 text-xs" name="driver_phone" defaultValue={r.driver_phone || ''} /><label className="text-[10px] text-slate-400">Status</label><select className="input px-2 py-1 text-xs" name="status"><option value="scheduled" selected={r.status === "scheduled"}> scheduled</option><option value="confirmed" selected={r.status === "confirmed"}> confirmed</option><option value="completed" selected={r.status === "completed"}> completed</option><option value="cancelled" selected={r.status === "cancelled"}> cancelled</option></select></RowEdit>
                 <form action={deleteRecord}>
                   <input type="hidden" name="table" value="transports" />
                   <input type="hidden" name="id" value={r.id} />

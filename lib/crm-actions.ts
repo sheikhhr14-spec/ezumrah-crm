@@ -269,12 +269,12 @@ export async function deleteRecord(fd: FormData) {
   const db = createAdminClient();
   const table = String(fd.get('table'));
   const id = String(fd.get('id'));
-  if (!['flights', 'hotels', 'visas', 'transports'].includes(table)) throw new Error('bad table');
+  if (!EDITABLE[table]) throw new Error('bad table');
   const aid = await agencyId();
   const { data: rec } = await db.from(table).select('id, agency_id').eq('id', id).single();
   if (!rec || rec.agency_id !== aid) throw new Error('Record not found in your agency.');
   await db.from(table).delete().eq('id', id);
-  revalidatePath(`/dashboard/${table}`);
+  revalidatePath(pathFor(table));
 }
 
 // ---------- LEADS (sales pipeline) ----------
@@ -507,4 +507,50 @@ export async function recordPayment(fd: FormData) {
   revalidatePath('/dashboard/accounts');
   revalidatePath('/dashboard/invoices');
   revalidatePath(`/dashboard/bookings/${invoice.booking_id}`);
+}
+
+// ---------- GENERIC EDIT (whitelisted tables/fields) ----------
+const EDITABLE: Record<string, string[]> = {
+  customers: ['full_name', 'country', 'phone', 'whatsapp', 'passport_no', 'email', 'notes'],
+  packages: ['name', 'service_type', 'duration_days', 'price_from', 'description'],
+  bookings: ['package_name', 'trip_type', 'status', 'pilgrims_count', 'departure_date', 'return_date', 'total_amount', 'paid_amount', 'currency', 'notes'],
+  flights: ['airline', 'flight_no', 'departure_airport', 'arrival_airport', 'departure_time', 'arrival_time', 'pax_count', 'cabin_class', 'confirmation_code', 'status'],
+  hotels: ['city', 'hotel_name', 'check_in', 'check_out', 'nights', 'room_type', 'rooms_count', 'meal_plan', 'confirmation_code', 'status'],
+  visas: ['visa_type', 'application_date', 'visa_no', 'status', 'notes'],
+  transports: ['transport_type', 'from_location', 'to_location', 'transport_date', 'transport_time', 'vehicle_type', 'seats', 'driver_name', 'driver_phone', 'status'],
+  invoices: ['issue_date', 'due_date', 'subtotal', 'tax_amount', 'total', 'status', 'notes'],
+  quotations: ['valid_until', 'status', 'subtotal', 'tax_amount', 'notes'],
+  documents: ['title', 'doc_type', 'expiry_date', 'file_url', 'notes'],
+  tasks: ['title', 'due_date', 'priority', 'status', 'assigned_to'],
+  leads: ['full_name', 'phone', 'whatsapp', 'email', 'country', 'source', 'interest', 'budget', 'assigned_to', 'notes'],
+  employees: ['full_name', 'email', 'phone', 'designation', 'department', 'join_date', 'monthly_salary'],
+  expenses: ['category', 'description', 'amount', 'expense_date', 'payment_method', 'reference'],
+  payments: ['amount', 'payment_date', 'method', 'reference', 'notes'],
+  leaves: ['leave_type', 'leave_from', 'leave_to', 'days', 'reason'],
+};
+
+function pathFor(table: string): string {
+  if (table === 'employees') return '/dashboard/hr';
+  if (table === 'leaves') return '/dashboard/hr/leaves';
+  if (table === 'expenses' || table === 'payments') return '/dashboard/accounts';
+  return `/dashboard/${table}`;
+}
+
+export async function updateRecord(fd: FormData) {
+  const db = createAdminClient();
+  const table = String(fd.get('table'));
+  const id = String(fd.get('id'));
+  const allowed = EDITABLE[table];
+  if (!allowed) throw new Error('This record type cannot be edited here.');
+  const aid = await agencyId();
+  const { data: rec } = await db.from(table).select('id, agency_id').eq('id', id).single();
+  if (!rec || rec.agency_id !== aid) throw new Error('Record not found in your agency.');
+
+  const patch: Record<string, unknown> = { updated_at: new Date().toISOString() };
+  for (const f of allowed) {
+    const v = fd.get(f);
+    if (v !== null && String(v) !== '') patch[f] = String(v);
+  }
+  await db.from(table).update(patch).eq('id', id);
+  revalidatePath(pathFor(table));
 }

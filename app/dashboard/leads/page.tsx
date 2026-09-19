@@ -1,6 +1,7 @@
 import { createAdminClient } from '@/lib/supabase/admin';
 import { requireModule } from '@/lib/data';
 import { createLead, setLeadStatus, convertLead, deleteLead } from '@/lib/crm-actions';
+import RowEdit from '@/components/row-edit';
 import { PageHeader, Table, Empty, AddPanel, Field, StatusBadge } from '@/components/ui';
 
 export default async function LeadsPage({ searchParams }: { searchParams: { status?: string } }) {
@@ -71,6 +72,7 @@ export default async function LeadsPage({ searchParams }: { searchParams: { stat
                   </select>
                   <button className="btn-secondary px-2 py-1 text-xs" type="submit">Set</button>
                 </form>
+                <RowEdit table="leads" id={l.id}><label className="text-[10px] text-slate-400">Name</label><input className="input px-2 py-1 text-xs" name="full_name" defaultValue={l.full_name || ''} /><label className="text-[10px] text-slate-400">Phone</label><input className="input px-2 py-1 text-xs" name="phone" defaultValue={l.phone || ''} /><label className="text-[10px] text-slate-400">WhatsApp</label><input className="input px-2 py-1 text-xs" name="whatsapp" defaultValue={l.whatsapp || ''} /><label className="text-[10px] text-slate-400">Email</label><input className="input px-2 py-1 text-xs" name="email" defaultValue={l.email || ''} /><label className="text-[10px] text-slate-400">Country</label><input className="input px-2 py-1 text-xs" name="country" defaultValue={l.country || ''} /><label className="text-[10px] text-slate-400">Interest</label><select className="input px-2 py-1 text-xs" name="interest"><option value="umrah" selected={l.interest === "umrah"}> umrah</option><option value="hajj" selected={l.interest === "hajj"}> hajj</option><option value="ziyarah" selected={l.interest === "ziyarah"}> ziyarah</option><option value="holiday" selected={l.interest === "holiday"}> holiday</option></select><label className="text-[10px] text-slate-400">Source</label><select className="input px-2 py-1 text-xs" name="source"><option value="website" selected={l.source === "website"}> website</option><option value="whatsapp" selected={l.source === "whatsapp"}> whatsapp</option><option value="referral" selected={l.source === "referral"}> referral</option><option value="walk_in" selected={l.source === "walk_in"}> walk in</option><option value="instagram" selected={l.source === "instagram"}> instagram</option><option value="facebook" selected={l.source === "facebook"}> facebook</option></select><label className="text-[10px] text-slate-400">Budget</label><input className="input px-2 py-1 text-xs" name="budget" defaultValue={l.budget || ''} /><label className="text-[10px] text-slate-400">Assigned to</label><input className="input px-2 py-1 text-xs" name="assigned_to" defaultValue={l.assigned_to || ''} /></RowEdit>
                 {l.status !== 'converted' && (
                   <form action={convertLead}>
                     <input type="hidden" name="id" value={l.id} />

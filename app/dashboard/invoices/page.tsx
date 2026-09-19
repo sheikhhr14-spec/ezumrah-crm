@@ -1,6 +1,7 @@
 import { createAdminClient } from '@/lib/supabase/admin';
 import { requireModule } from '@/lib/data';
-import { createInvoice } from '@/lib/crm-actions';
+import { createInvoice, deleteRecord } from '@/lib/crm-actions';
+import RowEdit from '@/components/row-edit';
 import { PageHeader, Table, Empty, StatusBadge, AddPanel, Field } from '@/components/ui';
 
 export default async function InvoicesPage() {
@@ -31,7 +32,7 @@ export default async function InvoicesPage() {
           <div className="sm:col-span-3"><button className="btn-primary" type="submit">Save invoice</button></div>
         </form>
       </AddPanel>
-      <Table head={['Invoice', 'Booking', 'Issued', 'Due', 'Total', 'Status']}>
+      <Table head={['Invoice', 'Booking', 'Issued', 'Due', 'Total', 'Status', 'Actions']}>
         {invoices?.length ? invoices.map((i) => (
           <tr key={i.id} className="hover:bg-slate-50">
             <td className="px-4 py-2 font-semibold">{i.invoice_no}</td>
@@ -40,6 +41,10 @@ export default async function InvoicesPage() {
             <td className="px-4 py-2">{i.due_date || '—'}</td>
             <td className="px-4 py-2 font-semibold">${Number(i.total).toLocaleString()} {i.currency}</td>
             <td className="px-4 py-2"><StatusBadge status={i.status} /></td>
+            <td className="px-4 py-2"><div className="flex items-center gap-2">
+              <RowEdit table="invoices" id={i.id}><label className="text-[10px] text-slate-400">Issue date</label><input className="input px-2 py-1 text-xs" type="date" name="issue_date" defaultValue={i.issue_date || ''} /><label className="text-[10px] text-slate-400">Due date</label><input className="input px-2 py-1 text-xs" type="date" name="due_date" defaultValue={i.due_date || ''} /><label className="text-[10px] text-slate-400">Subtotal</label><input className="input px-2 py-1 text-xs" name="subtotal" defaultValue={i.subtotal || ''} /><label className="text-[10px] text-slate-400">Tax</label><input className="input px-2 py-1 text-xs" name="tax_amount" defaultValue={i.tax_amount || ''} /><label className="text-[10px] text-slate-400">Total</label><input className="input px-2 py-1 text-xs" name="total" defaultValue={i.total || ''} /><label className="text-[10px] text-slate-400">Status</label><select className="input px-2 py-1 text-xs" name="status"><option value="draft" selected={i.status === "draft"}> draft</option><option value="sent" selected={i.status === "sent"}> sent</option><option value="paid" selected={i.status === "paid"}> paid</option><option value="partial" selected={i.status === "partial"}> partial</option><option value="overdue" selected={i.status === "overdue"}> overdue</option><option value="cancelled" selected={i.status === "cancelled"}> cancelled</option></select></RowEdit>
+              <form action={deleteRecord}><input type="hidden" name="table" value="invoices" /><input type="hidden" name="id" value={i.id} /><button className="text-xs font-semibold text-red-500 hover:underline" type="submit">Delete</button></form>
+            </div></td>
           </tr>
         )) : <Empty msg="No invoices yet." />}
       </Table>

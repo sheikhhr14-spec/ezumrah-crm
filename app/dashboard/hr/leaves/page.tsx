@@ -1,6 +1,7 @@
 import { createAdminClient } from '@/lib/supabase/admin';
 import { requireModule } from '@/lib/data';
-import { applyLeave, setLeaveStatus } from '@/lib/crm-actions';
+import { applyLeave, setLeaveStatus, deleteRecord } from '@/lib/crm-actions';
+import RowEdit from '@/components/row-edit';
 import { PageHeader, Table, Empty, AddPanel, Field, StatusBadge } from '@/components/ui';
 import HRTabs from '@/components/hr-tabs';
 
@@ -59,6 +60,10 @@ export default async function LeavesPage({ searchParams }: { searchParams: { sta
             <td className="px-4 py-2 text-xs text-slate-500">{l.reason || '—'}</td>
             <td className="px-4 py-2"><StatusBadge status={l.status} /></td>
             <td className="px-4 py-2">
+              <div className="flex items-center gap-2">
+              <RowEdit table="leaves" id={l.id}><label className="text-[10px] text-slate-400">Type</label><select className="input px-2 py-1 text-xs" name="leave_type"><option value="annual" selected={l.leave_type === "annual"}> annual</option><option value="sick" selected={l.leave_type === "sick"}> sick</option><option value="casual" selected={l.leave_type === "casual"}> casual</option><option value="unpaid" selected={l.leave_type === "unpaid"}> unpaid</option><option value="hajj" selected={l.leave_type === "hajj"}> hajj</option><option value="umrah" selected={l.leave_type === "umrah"}> umrah</option></select><label className="text-[10px] text-slate-400">From</label><input className="input px-2 py-1 text-xs" type="date" name="leave_from" defaultValue={l.leave_from || ''} /><label className="text-[10px] text-slate-400">To</label><input className="input px-2 py-1 text-xs" type="date" name="leave_to" defaultValue={l.leave_to || ''} /><label className="text-[10px] text-slate-400">Days</label><input className="input px-2 py-1 text-xs" name="days" defaultValue={l.days || ''} /><label className="text-[10px] text-slate-400">Reason</label><input className="input px-2 py-1 text-xs" name="reason" defaultValue={l.reason || ''} /></RowEdit>
+              <form action={deleteRecord}><input type="hidden" name="table" value="leaves" /><input type="hidden" name="id" value={l.id} /><button className="text-xs font-semibold text-red-500 hover:underline" type="submit">Delete</button></form>
+              </div>
               {l.status === 'pending' ? (
                 <form action={setLeaveStatus} className="flex gap-1">
                   <input type="hidden" name="id" value={l.id} />
