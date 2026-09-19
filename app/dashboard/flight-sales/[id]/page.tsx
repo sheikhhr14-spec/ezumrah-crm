@@ -3,6 +3,7 @@ import { requireModule } from '@/lib/data';
 import { Table, Empty, StatusBadge } from '@/components/ui';
 import { updateSale, updateSaleLeg, addSaleLeg, deleteSaleLeg, deleteRecord } from '@/lib/crm-actions';
 import Link from 'next/link';
+import SaleDocuments from '@/components/sale-documents';
 import { notFound } from 'next/navigation';
 
 const L = ({ label, name, def, type = 'text', ph = '' }: { label: string; name: string; def?: string | null; type?: string; ph?: string }) => (
@@ -20,9 +21,10 @@ export default async function FlightSaleDetail({ params }: { params: { id: strin
     .eq('id', params.id).eq('agency_id', aid).single();
   if (!sale) notFound();
 
-  const [{ data: legs }, { data: customers }] = await Promise.all([
+  const [{ data: legs }, { data: customers }, { data: docs }] = await Promise.all([
     db.from('flight_sale_legs').select('*').eq('flight_sale_id', sale.id).order('leg_no'),
     db.from('customers').select('id, full_name').eq('agency_id', aid).order('full_name').limit(500),
+    db.from('sale_documents').select('*').eq('sale_table', 'flight_sales').eq('sale_id', sale.id).order('created_at'),
   ]);
 
   const grand = Number(sale.sale_total) + Number(sale.admin_fee);
@@ -171,6 +173,8 @@ export default async function FlightSaleDetail({ params }: { params: { id: strin
         <div className="flex items-end"><button className="btn-primary px-4 py-2 text-xs" type="submit">Save payment</button></div>
         <div className="flex items-end"><span className="text-xs"><StatusBadge status={sale.payment_status} /> · Profit <b className="accent">${profit.toFixed(2)}</b></span></div>
       </form>
+
+      <SaleDocuments table="flight_sales" saleId={sale.id} docs={docs || []} />
     </div>
   );
 }

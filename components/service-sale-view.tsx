@@ -4,6 +4,7 @@ import { StatusBadge } from '@/components/ui';
 import { updateServiceSale, deleteRecord } from '@/lib/crm-actions';
 import { SERVICE_SALES, SALE_PAYMENT_FIELDS } from '@/lib/service-sales';
 import Link from 'next/link';
+import SaleDocuments from '@/components/sale-documents';
 import { notFound } from 'next/navigation';
 
 const MODULE_KEY: Record<string, string> = {
@@ -27,7 +28,10 @@ export default async function ServiceSaleView({ table, id }: { table: string; id
   const { data: rec } = await db.from(table).select('*, customers(full_name, phone, whatsapp, country, passport_no)')
     .eq('id', id).eq('agency_id', aid).single();
   if (!rec) notFound();
-  const { data: customers } = await db.from('customers').select('id, full_name').eq('agency_id', aid).order('full_name').limit(500);
+  const [{ data: customers }, { data: docs }] = await Promise.all([
+    db.from('customers').select('id, full_name').eq('agency_id', aid).order('full_name').limit(500),
+    db.from('sale_documents').select('*').eq('sale_table', table).eq('sale_id', rec.id).order('created_at'),
+  ]);
 
   const grand = Number(rec.sale_price) + Number(rec.admin_fee);
   const paid = Number(rec.amount_paid);
@@ -140,6 +144,8 @@ export default async function ServiceSaleView({ table, id }: { table: string; id
           <div className="flex items-end"><span className="text-xs"><StatusBadge status={rec.payment_status} /> · Profit <b className="accent">${profit.toFixed(2)}</b></span></div>
         </div>
       </form>
+
+      <SaleDocuments table={table} saleId={rec.id} docs={docs || []} />
     </div>
   );
 }

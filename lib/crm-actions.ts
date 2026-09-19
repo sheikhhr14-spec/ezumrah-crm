@@ -806,3 +806,60 @@ export async function updateServiceSale(fd: FormData) {
   revalidatePath(`/dashboard/${cfg.route}`);
   revalidatePath(`/dashboard/${cfg.route}/${id}`);
 }
+
+
+// ============ SALE DOCUMENTS (upload with compression, view/download/delete) ============
+const SALE_DOC_TABLES: Record<string, string> = {
+  flight_sales: 'flight-sales', hotel_sales: 'hotel-sales',
+  visa_sales: 'visa-sales', transport_sales: 'transport-sales',
+};
+
+export async function uploadSaleDocument(fd: FormData) {
+  const db = createAdminClient();
+  const aid = await agencyId();
+  const table = String(fd.get('table'));
+  const saleId = String(fd.get('sale_id'));
+  const route = SALE_DOC_TABLES[table];
+  if (!route) throw new Error('Unsupported module.');
+  const { data: sale } = await db.from(table).select('id, agency_id').eq('id', saleId).single();
+  if (!sale || sale.agency_id !== aid) throw new Error('Sale not found in your agency.');
+
+  const file = fd.get('file') as File | null;
+  if (!file || !file.size) throw new Error('No file selected.');
+  const okMime = ['application/pdf', 'image/jpeg', 'image/jpg', 'image/png'];
+  if (!okMime.includes(file.type)) throw new Error('Only PDF, JPG, JPEG or PNG files are allowed.');
+  if (file.size > 10 * 1024 * 1024) throw new Error('File too large (max 10 MB).');
+
+  let body: Buffer = Buffer.from(await file.arrayBuffer());
+  let mime = file.type;
+  // compress images (max 2000px, jpeg quality 72)
+  if (file.type.startsWith('image/')) {
+    const sharpMod = await import('sharp');
+    body = await sharpMod.default(body)
+      .resize({ width: 2000, height: 2000, fit: 'inside', withoutEnlargement: true })
+      .jpeg({ quality: 72, mozjpeg: true })
+      .toBuffer();
+    mime = 'image/jpeg';
+  }
+
+  const safe = file.name.replace(/[^a-zA-Z0-9._-]/g, '_');
+  const path = `${aid}/${table}/${saleId}/${Date.now()}-${safe}`;
+  const { error } = await db.storage.from('sale-documents').upload(path, body, { contentType: mime });
+  if (error) throw new Error('Upload failed: ' + error.message);
+  await db.from('sale_documents').insert({
+    agency_id: aid, sale_table: table, sale_id: saleId,
+    file_name: file.name, storage_path: path, mime, size_bytes: body.length,
+  });
+  revalidatePath(`/dashboard/${route}/${saleId}`);
+}
+
+export async function deleteSaleDocument(fd: FormData) {
+  const db = createAdminClient();
+  const aid = await agencyId();
+  const id = String(fd.get('id'));
+  const { data: doc } = await db.from('sale_documents').select('*').eq('id', id).single();
+  if (!doc || doc.agency_id !== aid) throw new Error('Document not found in your agency.');
+  await db.storage.from('sale-documents').remove([doc.storage_path]);
+  await db.from('sale_documents').delete().eq('id', id);
+  revalidatePath(`/dashboard/${SALE_DOC_TABLES[doc.sale_table] || 'flight-sales'}/${doc.sale_id}`);
+}
