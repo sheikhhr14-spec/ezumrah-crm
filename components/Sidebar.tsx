@@ -8,6 +8,14 @@ export default function Sidebar({ agencyName, userName, isAdmin, role, accentCol
 }) {
   const allowed = allowedModules(profile, role || 'staff');
   const NAV = MODULES.filter((m) => allowed.includes(m.key));
+  const GROUPS: { label: string; keys: string[] }[] = [
+    { label: 'Sales', keys: ['leads', 'customers', 'quotations'] },
+    { label: 'Bookings', keys: ['bookings', 'packages'] },
+    { label: 'Operations', keys: ['flights', 'hotels', 'visas', 'transports', 'documents', 'tasks'] },
+    { label: 'Finance', keys: ['invoices', 'accounts', 'reports'] },
+    { label: 'People', keys: ['hr'] },
+    { label: 'Support', keys: ['support'] },
+  ];
 
   return (
     <aside className="flex w-60 shrink-0 flex-col border-r border-slate-200 bg-white"
@@ -28,18 +36,27 @@ export default function Sidebar({ agencyName, userName, isAdmin, role, accentCol
           <span>📊</span> Overview
         </Link>
         <div className="my-2 border-t border-slate-100" />
-        {NAV.map((item) => (
-          <Link key={item.key} href={`/dashboard/${item.key}`}
-            className="flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium text-slate-600 accent-hover transition">
-            <span>{item.icon}</span> {item.label}
-          </Link>
-        ))}
-        {role === 'owner' && (
-          <Link href="/dashboard/team"
-            className="flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium text-slate-600 accent-hover">
-            <span>🧑‍🤝‍🧑</span> Team & Permissions
-          </Link>
-        )}
+        {GROUPS.map((group) => {
+          const items = NAV.filter((m) => group.keys.includes(m.key));
+          if (!items.length) return null;
+          return (
+            <div key={group.label} className="mb-1">
+              <p className="px-3 pb-1 pt-3 text-[10px] font-bold uppercase tracking-wider text-slate-400">{group.label}</p>
+              {items.map((item) => (
+                <Link key={item.key} href={`/dashboard/${item.key}`}
+                  className="flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium text-slate-600 accent-hover transition">
+                  <span>{item.icon}</span> {item.label}
+                </Link>
+              ))}
+              {group.label === 'People' && role === 'owner' && (
+                <Link href="/dashboard/team"
+                  className="flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium text-slate-600 accent-hover">
+                  <span>🧑‍🤝‍🧑</span> Team & Permissions
+                </Link>
+              )}
+            </div>
+          );
+        })}
         {isAdmin && (
           <div className="my-2 border-t border-slate-100" />
         )}
