@@ -102,7 +102,10 @@ export async function addFlight(fd: FormData) {
   const bookingId = String(fd.get('booking_id'));
   await db.from('flights').insert({
     agency_id: await agencyId(),
-    booking_id: bookingId,
+    booking_id: bookingId || null,
+    customer_id: String(fd.get('customer_id')) || null,
+    trip_kind: str(fd, 'trip_kind') || 'oneway',
+    amount: num(fd, 'amount'),
     airline: str(fd, 'airline'),
     flight_no: str(fd, 'flight_no'),
     departure_airport: str(fd, 'departure_airport'),
@@ -122,7 +125,9 @@ export async function addHotel(fd: FormData) {
   const bookingId = String(fd.get('booking_id'));
   await db.from('hotels').insert({
     agency_id: await agencyId(),
-    booking_id: bookingId,
+    booking_id: bookingId || null,
+    customer_id: String(fd.get('customer_id')) || null,
+    amount: num(fd, 'amount'),
     city: str(fd, 'city') || 'makkah',
     hotel_name: str(fd, 'hotel_name'),
     check_in: str(fd, 'check_in'),
@@ -141,7 +146,9 @@ export async function addVisa(fd: FormData) {
   const bookingId = String(fd.get('booking_id'));
   await db.from('visas').insert({
     agency_id: await agencyId(),
-    booking_id: bookingId,
+    booking_id: bookingId || null,
+    customer_id: String(fd.get('customer_id')) || null,
+    amount: num(fd, 'amount'),
     visa_type: str(fd, 'visa_type') || 'umrah',
     application_date: str(fd, 'application_date'),
     visa_no: str(fd, 'visa_no'),
@@ -156,7 +163,9 @@ export async function addTransport(fd: FormData) {
   const bookingId = String(fd.get('booking_id'));
   await db.from('transports').insert({
     agency_id: await agencyId(),
-    booking_id: bookingId,
+    booking_id: bookingId || null,
+    customer_id: String(fd.get('customer_id')) || null,
+    amount: num(fd, 'amount'),
     transport_type: str(fd, 'transport_type') || 'airport_transfer',
     from_location: str(fd, 'from_location'),
     to_location: str(fd, 'to_location'),
@@ -514,10 +523,10 @@ const EDITABLE: Record<string, string[]> = {
   customers: ['full_name', 'country', 'phone', 'whatsapp', 'passport_no', 'email', 'notes'],
   packages: ['name', 'service_type', 'duration_days', 'price_from', 'description'],
   bookings: ['package_name', 'trip_type', 'status', 'pilgrims_count', 'departure_date', 'return_date', 'total_amount', 'paid_amount', 'currency', 'notes'],
-  flights: ['airline', 'flight_no', 'departure_airport', 'arrival_airport', 'departure_time', 'arrival_time', 'pax_count', 'cabin_class', 'confirmation_code', 'status'],
-  hotels: ['city', 'hotel_name', 'check_in', 'check_out', 'nights', 'room_type', 'rooms_count', 'meal_plan', 'confirmation_code', 'status'],
-  visas: ['visa_type', 'application_date', 'visa_no', 'status', 'notes'],
-  transports: ['transport_type', 'from_location', 'to_location', 'transport_date', 'transport_time', 'vehicle_type', 'seats', 'driver_name', 'driver_phone', 'status'],
+  flights: ['airline', 'flight_no', 'departure_airport', 'arrival_airport', 'departure_time', 'arrival_time', 'pax_count', 'cabin_class', 'confirmation_code', 'status', 'trip_kind', 'amount', 'customer_id'],
+  hotels: ['city', 'hotel_name', 'check_in', 'check_out', 'nights', 'room_type', 'rooms_count', 'meal_plan', 'confirmation_code', 'status', 'amount', 'customer_id'],
+  visas: ['visa_type', 'application_date', 'visa_no', 'status', 'notes', 'amount', 'customer_id'],
+  transports: ['transport_type', 'from_location', 'to_location', 'transport_date', 'transport_time', 'vehicle_type', 'seats', 'driver_name', 'driver_phone', 'status', 'amount', 'customer_id'],
   invoices: ['issue_date', 'due_date', 'subtotal', 'tax_amount', 'total', 'status', 'notes'],
   quotations: ['valid_until', 'status', 'subtotal', 'tax_amount', 'notes'],
   documents: ['title', 'doc_type', 'expiry_date', 'file_url', 'notes'],

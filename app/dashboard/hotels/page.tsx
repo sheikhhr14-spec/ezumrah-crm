@@ -8,11 +8,13 @@ import Link from 'next/link';
 export default async function HotelsPage({ searchParams }: { searchParams: { q?: string } }) {
   const ctx = await requireModule('hotels');
   const db = createAdminClient();
-  const [{ data: records }, { data: bookings }] = await Promise.all([
-    db.from('hotels').select('*, bookings(booking_ref, customers(full_name))').eq('agency_id', ctx.profile.agency_id)
+  const [{ data: records }, { data: bookings }, { data: customers }] = await Promise.all([
+    db.from('hotels').select('*, customers(full_name), bookings(booking_ref, customers(full_name))').eq('agency_id', ctx.profile.agency_id)
       .order('created_at', { ascending: false }),
     db.from('bookings').select('id, booking_ref, package_name').eq('agency_id', ctx.profile.agency_id)
       .order('created_at', { ascending: false }).limit(100),
+    db.from('customers').select('id, full_name').eq('agency_id', ctx.profile.agency_id)
+      .order('full_name').limit(500),
   ]);
 
   const q = (searchParams?.q || '').toLowerCase();
@@ -24,14 +26,23 @@ export default async function HotelsPage({ searchParams }: { searchParams: { q?:
 
       <AddPanel label="Add hotel">
         <form action={addHotel} className="grid gap-4 sm:grid-cols-3">
-          <Field label="Booking *">
-            <select className="input" name="booking_id" required>
-              <option value="">Select booking…</option>
+          <Field label="Booking">
+            <select className="input" name="booking_id">
+              <option value="">— Standalone (no booking) —</option>
               {(bookings || []).map((b: any) => (
                 <option key={b.id} value={b.id}>{b.booking_ref} — {b.package_name || 'trip'}</option>
               ))}
             </select>
           </Field>
+          <Field label="Customer (standalone)">
+            <select className="input" name="customer_id">
+              <option value="">— none —</option>
+              {(customers || []).map((c: any) => (
+                <option key={c.id} value={c.id}>{c.full_name}</option>
+              ))}
+            </select>
+          </Field>
+          <Field label="Amount (USD)"><input className="input" name="amount" type="number" step="0.01" /></Field>
           <Field label="City *"><input className="input" name="city" required placeholder="Makkah / Madinah" /></Field>
           <Field label="Hotel name *"><input className="input" name="hotel_name" required /></Field>
           <Field label="Check-in"><input className="input" name="check_in" type="date" /></Field>
@@ -54,9 +65,19 @@ export default async function HotelsPage({ searchParams }: { searchParams: { q?:
         {list.length ? list.map((r: any) => (
           <tr key={r.id} className="hover:bg-slate-50">
             <td className="px-4 py-2">
-              <Link href={`/dashboard/bookings/${r.booking_id}`} className="font-semibold accent hover:underline">
-                {r.bookings?.booking_ref || '—'}
-              </Link>
+              {r.booking_id ? (
+                <>
+                  <Link href={`/dashboard/bookings/${r.booking_id}`} className="font-semibold accent hover:underline">
+                    {r.bookings?.booking_ref || '—'}
+                  </Link>
+                  <br /><span className="text-xs text-slate-400">{r.bookings?.customers?.full_name || ''}</span>
+                </>
+              ) : (
+                <>
+                  <span className="badge bg-slate-100 text-slate-500">standalone</span>
+                  <br /><span className="text-xs font-semibold">{r.customers?.full_name || '—'}</span>
+                </>
+              )}
             </td>
             <td className="px-4 py-2">{r.hotel_name || '—'}</td>
             <td className="px-4 py-2">{r.city || '—'}</td>
@@ -77,6 +98,7 @@ export default async function HotelsPage({ searchParams }: { searchParams: { q?:
                   </select>
                   <button className="btn-secondary px-2 py-1 text-xs" type="submit">Set</button>
                 </form>
+                <a className="text-xs font-semibold accent hover:underline" href={`/api/invoice-pdf?type=hotels&id=${r.id}`}>PDF</a>
                 <RowEdit table="hotels" id={r.id}><label className="text-[10px] text-slate-400">Hotel</label><input className="input px-2 py-1 text-xs" name="hotel_name" defaultValue={r.hotel_name || ''} /><label className="text-[10px] text-slate-400">City</label><select className="input px-2 py-1 text-xs" name="city"><option value="makkah" selected={r.city === "makkah"}> makkah</option><option value="madinah" selected={r.city === "madinah"}> madinah</option><option value="jeddah" selected={r.city === "jeddah"}> jeddah</option><option value="taif" selected={r.city === "taif"}> taif</option><option value="other" selected={r.city === "other"}> other</option></select><label className="text-[10px] text-slate-400">Check-in</label><input className="input px-2 py-1 text-xs" type="date" name="check_in" defaultValue={r.check_in || ''} /><label className="text-[10px] text-slate-400">Check-out</label><input className="input px-2 py-1 text-xs" type="date" name="check_out" defaultValue={r.check_out || ''} /><label className="text-[10px] text-slate-400">Nights</label><input className="input px-2 py-1 text-xs" name="nights" defaultValue={r.nights || ''} /><label className="text-[10px] text-slate-400">Room type</label><input className="input px-2 py-1 text-xs" name="room_type" defaultValue={r.room_type || ''} /><label className="text-[10px] text-slate-400">Rooms</label><input className="input px-2 py-1 text-xs" name="rooms_count" defaultValue={r.rooms_count || ''} /><label className="text-[10px] text-slate-400">Meal plan</label><input className="input px-2 py-1 text-xs" name="meal_plan" defaultValue={r.meal_plan || ''} /><label className="text-[10px] text-slate-400">Status</label><select className="input px-2 py-1 text-xs" name="status"><option value="pending" selected={r.status === "pending"}> pending</option><option value="confirmed" selected={r.status === "confirmed"}> confirmed</option><option value="cancelled" selected={r.status === "cancelled"}> cancelled</option></select></RowEdit>
                 <form action={deleteRecord}>
                   <input type="hidden" name="table" value="hotels" />

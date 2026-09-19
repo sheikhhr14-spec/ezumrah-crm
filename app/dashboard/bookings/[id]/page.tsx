@@ -39,6 +39,8 @@ export default async function BookingDetail({ params }: { params: { id: string }
           <h1 className="text-2xl font-bold text-slate-900">{booking.booking_ref}</h1>
           <p className="text-sm text-slate-500">{c?.full_name} · {booking.pilgrims_count} pilgrim(s) · {booking.trip_type}</p>
         </div>
+        <div className="flex items-center gap-4">
+        <a className="btn-primary" href={`/api/invoice-pdf?type=booking&id=${booking.id}`}>⬇ Download PDF invoice</a>
         <form action={updateBookingStatus} className="flex items-center gap-2">
           <input type="hidden" name="id" value={booking.id} />
           <select name="status" defaultValue={booking.status} className="input w-40">
@@ -46,6 +48,7 @@ export default async function BookingDetail({ params }: { params: { id: string }
           </select>
           <button className="btn-secondary" type="submit">Update</button>
         </form>
+        </div>
       </div>
 
       <div className="card grid gap-4 p-5 sm:grid-cols-4">
