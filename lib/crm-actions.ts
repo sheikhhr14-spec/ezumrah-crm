@@ -1322,3 +1322,14 @@ export async function punchClock(fd: FormData) {
   }
   revalidatePath('/dashboard');
 }
+// ================= TEAM CHAT =================
+export async function createChatMessage(fd: FormData) {
+  const db = createAdminClient();
+  const ctx = await requireActiveAgency();
+  const body = String(fd.get('body') || '').trim().slice(0, 2000);
+  if (!body) return;
+  await db.from('chat_messages').insert({
+    agency_id: ctx.profile.agency_id!, profile_id: ctx.profile.id, body,
+  });
+  revalidatePath('/dashboard/team-chat');
+}
