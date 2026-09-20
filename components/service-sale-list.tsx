@@ -22,7 +22,7 @@ export default async function ServiceSaleList({ table, searchParams }: { table: 
   const [{ data: sales }, { data: customers }] = await Promise.all([
     db.from(table).select('*, customers(full_name)').eq('agency_id', ctx.profile.agency_id)
       .order('created_at', { ascending: false }).limit(200),
-    db.from('customers').select('id, full_name').eq('agency_id', ctx.profile.agency_id).order('full_name').limit(500),
+    db.from('customers').select('id, full_name, phone').eq('agency_id', ctx.profile.agency_id).order('full_name').limit(500),
   ]);
 
   const q = (searchParams?.q || '').toLowerCase();

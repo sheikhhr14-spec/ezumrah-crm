@@ -1,4 +1,5 @@
 'use client';
+import CustomerPicker from '@/components/customer-picker';
 import { useState } from 'react';
 import { createPackageSale } from '@/lib/crm-actions';
 import SubmitButton from '@/components/submit-button';
@@ -60,15 +61,10 @@ export default function PackageSaleForm({ category, customers, currency, taxRate
       {/* 1 — CUSTOMER (lead passenger) */}
       <p className={SECT}>1 · Customer — lead passenger</p>
       <div className="grid gap-4 sm:grid-cols-3">
-        <label className="block"><span className="text-xs font-semibold text-slate-600">Existing customer</span>
-          <select className="input" name="existing_customer_id" onChange={(e) => {
-            const rows = [...pax]; rows[0] = { ...rows[0], full_name: e.target.options[e.target.selectedIndex].text.split(' (')[0] === '— create new customer below —' ? '' : e.target.options[e.target.selectedIndex].text, relationship: 'lead' };
+        <CustomerPicker customers={customers} onPick={(id, name) => {
+            const rows = [...pax]; rows[0] = { ...rows[0], full_name: id ? name : '', relationship: 'lead' };
             setPax(rows);
-          }}>
-            <option value="">— create new customer below —</option>
-            {customers.map((c) => <option key={c.id} value={c.id}>{c.full_name}</option>)}
-          </select>
-        </label>
+          }} />
         <L label="New customer name (if new)" name="customer_name" />
         <L label="Phone" name="phone" />
         <L label="WhatsApp" name="whatsapp" />

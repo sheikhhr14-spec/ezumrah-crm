@@ -14,7 +14,7 @@ export default async function FlightSalesPage({ searchParams }: { searchParams?:
   const [{ data: sales }, { data: customers }] = await Promise.all([
     db.from('flight_sales').select('*, customers(full_name, phone), flight_sale_legs(from_airport, to_airport, fare, tax, cost)')
       .eq('agency_id', ctx.profile.agency_id).order('created_at', { ascending: false }).limit(200),
-    db.from('customers').select('id, full_name').eq('agency_id', ctx.profile.agency_id).order('full_name').limit(500),
+    db.from('customers').select('id, full_name, phone').eq('agency_id', ctx.profile.agency_id).order('full_name').limit(500),
   ]);
 
   const q = (searchParams?.q || '').toLowerCase();

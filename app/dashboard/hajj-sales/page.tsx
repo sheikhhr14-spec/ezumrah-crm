@@ -10,7 +10,7 @@ export default async function Hajj_SalesPage() {
   const { data } = await db.from('package_sales')
     .select('id, ref, package_name, pax, departure_date, return_date, sale_price, supplement, admin_fee, discount, amount_paid, balance, profit, payment_status, status, due_date, customers(full_name)')
     .eq('package_category', 'hajj').order('created_at', { ascending: false });
-  const { data: customers } = await db.from('customers').select('id, full_name').order('full_name');
+  const { data: customers } = await db.from('customers').select('id, full_name, phone').eq('agency_id', agctx.profile.agency_id).order('full_name');
 
   return (
     <div>

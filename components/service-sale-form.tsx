@@ -1,4 +1,5 @@
 'use client';
+import CustomerPicker from '@/components/customer-picker';
 import { useState } from 'react';
 import { createServiceSale } from '@/lib/crm-actions';
 import SubmitButton from '@/components/submit-button';
@@ -29,13 +30,9 @@ export default function ServiceSaleForm({
 
       {/* customer */}
       <div className="grid gap-4 sm:grid-cols-3">
-        <label className="block">
-          <span className="text-xs font-semibold text-slate-600">Existing customer</span>
-          <select className="input" name="existing_customer_id" onChange={(e) => setUseExisting(!!e.target.value)}>
-            <option value="">— New customer —</option>
-            {customers.map((c) => <option key={c.id} value={c.id}>{c.full_name}</option>)}
-          </select>
-        </label>
+        <div>
+          <CustomerPicker customers={customers} onPick={(id) => setUseExisting(!!id)} />
+        </div>
         {!useExisting && (
           <>
             <L label="Customer name *" name="customer_name" />

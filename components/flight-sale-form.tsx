@@ -3,6 +3,7 @@ import { useState } from 'react';
 import { createFlightSale } from '@/lib/crm-actions';
 import SubmitButton from '@/components/submit-button';
 import { money } from '@/lib/format';
+import CustomerPicker from '@/components/customer-picker';
 
 type Leg = { fare: string; tax: string; cost: string };
 const emptyLeg = () => ({ fare: '', tax: '', cost: '' });
@@ -44,13 +45,9 @@ export default function FlightSaleForm({ customers, currency, taxRate }: { custo
     <form action={createFlightSale} className="space-y-6">
       {/* customer */}
       <div className="grid gap-4 sm:grid-cols-3">
-        <label className="block sm:col-span-1">
-          <span className="text-xs font-semibold text-slate-600">Existing customer</span>
-          <select className="input" name="existing_customer_id" value={useExisting ? undefined : ''} onChange={(e) => setUseExisting(!!e.target.value)}>
-            <option value="">— New customer —</option>
-            {customers.map((c) => <option key={c.id} value={c.id}>{c.full_name}</option>)}
-          </select>
-        </label>
+        <div className="sm:col-span-1">
+          <CustomerPicker customers={customers} onPick={(id) => setUseExisting(!!id)} />
+        </div>
         {!useExisting && (
           <>
             <L label="Customer name *" name="customer_name" />
