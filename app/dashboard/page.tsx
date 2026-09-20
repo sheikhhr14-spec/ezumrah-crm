@@ -2,6 +2,7 @@ import { createAdminClient } from '@/lib/supabase/admin';
 import { requireActiveAgency } from '@/lib/data';
 import { punchClock } from '@/lib/crm-actions';
 import SubmitButton from '@/components/submit-button';
+import LocalTime from '@/components/local-time';
 import { PageHeader, StatusBadge, Table, Empty } from '@/components/ui';
 import Link from 'next/link';
 
@@ -32,7 +33,6 @@ export default async function Overview({ searchParams }: { searchParams: { denie
   const today = new Date().toISOString().slice(0, 10);
   const { data: att } = await db.from('user_attendance').select('*')
     .eq('profile_id', ctx.profile.id).eq('att_date', today).maybeSingle();
-  const fmt = (t: string | null) => (t ? new Date(t).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '—');
   const onBreak = !!(att?.break_start && !att?.break_end);
   const canClockIn = !att;
   const canClockOut = !!(att?.clock_in && !att?.clock_out && (!att?.break_start || att?.break_end));
@@ -56,9 +56,9 @@ export default async function Overview({ searchParams }: { searchParams: { denie
               {att?.clock_out ? '✅ Day complete' : onBreak ? '☕ On break' : att?.clock_in ? '🟢 Clocked in' : '🔴 Not clocked in'}
             </p>
             <div className="mt-1 flex flex-wrap gap-x-4 gap-y-0.5 text-xs text-slate-500">
-              <span>⏰ In: <b className="text-slate-700">{fmt(att?.clock_in)}</b></span>
-              <span>☕ Break: <b className="text-slate-700">{fmt(att?.break_start)}–{fmt(att?.break_end)}</b></span>
-              <span>🏁 Out: <b className="text-slate-700">{fmt(att?.clock_out)}</b></span>
+              <span>⏰ In: <b className="text-slate-700"><LocalTime t={att?.clock_in} /></b></span>
+              <span>☕ Break: <b className="text-slate-700"><LocalTime t={att?.break_start} />–<LocalTime t={att?.break_end} /></b></span>
+              <span>🏁 Out: <b className="text-slate-700"><LocalTime t={att?.clock_out} /></b></span>
             </div>
           </div>
           <div className="flex flex-col gap-1.5">
