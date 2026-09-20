@@ -1,4 +1,5 @@
 import Sidebar from '@/components/Sidebar';
+import DashboardHeader from '@/components/dashboard-header';
 import { requireActiveAgency } from '@/lib/data';
 import { syncNotifications } from '@/lib/crm-actions';
 import { createClient } from '@/lib/supabase/server';
@@ -36,6 +37,10 @@ export default async function DashboardLayout({ children }: { children: React.Re
         notifications={notifications}
       />
       <main className="flex-1 overflow-x-auto bg-slate-50 p-8">
+        <DashboardHeader
+          userName={ctx.profile?.full_name || ctx.user.email || ''}
+          notifications={notifications}
+        />
         {latest && (
           <div className={`mb-6 rounded-xl border p-4 ${
             latest.type === 'warning' ? 'border-amber-200 bg-amber-50' : 'border-gold/30 accent-soft-bg'

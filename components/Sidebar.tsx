@@ -1,7 +1,4 @@
 import Link from 'next/link';
-import NotificationBell from '@/components/notification-bell';
-import ThemeToggle from '@/components/theme-toggle';
-import { logout } from '@/lib/auth-actions';
 import { MODULES, allowedModules } from '@/lib/data';
 
 // some module keys differ from their route slugs
@@ -45,10 +42,6 @@ export default function Sidebar({ agencyName, userName, isAdmin, role, accentCol
             {label && <span className="badge accent-soft-bg accent">{label}</span>}
           </p>
         </div>
-        <div className="flex items-center gap-2">
-        <ThemeToggle />
-        <NotificationBell items={notifications} />
-      </div>
       </div>
       <nav className="flex-1 space-y-1 overflow-y-auto p-3">
         <Link href="/dashboard"
@@ -86,12 +79,6 @@ export default function Sidebar({ agencyName, userName, isAdmin, role, accentCol
           </Link>
         )}
       </nav>
-      <div className="border-t border-slate-200 p-3">
-        <p className="px-3 pb-2 text-xs text-slate-400">{userName}</p>
-        <form action={logout}>
-          <button className="w-full rounded-lg px-3 py-2 text-left text-sm text-slate-500 hover:bg-slate-100" type="submit">Sign out</button>
-        </form>
-      </div>
     </aside>
   );
 }
