@@ -300,7 +300,10 @@ async function cleanupChildren(db: any, table: string, id: string) {
   } else if (table === 'flight_sales') {
     await db.from('flight_sale_legs').delete().eq('flight_sale_id', id);
     await purgeSaleDocs(db, 'flight_sales', id);
-  } else if (['hotel_sales', 'visa_sales', 'transport_sales', 'package_sales'].includes(table)) {
+  } else if (table === 'package_sales') {
+    await db.from('package_sale_passengers').delete().eq('package_sale_id', id);
+    await purgeSaleDocs(db, table, id);
+  } else if (['hotel_sales', 'visa_sales', 'transport_sales'].includes(table)) {
     await purgeSaleDocs(db, table, id);
   } else if (table === 'support_tickets') {
     await db.from('support_ticket_replies').delete().eq('ticket_id', id);
@@ -578,7 +581,8 @@ const EDITABLE: Record<string, string[]> = {
     'tour_destination', 'tour_hotel', 'tour_nights',
     'rooms_quint', 'rooms_quad', 'rooms_triple', 'rooms_double', 'rooms_single',
     'sale_price', 'supplement', 'admin_fee', 'discount', 'commission', 'cost',
-    'amount_paid', 'payment_method', 'due_date', 'notes', 'status', 'customer_id'],
+    'amount_paid', 'payment_method', 'due_date', 'notes', 'status', 'customer_id',
+    'ziyarat_included', 'ziyarat_notes'],
   attendance: ['att_date', 'check_in', 'check_out', 'status'],
   payroll: ['basic', 'allowances', 'deductions', 'net', 'status'],
 };
@@ -945,19 +949,25 @@ export async function createPackageSale(fd: FormData) {
   const category = str(fd, 'package_category') || 'umrah';
   const { count } = await db.from('package_sales').select('id', { count: 'exact', head: true }).eq('agency_id', aid);
   const ref = `${PKG_PREFIX[category] || 'UPS'}-${new Date().getFullYear()}-${String((count || 0) + 1).padStart(4, '0')}`;
+  // passengers (lead + family) sent as JSON array
+  let passengers: any[] = [];
+  try { passengers = JSON.parse(String(fd.get('passengers_json') || '[]')); } catch { passengers = []; }
+  const paxCount = Math.max(passengers.length, 1);
   const rec: Record<string, unknown> = {
     agency_id: aid, customer_id: customerId || null, ref,
     package_category: category,
     package_name: str(fd, 'package_name'),
     departure_date: str(fd, 'departure_date') || null,
     return_date: str(fd, 'return_date') || null,
-    pax: num(fd, 'pax', 1),
+    pax: paxCount,
     airline: str(fd, 'airline'), flight_no: str(fd, 'flight_no'),
     from_airport: str(fd, 'from_airport'), to_airport: str(fd, 'to_airport'),
     depart_at: str(fd, 'depart_at') || null, return_flight_no: str(fd, 'return_flight_no'),
     pnr: str(fd, 'pnr'),
     bus_company: str(fd, 'bus_company'), bus_from: str(fd, 'bus_from'), bus_to: str(fd, 'bus_to'),
     bus_date: str(fd, 'bus_date') || null, bus_seats: str(fd, 'bus_seats'),
+    ziyarat_included: fd.get('ziyarat_included') === 'on' || fd.get('ziyarat_included') === 'true',
+    ziyarat_notes: str(fd, 'ziyarat_notes'),
     makkah_hotel: str(fd, 'makkah_hotel'), makkah_nights: num(fd, 'makkah_nights'),
     madinah_hotel: str(fd, 'madinah_hotel'), madinah_nights: num(fd, 'madinah_nights'),
     tour_destination: str(fd, 'tour_destination'), tour_hotel: str(fd, 'tour_hotel'),
@@ -965,7 +975,8 @@ export async function createPackageSale(fd: FormData) {
     rooms_quint: num(fd, 'rooms_quint'), rooms_quad: num(fd, 'rooms_quad'),
     rooms_triple: num(fd, 'rooms_triple'), rooms_double: num(fd, 'rooms_double'),
     rooms_single: num(fd, 'rooms_single'),
-    sale_price: num(fd, 'sale_price'), supplement: num(fd, 'supplement'),
+    sale_price: (Number(fd.get('price_per_person')) || 0) * paxCount || num(fd, 'sale_price'),
+    supplement: num(fd, 'supplement'),
     admin_fee: num(fd, 'admin_fee'), discount: num(fd, 'discount'),
     commission: num(fd, 'commission'), cost: num(fd, 'cost'),
     amount_paid: num(fd, 'amount_paid'), payment_method: str(fd, 'payment_method'),
@@ -975,13 +986,25 @@ export async function createPackageSale(fd: FormData) {
   };
   const grand = packageGrand(rec as any);
   const paid = Number(rec.amount_paid);
-  await db.from('package_sales').insert({
+  const { data: sale } = await db.from('package_sales').insert({
     ...rec,
     payment_status: saleStatus(grand, paid),
     balance: grand - paid,
     profit: grand + Number(rec.commission) - Number(rec.cost),
-  });
+  }).select('id').single();
+  if (sale && passengers.length) {
+    await db.from('package_sale_passengers').insert(
+      passengers.filter((p) => p.full_name).map((p) => ({
+        agency_id: aid, package_sale_id: sale.id,
+        full_name: p.full_name, relationship: p.relationship || null,
+        gender: p.gender || null, age: p.age ? Number(p.age) : null,
+        passport_no: p.passport_no || null, room_type: p.room_type || null,
+        seat_no: p.seat_no || null, notes: p.notes || null,
+      })));
+  }
   revalidatePath('/dashboard/package-sales');
+  revalidatePath(`/dashboard/package-sales/${sale?.id || ''}`);
+  revalidatePath(`/dashboard/${category === 'tour' ? 'tour' : category}-sales`);
 }
 
 export async function updatePackageSale(fd: FormData) {
@@ -1004,4 +1027,52 @@ export async function updatePackageSale(fd: FormData) {
   await db.from('package_sales').update(patch).eq('id', id);
   revalidatePath('/dashboard/package-sales');
   revalidatePath(`/dashboard/package-sales/${id}`);
+  const cat = String((patch.package_category as string) || rec.package_category || 'umrah');
+  revalidatePath(`/dashboard/${cat === 'tour' ? 'tour' : cat}-sales`);
+}
+
+// ===== package sale passengers CRUD =====
+export async function addPassenger(fd: FormData) {
+  const db = createAdminClient();
+  const aid = await agencyId();
+  const saleId = String(fd.get('package_sale_id'));
+  const { data: sale } = await db.from('package_sales').select('id, agency_id, pax').eq('id', saleId).single();
+  if (!sale || sale.agency_id !== aid) throw new Error('Sale not found in your agency.');
+  const name = str(fd, 'full_name');
+  if (!name) throw new Error('Passenger name is required.');
+  await db.from('package_sale_passengers').insert({
+    agency_id: aid, package_sale_id: saleId, full_name: name,
+    relationship: str(fd, 'relationship'), gender: str(fd, 'gender'),
+    age: num(fd, 'age'), passport_no: str(fd, 'passport_no'),
+    room_type: str(fd, 'room_type'), seat_no: str(fd, 'seat_no'), notes: str(fd, 'notes'),
+  });
+  const { count } = await db.from('package_sale_passengers').select('id', { count: 'exact', head: true }).eq('package_sale_id', saleId);
+  await db.from('package_sales').update({ pax: Math.max(count || 1, 1) }).eq('id', saleId);
+  revalidatePath(`/dashboard/package-sales/${saleId}`);
+}
+
+export async function updatePassenger(fd: FormData) {
+  const db = createAdminClient();
+  const aid = await agencyId();
+  const id = String(fd.get('id'));
+  const { data: p } = await db.from('package_sale_passengers').select('id, agency_id, package_sale_id').eq('id', id).single();
+  if (!p || p.agency_id !== aid) throw new Error('Passenger not found in your agency.');
+  await db.from('package_sale_passengers').update({
+    full_name: str(fd, 'full_name'), relationship: str(fd, 'relationship'),
+    gender: str(fd, 'gender'), age: num(fd, 'age'), passport_no: str(fd, 'passport_no'),
+    room_type: str(fd, 'room_type'), seat_no: str(fd, 'seat_no'), notes: str(fd, 'notes'),
+  }).eq('id', id);
+  revalidatePath(`/dashboard/package-sales/${p.package_sale_id}`);
+}
+
+export async function deletePassenger(fd: FormData) {
+  const db = createAdminClient();
+  const aid = await agencyId();
+  const id = String(fd.get('id'));
+  const { data: p } = await db.from('package_sale_passengers').select('id, agency_id, package_sale_id').eq('id', id).single();
+  if (!p || p.agency_id !== aid) throw new Error('Passenger not found in your agency.');
+  await db.from('package_sale_passengers').delete().eq('id', id);
+  const { count } = await db.from('package_sale_passengers').select('id', { count: 'exact', head: true }).eq('package_sale_id', p.package_sale_id);
+  await db.from('package_sales').update({ pax: Math.max(count || 1, 1) }).eq('id', p.package_sale_id);
+  revalidatePath(`/dashboard/package-sales/${p.package_sale_id}`);
 }

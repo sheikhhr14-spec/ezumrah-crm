@@ -1,22 +1,27 @@
 import { createAdminClient } from '@/lib/supabase/admin';
 import { requireModule } from '@/lib/data';
-import { updatePackageSale, deleteRecord } from '@/lib/crm-actions';
+import { updatePackageSale, deleteRecord, addPassenger, updatePassenger, deletePassenger } from '@/lib/crm-actions';
 import SaleDocuments from '@/components/sale-documents';
 import SubmitButton from '@/components/submit-button';
+import RowEdit from '@/components/row-edit';
 import { PageHeader, StatusBadge } from '@/components/ui';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 
 export default async function PackageSaleDetail({ params }: { params: { id: string } }) {
-  const ctx = await requireModule('packagesales');
   const db = createAdminClient();
-  const aid = ctx.profile.agency_id;
+  const aid0 = (await requireModule('umrahsales')).profile.agency_id;
   const { data: s } = await db.from('package_sales')
     .select('*, customers(full_name, phone, whatsapp, passport_no, country)')
-    .eq('id', params.id).eq('agency_id', aid).single();
+    .eq('id', params.id).eq('agency_id', aid0).single();
   if (!s) notFound();
+  // gate on the sale's own category module
+  await requireModule(s.package_category === 'tour' ? 'toursales' : s.package_category === 'hajj' ? 'hajjsales' : 'umrahsales');
+  const aid = aid0;
   const { data: docs } = await db.from('sale_documents').select('*')
     .eq('sale_table', 'package_sales').eq('sale_id', s.id);
+  const { data: passengers } = await db.from('package_sale_passengers').select('*')
+    .eq('package_sale_id', s.id).order('created_at');
 
   const { data: customers } = await db.from('customers').select('id, full_name').eq('agency_id', aid).order('full_name');
   const grand = Number(s.sale_price) + Number(s.supplement || 0) + Number(s.admin_fee || 0) - Number(s.discount || 0);
@@ -33,7 +38,7 @@ export default async function PackageSaleDetail({ params }: { params: { id: stri
 
   return (
     <div>
-      <div className="mb-2"><Link className="text-xs accent hover:underline" href="/dashboard/package-sales">← All package sales</Link></div>
+      <div className="mb-2"><Link className="text-xs accent hover:underline" href={`/dashboard/${s.package_category === 'tour' ? 'tour' : s.package_category}-sales`}>← All {s.package_category} sales</Link></div>
       <PageHeader title={s.ref}
         subtitle={`${s.package_category} package — ${s.package_name || ''} · ${s.pax} pax${s.sold_by ? ` · sold by ${s.sold_by}` : ''}`} />
 
@@ -53,6 +58,72 @@ export default async function PackageSaleDetail({ params }: { params: { id: stri
         ))}
       </div>
 
+      {/* passengers */}
+      <div className="card mb-6 p-5">
+        <h2 className="mb-1 text-lg font-semibold">🧍 Passengers — {passengers?.length || 0} on this booking</h2>
+        <p className="mb-4 text-xs text-slate-400">Room sharing and bus seats per passenger. Lead passenger is the customer.</p>
+        <div className="mb-4 grid gap-2 rounded-xl border border-slate-200 bg-slate-50 p-3 sm:grid-cols-8">
+          <form action={addPassenger} className="contents">
+            <input type="hidden" name="package_sale_id" value={s.id} />
+            <label className="sm:col-span-2"><span className="text-[10px] font-semibold text-slate-500">Full name *</span>
+              <input className="input px-2 py-1 text-xs" name="full_name" required placeholder="Add passenger" /></label>
+            <label><span className="text-[10px] font-semibold text-slate-500">Relationship</span>
+              <select className="input px-2 py-1 text-xs" name="relationship">{['spouse', 'son', 'daughter', 'father', 'mother', 'brother', 'sister', 'other'].map((r) => <option key={r} value={r}>{r}</option>)}</select></label>
+            <label><span className="text-[10px] font-semibold text-slate-500">Gender</span>
+              <select className="input px-2 py-1 text-xs" name="gender">{['male', 'female'].map((g) => <option key={g} value={g}>{g}</option>)}</select></label>
+            <label><span className="text-[10px] font-semibold text-slate-500">Age</span>
+              <input className="input px-2 py-1 text-xs" name="age" type="number" /></label>
+            <label><span className="text-[10px] font-semibold text-slate-500">Passport no.</span>
+              <input className="input px-2 py-1 text-xs" name="passport_no" /></label>
+            <label><span className="text-[10px] font-semibold text-slate-500">Room</span>
+              <select className="input px-2 py-1 text-xs" name="room_type">{['quint', 'quad', 'triple', 'double', 'single'].map((r) => <option key={r} value={r}>{r}</option>)}</select></label>
+            <label className="flex items-end"><span className="w-full"><span className="text-[10px] font-semibold text-slate-500">Seat</span>
+              <input className="input px-2 py-1 text-xs" name="seat_no" placeholder="12A" /></span></label>
+            <label className="flex items-end"><button className="btn-primary px-3 py-1.5 text-xs" type="submit">Add</button></label>
+          </form>
+        </div>
+        {passengers?.length ? (
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead><tr className="border-b border-slate-200 text-left text-[10px] uppercase tracking-wide text-slate-400">
+                <th className="px-2 py-2">Passenger</th><th className="px-2 py-2">Relationship</th><th className="px-2 py-2">Gender</th>
+                <th className="px-2 py-2">Age</th><th className="px-2 py-2">Passport</th><th className="px-2 py-2">Room</th>
+                <th className="px-2 py-2">Seat</th><th className="px-2 py-2">Actions</th>
+              </tr></thead>
+              <tbody>
+                {passengers.map((px: any) => (
+                  <tr key={px.id} className="border-b border-slate-50">
+                    <td className="px-2 py-2 font-semibold">{px.full_name}{px.relationship === 'lead' && <span className="ml-1 badge accent-soft-bg accent">lead</span>}</td>
+                    <td className="px-2 py-2 capitalize">{px.relationship || '—'}</td>
+                    <td className="px-2 py-2">{px.gender || '—'}</td>
+                    <td className="px-2 py-2">{px.age || '—'}</td>
+                    <td className="px-2 py-2">{px.passport_no || '—'}</td>
+                    <td className="px-2 py-2">{px.room_type || '—'}</td>
+                    <td className="px-2 py-2">{px.seat_no || '—'}</td>
+                    <td className="px-2 py-2">
+                      <div className="flex items-center gap-3">
+                        <RowEdit table="package_sale_passengers" id={px.id} title="Edit passenger" action={updatePassenger}>
+                          <label className="text-[10px] text-slate-400">Full name</label><input className="input px-2 py-1 text-xs" name="full_name" defaultValue={px.full_name || ''} />
+                          <label className="text-[10px] text-slate-400">Relationship</label><input className="input px-2 py-1 text-xs" name="relationship" defaultValue={px.relationship || ''} />
+                          <label className="text-[10px] text-slate-400">Gender</label>
+                          <select className="input px-2 py-1 text-xs" name="gender" defaultValue={px.gender || ''}>{['male', 'female'].map((g) => <option key={g} value={g}>{g}</option>)}</select>
+                          <label className="text-[10px] text-slate-400">Age</label><input className="input px-2 py-1 text-xs" name="age" type="number" defaultValue={px.age || ''} />
+                          <label className="text-[10px] text-slate-400">Passport no.</label><input className="input px-2 py-1 text-xs" name="passport_no" defaultValue={px.passport_no || ''} />
+                          <label className="text-[10px] text-slate-400">Room sharing</label>
+                          <select className="input px-2 py-1 text-xs" name="room_type" defaultValue={px.room_type || 'quad'}>{['quint', 'quad', 'triple', 'double', 'single'].map((r) => <option key={r} value={r}>{r}</option>)}</select>
+                          <label className="text-[10px] text-slate-400">Bus seat</label><input className="input px-2 py-1 text-xs" name="seat_no" defaultValue={px.seat_no || ''} />
+                        </RowEdit>
+                        <form action={deletePassenger}><input type="hidden" name="id" value={px.id} /><button className="text-xs font-semibold text-red-500 hover:underline" type="submit">Delete</button></form>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        ) : <p className="text-xs text-slate-400">No passengers listed yet.</p>}
+      </div>
+
       {/* itinerary summary */}
       <div className="mb-6 grid gap-4 lg:grid-cols-3">
         <div className="card p-5">
@@ -63,10 +134,11 @@ export default async function PackageSaleDetail({ params }: { params: { id: stri
           {s.pnr && <p className="mt-1 text-xs font-semibold accent">PNR {s.pnr}</p>}
         </div>
         <div className="card p-5">
-          <h3 className="mb-3 text-sm font-bold uppercase tracking-wide text-slate-500">🚌 Bus & seats</h3>
+          <h3 className="mb-3 text-sm font-bold uppercase tracking-wide text-slate-500">🚌 Bus, seats & ziyarat</h3>
           <p className="text-sm">{s.bus_company || '—'}</p>
           <p className="text-xs text-slate-500">{s.bus_from || '—'} → {s.bus_to || '—'} {s.bus_date ? `· ${s.bus_date}` : ''}</p>
           {s.bus_seats && <p className="mt-1 text-xs font-semibold accent">Seats: {s.bus_seats}</p>}
+          <p className="mt-2 text-xs">{s.ziyarat_included ? '🕌 Ziyarat included' : 'No ziyarat'}{s.ziyarat_notes ? ` — ${s.ziyarat_notes}` : ''}</p>
         </div>
         <div className="card p-5">
           <h3 className="mb-3 text-sm font-bold uppercase tracking-wide text-slate-500">🏨 Hotels & rooms</h3>
@@ -112,6 +184,11 @@ export default async function PackageSaleDetail({ params }: { params: { id: stri
             <L label="Bus to" name="bus_to" def={s.bus_to} />
             <L label="Bus date" name="bus_date" type="date" def={s.bus_date} />
             <L label="Assigned seats" name="bus_seats" def={s.bus_seats} />
+            <label className="block"><span className="text-xs font-semibold text-slate-600">Ziyarat included</span>
+              <select className="input" name="ziyarat_included" defaultValue={s.ziyarat_included ? 'true' : 'false'}>
+                <option value="true">Yes</option><option value="false">No</option>
+              </select></label>
+            <L label="Ziyarat / transport notes" name="ziyarat_notes" def={s.ziyarat_notes} />
             <L label="Makkah hotel" name="makkah_hotel" def={s.makkah_hotel} />
             <L label="Makkah nights" name="makkah_nights" type="number" def={s.makkah_nights} />
             <L label="Madinah hotel" name="madinah_hotel" def={s.madinah_hotel} />

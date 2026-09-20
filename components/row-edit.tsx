@@ -1,11 +1,12 @@
 'use client';
 import { useState } from 'react';
 import { updateRecord } from '@/lib/crm-actions';
+type UpdateAction = (fd: FormData) => Promise<void>;
 import SubmitButton from '@/components/submit-button';
 
 // Edit popup: click "Edit" to open a centered modal with the record's fields.
-export default function RowEdit({ table, id, children, title = 'Edit record' }: {
-  table: string; id: string; children: React.ReactNode; title?: string;
+export default function RowEdit({ table, id, children, title = 'Edit record', action }: {
+  table: string; id: string; children: React.ReactNode; title?: string; action?: UpdateAction;
 }) {
   const [open, setOpen] = useState(false);
   return (
@@ -20,7 +21,7 @@ export default function RowEdit({ table, id, children, title = 'Edit record' }: 
               <h3 className="text-base font-bold text-slate-900">{title}</h3>
               <button className="text-slate-400 hover:text-slate-700" onClick={() => setOpen(false)} aria-label="Close">✕</button>
             </div>
-            <form action={async (fd: FormData) => { await updateRecord(fd); setOpen(false); }}
+            <form action={async (fd: FormData) => { await (action || updateRecord)(fd); setOpen(false); }}
               className="space-y-2">
               <input type="hidden" name="table" value={table} />
               <input type="hidden" name="id" value={id} />
