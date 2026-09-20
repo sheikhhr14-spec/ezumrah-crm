@@ -55,6 +55,7 @@ export default async function PayrollPage({ searchParams }: { searchParams: { mo
                   <button className="text-xs font-semibold text-green-600 hover:underline" type="submit">Mark paid</button>
                 </form>
               ) : <span className="text-xs text-slate-400">paid {p.paid_on || ''}</span>}
+              <a className="text-xs font-semibold accent hover:underline" href={`/api/invoice-pdf?type=payslip&id=${p.id}`}>Slip</a>
               <form action={deleteRecord} className="mt-1"><input type="hidden" name="table" value="payroll" /><input type="hidden" name="id" value={p.id} /><button className="text-xs font-semibold text-red-500 hover:underline" type="submit">Delete</button></form>
             </td>
           </tr>

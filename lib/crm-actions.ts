@@ -1142,3 +1142,98 @@ export async function deleteTransportLeg(fd: FormData) {
   await db.from('package_sale_transports').delete().eq('id', id);
   revalidatePath(`/dashboard/package-sales/${t.package_sale_id}`);
 }
+
+// ============ AGENCY SETTINGS (owner) ============
+export async function updateAgencySettings(fd: FormData) {
+  const db = createAdminClient();
+  const ctx = await requireActiveAgency();
+  if (ctx.role !== 'owner') throw new Error('Only the agency owner can change settings.');
+  const aid = ctx.profile.agency_id!;
+  const patch: Record<string, unknown> = { updated_at: new Date().toISOString() };
+  for (const f of ['name', 'label', 'brand_color', 'website', 'address', 'contact_email', 'contact_phone',
+    'smtp_host', 'smtp_user', 'smtp_password', 'smtp_from_name', 'smtp_from_email']) {
+    if (fd.get(f) !== null) patch[f] = str(fd, f);
+  }
+  if (fd.get('smtp_port') !== null) patch.smtp_port = num(fd, 'smtp_port');
+  if (fd.get('smtp_secure') !== null) patch.smtp_secure = fd.get('smtp_secure') === 'true';
+  if (fd.get('remove_logo') === 'true') patch.logo_url = null;
+  await db.from('agencies').update(patch).eq('id', aid);
+  revalidatePath('/dashboard/settings');
+  revalidatePath('/dashboard');
+}
+
+// upload agency assets (logo / employee photo / employee contract) — owner or manager
+export async function uploadAgencyAsset(fd: FormData) {
+  const db = createAdminClient();
+  const ctx = await requireActiveAgency();
+  const aid = ctx.profile.agency_id!;
+  const kind = String(fd.get('kind'));
+  const targetId = String(fd.get('target_id') || aid);
+  const file = fd.get('file') as File | null;
+  if (!file || !file.size) throw new Error('No file selected.');
+  const okMime = ['application/pdf', 'image/jpeg', 'image/jpg', 'image/png'];
+  if (!okMime.includes(file.type)) throw new Error('Only PDF, JPG, JPEG or PNG files are allowed.');
+  if (file.size > 10 * 1024 * 1024) throw new Error('File too large (max 10 MB).');
+  // owner-only for agency logo; managers may manage employee assets
+  if (kind === 'logo' && ctx.role !== 'owner') throw new Error('Only the owner can change the agency logo.');
+
+  let body: Buffer = Buffer.from(await file.arrayBuffer());
+  let mime = file.type;
+  if (file.type.startsWith('image/')) {
+    const sharpMod = await import('sharp');
+    body = await sharpMod.default(body)
+      .resize({ width: 1200, height: 1200, fit: 'inside', withoutEnlargement: true })
+      .jpeg({ quality: 80, mozjpeg: true }).toBuffer();
+    mime = 'image/jpeg';
+  }
+  const safe = file.name.replace(/[^a-zA-Z0-9._-]/g, '_');
+  const path = `${aid}/${kind}/${Date.now()}-${safe}`;
+  const { error } = await db.storage.from('agency-assets').upload(path, body, { contentType: mime });
+  if (error) throw new Error('Upload failed: ' + error.message);
+  const { data: pub } = db.storage.from('agency-assets').getPublicUrl(path);
+
+  if (kind === 'logo') {
+    await db.from('agencies').update({ logo_url: pub.publicUrl, updated_at: new Date().toISOString() }).eq('id', aid);
+    revalidatePath('/dashboard/settings');
+  } else if (kind === 'employee_photo' || kind === 'employee_contract') {
+    const { data: emp } = await db.from('employees').select('id, agency_id').eq('id', targetId).single();
+    if (!emp || emp.agency_id !== aid) throw new Error('Employee not found in your agency.');
+    await db.from('employees').update(
+      kind === 'employee_photo' ? { photo_url: pub.publicUrl } : { contract_path: pub.publicUrl }
+    ).eq('id', targetId);
+    revalidatePath(`/dashboard/hr/${targetId}`);
+  }
+}
+
+export async function updateEmployeeProfile(fd: FormData) {
+  const db = createAdminClient();
+  const ctx = await requireActiveAgency();
+  const aid = ctx.profile.agency_id!;
+  const id = String(fd.get('id'));
+  const { data: emp } = await db.from('employees').select('id, agency_id').eq('id', id).single();
+  if (!emp || emp.agency_id !== aid) throw new Error('Employee not found in your agency.');
+  const patch: Record<string, unknown> = { updated_at: new Date().toISOString() };
+  for (const f of ['full_name', 'email', 'phone', 'designation', 'department', 'join_date',
+    'monthly_salary', 'status', 'notes', 'cnic', 'bank_name', 'account_title', 'account_no', 'iban']) {
+    if (fd.get(f) !== null) patch[f] = f === 'monthly_salary' ? num(fd, f) : (str(fd, f) || null);
+  }
+  if (fd.get('remove_photo') === 'true') patch.photo_url = null;
+  if (fd.get('remove_contract') === 'true') patch.contract_path = null;
+  await db.from('employees').update(patch).eq('id', id);
+  revalidatePath(`/dashboard/hr/${id}`);
+  revalidatePath('/dashboard/hr');
+}
+
+export async function markSaasInvoicePaid(fd: FormData) {
+  const db = createAdminClient();
+  const ctx = await requireActiveAgency();
+  if (ctx.role !== 'owner') throw new Error('Only the owner can manage billing.');
+  const aid = ctx.profile.agency_id!;
+  const id = String(fd.get('id'));
+  const { data: inv } = await db.from('saas_invoices').select('id, agency_id').eq('id', id).single();
+  if (!inv || inv.agency_id !== aid) throw new Error('Invoice not found.');
+  await db.from('saas_invoices').update({
+    status: 'paid', paid_on: new Date().toISOString().slice(0, 10),
+  }).eq('id', id);
+  revalidatePath('/dashboard/billing');
+}

@@ -50,7 +50,7 @@ export async function requireRole(min: 'owner' | 'manager' | 'staff') {
 
 /* ============ Per-user module permissions ============ */
 // All tenant modules. 'min' = minimum role that can ever be granted it.
-export const MODULES: { key: string; label: string; icon: string; min: 'staff' | 'manager' }[] = [
+export const MODULES: { key: string; label: string; icon: string; min: 'staff' | 'manager' | 'owner' }[] = [
   { key: 'leads', label: 'Leads', icon: '🎯', min: 'staff' },
   { key: 'customers', label: 'Customers', icon: '👥', min: 'staff' },
   { key: 'bookings', label: 'Bookings', icon: '🧾', min: 'staff' },
@@ -59,8 +59,12 @@ export const MODULES: { key: string; label: string; icon: string; min: 'staff' |
   { key: 'visasales', label: 'Visa Sales', icon: '🛂', min: 'staff' },
   { key: 'transportsales', label: 'Transport & Ziyarat', icon: '🚌', min: 'staff' },
   { key: 'umrahsales', label: 'Umrah Sales', icon: '🕋', min: 'staff' },
+  { key: 'settings', label: 'Settings', icon: '⚙️', min: 'owner' },
+  { key: 'billing', label: 'Billing', icon: '💳', min: 'owner' },
   { key: 'hajjsales', label: 'Hajj Sales', icon: '🕌', min: 'staff' },
   { key: 'toursales', label: 'Tour Sales', icon: '🌍', min: 'staff' },
+  { key: 'settings', label: 'Settings', icon: '⚙️', min: 'owner' },
+  { key: 'billing', label: 'Billing', icon: '💳', min: 'owner' },
   { key: 'packages', label: 'Packages', icon: '📦', min: 'staff' },
   { key: 'flights', label: 'Flights', icon: '✈️', min: 'staff' },
   { key: 'hotels', label: 'Hotels', icon: '🏨', min: 'staff' },
