@@ -21,7 +21,7 @@ export default function Sidebar({ agencyName, userName, isAdmin, role, accentCol
   const allowed = allowedModules(profile, role || 'staff');
   const NAV = MODULES.filter((m) => allowed.includes(m.key));
   const GROUPS: { label: string; keys: string[] }[] = [
-    { label: 'Sales', keys: ['availability', 'leads', 'customers', 'flightsales', 'hotelsales', 'visasales', 'transportsales', 'umrahsales', 'hajjsales', 'toursales', 'tourpackages', 'touroperations', 'quotations'] },
+    { label: 'Sales', keys: ['availability', 'leads', 'customers', 'flightsales', 'hotelsales', 'visasales', 'transportsales', 'umrahsales', 'hajjsales', 'toursales', 'quotations'] },
     { label: 'Bookings', keys: ['bookings', 'packages'] },
     { label: 'Operations', keys: ['flights', 'hotels', 'visas', 'transports', 'documents', 'tasks'] },
     { label: 'Finance', keys: ['invoices', 'accounts', 'reports'] },

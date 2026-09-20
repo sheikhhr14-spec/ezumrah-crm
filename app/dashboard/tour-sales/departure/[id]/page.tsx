@@ -11,7 +11,7 @@ const CHECKIN = ['booked', 'confirmed', 'checked_in', 'picked_up', 'no_show'];
 const RTYPES = ['single', 'double', 'triple', 'quad'];
 
 export default async function DeparturePage({ params }: { params: { id: string } }) {
-  const ctx = await requireModule('touroperations');
+  const ctx = await requireModule('toursales');
   const db = createAdminClient();
   const aid = ctx.profile.agency_id!;
   const { data: dep } = await db.from('tour_departures').select('*, tour_packages(name, days, inclusions, exclusions, ziyarat)')
@@ -79,7 +79,7 @@ export default async function DeparturePage({ params }: { params: { id: string }
 
   return (
     <div>
-      <Link className="text-sm text-slate-400 hover:text-gold" href="/dashboard/tour-ops">← All departures</Link>
+      <Link className="text-sm text-slate-400 hover:text-gold" href="/dashboard/tour-sales">← All departures</Link>
       <PageHeader title={`${dep.tour_packages?.name || 'Tour'} — ${dep.departure_date} → ${dep.return_date || '—'}`} subtitle={`${pax.length} passengers · ${bookings?.length || 0} bookings · ${roomsUsed}/${roomsTotal} rooms · ${seatBooked}/${seatsTotal} seats booked`}>
         <div className="flex items-center gap-2">
           <form action={updateDepartureStatus} className="flex items-center gap-1">
@@ -282,7 +282,7 @@ export default async function DeparturePage({ params }: { params: { id: string }
               <span>{bp.length} pax</span>
               <StatusBadge status={b.payment_status} />
               <span className="text-slate-500">Paid {money(Number(b.amount_paid || 0), cur)} / {money(Number(b.sale_price || 0), cur)}</span>
-              <Link className="accent font-semibold hover:underline" href={`/dashboard/tour-ops/booking/${b.id}`}>Voucher →</Link>
+              <Link className="accent font-semibold hover:underline" href={`/dashboard/tour-sales/voucher/${b.id}`}>Voucher →</Link>
               <form action={deleteTourBooking} className="ml-auto"><input type="hidden" name="id" value={b.id} /><button className="text-[10px] text-red-400" type="submit">Delete</button></form>
             </div>
           );

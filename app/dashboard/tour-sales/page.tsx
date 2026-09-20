@@ -1,25 +1,20 @@
-import { createAdminClient } from '@/lib/supabase/admin';
 import { requireModule } from '@/lib/data';
-import PackageSaleForm from '@/components/package-sale-form';
-import PackageSalesList from '@/components/package-sales-list';
 import { PageHeader } from '@/components/ui';
+import TourPackagesSection from '@/components/tour-packages-section';
+import TourOpsSection from '@/components/tour-ops-section';
+import Link from 'next/link';
 
-export default async function Tour_SalesPage() {
-  const agctx: any = await requireModule('toursales');
-  const db = createAdminClient();
-  const { data } = await db.from('package_sales')
-    .select('id, ref, package_name, pax, departure_date, return_date, sale_price, supplement, admin_fee, discount, amount_paid, balance, profit, payment_status, status, due_date, customers(full_name)')
-    .eq('package_category', 'tour').order('created_at', { ascending: false });
-  const { data: customers } = await db.from('customers').select('id, full_name, phone').eq('agency_id', agctx.profile.agency_id).order('full_name');
-
+export default async function TourSalesHub({ searchParams }: { searchParams?: { start?: string } }) {
+  await requireModule('toursales');
   return (
     <div>
-      <PageHeader title="Tour Sales" subtitle="Tour package bookings — groups, flights, hotels and itineraries" />
-      <div className="card mb-6 p-5">
-        <h2 className="mb-4 text-lg font-semibold">➕ New Tour booking</h2>
-        <PackageSaleForm category="tour" customers={(customers || []).map((c: any) => ({ id: c.id, full_name: c.full_name }))}  currency={(agctx.agency || {}).currency} taxRate={Number((agctx.agency || {}).tax_rate || 0)} />
-      </div>
-      <PackageSalesList list={(data || []) as any[]} currency={(agctx.agency || {}).currency} />
+      <PageHeader title="Tour Sales" subtitle="Packages (3/4/7-day, custom), scheduled departures, group bookings 1–50+ passengers, seat & room allocation, pickups, vouchers — all in one module" />
+      <TourPackagesSection />
+      <div className="h-6" />
+      <TourOpsSection searchParams={searchParams} />
+      <p className="mt-4 text-right text-xs">
+        <Link className="accent hover:underline" href="/dashboard/tour-sales/records">Legacy tour sale records →</Link>
+      </p>
     </div>
   );
 }

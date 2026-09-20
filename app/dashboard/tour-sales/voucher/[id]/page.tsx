@@ -7,7 +7,7 @@ import Link from 'next/link';
 import { notFound } from 'next/navigation';
 
 export default async function VoucherPage({ params }: { params: { id: string } }) {
-  const ctx = await requireModule('touroperations');
+  const ctx = await requireModule('toursales');
   const db = createAdminClient();
   const aid = ctx.profile.agency_id!;
   const { data: bk } = await db.from('tour_bookings').select('*').eq('id', params.id).eq('agency_id', aid).single();
@@ -30,7 +30,7 @@ export default async function VoucherPage({ params }: { params: { id: string } }
 
   return (
     <div>
-      <Link className="text-sm text-slate-400 hover:text-gold" href={`/dashboard/tour-ops/${bk.departure_id}`}>← Back to departure</Link>
+      <Link className="text-sm text-slate-400 hover:text-gold" href={`/dashboard/tour-sales/departure/${bk.departure_id}`}>← Back to departure</Link>
       <PageHeader title={`Booking voucher — ${bk.ref}`} subtitle={`${bk.group_name || bk.contact_name} · ${list.length} passenger(s)`}>
         <PrintButton />
       </PageHeader>

@@ -4,7 +4,7 @@ import { PageHeader, Empty, StatusBadge } from '@/components/ui';
 import Link from 'next/link';
 
 export default async function TourOpsPage() {
-  const ctx = await requireModule('touroperations');
+  const ctx = await requireModule('toursales');
   const db = createAdminClient();
   const aid = ctx.profile.agency_id!;
   const [{ data: deps }, { data: vehicles }, { data: hotels }, { data: pickups }, { data: blocks }, { data: bookings }] = await Promise.all([
@@ -44,7 +44,7 @@ export default async function TourOpsPage() {
           const pickupAssigned = p.filter((x: any) => x.pickup_id).length;
           const avail = seatsTotal - seatBooked - reserved - blocked;
           return (
-            <Link key={d.id} href={`/dashboard/tour-ops/${d.id}`} className="card p-4 transition hover:shadow-md">
+            <Link key={d.id} href={`/dashboard/tour-sales/departure/${d.id}`} className="card p-4 transition hover:shadow-md">
               <div className="mb-2 flex items-center justify-between">
                 <div>
                   <h3 className="font-bold text-slate-900">{d.tour_packages?.name || 'Tour'}</h3>

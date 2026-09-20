@@ -17,13 +17,13 @@ export async function createTourPackage(fd: FormData) {
     tour_type: S(fd, 'tour_type') || 'custom', base_price: N(fd, 'base_price'),
     inclusions: S(fd, 'inclusions'), exclusions: S(fd, 'exclusions'), ziyarat: S(fd, 'ziyarat'), description: S(fd, 'description'),
   });
-  revalidatePath('/dashboard/tour-packages');
+  revalidatePath('/dashboard/tour-sales');
 }
 export async function deleteTourPackage(fd: FormData) {
   const db = createAdminClient(); const aid = (await requireActiveAgency()).profile.agency_id!;
   await db.from('tour_itinerary').delete().eq('package_id', String(fd.get('id'))).eq('agency_id', aid);
   await db.from('tour_packages').delete().eq('id', String(fd.get('id'))).eq('agency_id', aid);
-  revalidatePath('/dashboard/tour-packages');
+  revalidatePath('/dashboard/tour-sales');
 }
 export async function createItineraryRow(fd: FormData) {
   const db = createAdminClient(); const ctx = await requireActiveAgency();
@@ -32,12 +32,12 @@ export async function createItineraryRow(fd: FormData) {
     kind: S(fd, 'kind') || 'activity', day_no: N(fd, 'day_no') || 1,
     title: S(fd, 'title'), location: S(fd, 'location'), start_time: S(fd, 'start_time'), notes: S(fd, 'notes'),
   });
-  revalidatePath('/dashboard/tour-packages');
+  revalidatePath('/dashboard/tour-sales');
 }
 export async function deleteItineraryRow(fd: FormData) {
   const db = createAdminClient(); const aid = (await requireActiveAgency()).profile.agency_id!;
   await db.from('tour_itinerary').delete().eq('id', String(fd.get('id'))).eq('agency_id', aid);
-  revalidatePath('/dashboard/tour-packages');
+  revalidatePath('/dashboard/tour-sales');
 }
 
 // ================= DEPARTURES =================
@@ -48,17 +48,17 @@ export async function createTourDeparture(fd: FormData) {
     departure_date: S(fd, 'departure_date'), return_date: S(fd, 'return_date'),
     status: S(fd, 'status') || 'open', notes: S(fd, 'notes'),
   });
-  revalidatePath('/dashboard/tour-packages'); revalidatePath('/dashboard/tour-ops');
+  revalidatePath('/dashboard/tour-sales'); revalidatePath('/dashboard/tour-sales');
 }
 export async function updateDepartureStatus(fd: FormData) {
   const db = createAdminClient(); const aid = (await requireActiveAgency()).profile.agency_id!;
   await db.from('tour_departures').update({ status: S(fd, 'status') || 'open' }).eq('id', String(fd.get('id'))).eq('agency_id', aid);
-  revalidatePath(`/dashboard/tour-ops/${String(fd.get('id'))}`); revalidatePath('/dashboard/tour-ops');
+  revalidatePath(`/dashboard/tour-sales/departure/${String(fd.get('id'))}`); revalidatePath('/dashboard/tour-sales');
 }
 export async function deleteTourDeparture(fd: FormData) {
   const db = createAdminClient(); const aid = (await requireActiveAgency()).profile.agency_id!;
   await db.from('tour_departures').delete().eq('id', String(fd.get('id'))).eq('agency_id', aid);
-  revalidatePath('/dashboard/tour-packages'); revalidatePath('/dashboard/tour-ops');
+  revalidatePath('/dashboard/tour-sales'); revalidatePath('/dashboard/tour-sales');
 }
 
 // ================= DEPARTURE RESOURCES =================
@@ -69,12 +69,12 @@ export async function createDepartureVehicle(fd: FormData) {
     vehicle_type: S(fd, 'vehicle_type'), vehicle_label: S(fd, 'vehicle_label'),
     plate_no: S(fd, 'plate_no'), total_seats: N(fd, 'total_seats'),
   });
-  revalidatePath(`/dashboard/tour-ops/${String(fd.get('departure_id'))}`);
+  revalidatePath(`/dashboard/tour-sales/departure/${String(fd.get('departure_id'))}`);
 }
 export async function deleteDepartureVehicle(fd: FormData) {
   const db = createAdminClient(); const aid = (await requireActiveAgency()).profile.agency_id!;
   await db.from('tour_departure_vehicles').delete().eq('id', String(fd.get('id'))).eq('agency_id', aid);
-  revalidatePath(`/dashboard/tour-ops/${String(fd.get('departure_id'))}`);
+  revalidatePath(`/dashboard/tour-sales/departure/${String(fd.get('departure_id'))}`);
 }
 export async function createDepartureHotel(fd: FormData) {
   const db = createAdminClient(); const ctx = await requireActiveAgency();
@@ -84,12 +84,12 @@ export async function createDepartureHotel(fd: FormData) {
     single_rooms: N(fd, 'single_rooms'), double_rooms: N(fd, 'double_rooms'),
     triple_rooms: N(fd, 'triple_rooms'), quad_rooms: N(fd, 'quad_rooms'), other_rooms: N(fd, 'other_rooms'),
   });
-  revalidatePath(`/dashboard/tour-ops/${String(fd.get('departure_id'))}`);
+  revalidatePath(`/dashboard/tour-sales/departure/${String(fd.get('departure_id'))}`);
 }
 export async function deleteDepartureHotel(fd: FormData) {
   const db = createAdminClient(); const aid = (await requireActiveAgency()).profile.agency_id!;
   await db.from('tour_departure_hotels').delete().eq('id', String(fd.get('id'))).eq('agency_id', aid);
-  revalidatePath(`/dashboard/tour-ops/${String(fd.get('departure_id'))}`);
+  revalidatePath(`/dashboard/tour-sales/departure/${String(fd.get('departure_id'))}`);
 }
 export async function createDeparturePickup(fd: FormData) {
   const db = createAdminClient(); const ctx = await requireActiveAgency();
@@ -97,12 +97,12 @@ export async function createDeparturePickup(fd: FormData) {
     agency_id: ctx.profile.agency_id!, departure_id: String(fd.get('departure_id')),
     location: S(fd, 'location'), pickup_time: S(fd, 'pickup_time'), notes: S(fd, 'notes'),
   });
-  revalidatePath(`/dashboard/tour-ops/${String(fd.get('departure_id'))}`);
+  revalidatePath(`/dashboard/tour-sales/departure/${String(fd.get('departure_id'))}`);
 }
 export async function deleteDeparturePickup(fd: FormData) {
   const db = createAdminClient(); const aid = (await requireActiveAgency()).profile.agency_id!;
   await db.from('tour_departure_pickups').delete().eq('id', String(fd.get('id'))).eq('agency_id', aid);
-  revalidatePath(`/dashboard/tour-ops/${String(fd.get('departure_id'))}`);
+  revalidatePath(`/dashboard/tour-sales/departure/${String(fd.get('departure_id'))}`);
 }
 
 // ================= BOOKINGS & PASSENGERS =================
@@ -134,19 +134,19 @@ export async function createTourBooking(fd: FormData) {
     if (fd.get('auto_seat') === 'on') await autoAllocateSeatsFor(db, aid, depId);
     if (fd.get('auto_room') === 'on') await autoAllocateRoomsFor(db, aid, depId);
   }
-  revalidatePath(`/dashboard/tour-ops/${depId}`); revalidatePath('/dashboard/tour-ops');
+  revalidatePath(`/dashboard/tour-sales/departure/${depId}`); revalidatePath('/dashboard/tour-sales');
 }
 export async function deleteTourBooking(fd: FormData) {
   const db = createAdminClient(); const aid = (await requireActiveAgency()).profile.agency_id!;
   const { data: bk } = await db.from('tour_bookings').select('id, departure_id').eq('id', String(fd.get('id'))).eq('agency_id', aid).single();
   await db.from('tour_passengers').delete().eq('booking_id', String(fd.get('id')));
   await db.from('tour_bookings').delete().eq('id', String(fd.get('id'))).eq('agency_id', aid);
-  if (bk?.departure_id) revalidatePath(`/dashboard/tour-ops/${bk.departure_id}`);
+  if (bk?.departure_id) revalidatePath(`/dashboard/tour-sales/departure/${bk.departure_id}`);
 }
 export async function deleteTourPassenger(fd: FormData) {
   const db = createAdminClient(); const aid = (await requireActiveAgency()).profile.agency_id!;
   await db.from('tour_passengers').delete().eq('id', String(fd.get('id'))).eq('agency_id', aid);
-  revalidatePath(`/dashboard/tour-ops/${String(fd.get('departure_id'))}`);
+  revalidatePath(`/dashboard/tour-sales/departure/${String(fd.get('departure_id'))}`);
 }
 export async function updateTourPassenger(fd: FormData) {
   const db = createAdminClient(); const aid = (await requireActiveAgency()).profile.agency_id!;
@@ -160,13 +160,13 @@ export async function updateTourPassenger(fd: FormData) {
     seat_vehicle_id: seatV, seat_no: seatNo || null,
     pickup_id: S(fd, 'pickup_id'), checkin_status: S(fd, 'checkin_status') || 'booked', notes: S(fd, 'notes'),
   }).eq('id', String(fd.get('id'))).eq('agency_id', aid);
-  revalidatePath(`/dashboard/tour-ops/${String(fd.get('departure_id'))}`);
+  revalidatePath(`/dashboard/tour-sales/departure/${String(fd.get('departure_id'))}`);
 }
 export async function setPassengerCheckin(fd: FormData) {
   const db = createAdminClient(); const aid = (await requireActiveAgency()).profile.agency_id!;
   await db.from('tour_passengers').update({ checkin_status: S(fd, 'checkin_status') || 'booked' })
     .eq('id', String(fd.get('id'))).eq('agency_id', aid);
-  revalidatePath(`/dashboard/tour-ops/${String(fd.get('departure_id'))}`);
+  revalidatePath(`/dashboard/tour-sales/departure/${String(fd.get('departure_id'))}`);
 }
 
 // ================= ALLOCATION =================
@@ -254,12 +254,12 @@ async function autoAllocateRoomsFor(db: any, aid: string, depId: string) {
 export async function autoAllocateSeats(fd: FormData) {
   const db = createAdminClient(); const aid = (await requireActiveAgency()).profile.agency_id!;
   await autoAllocateSeatsFor(db, aid, String(fd.get('departure_id')));
-  revalidatePath(`/dashboard/tour-ops/${String(fd.get('departure_id'))}`);
+  revalidatePath(`/dashboard/tour-sales/departure/${String(fd.get('departure_id'))}`);
 }
 export async function autoAllocateRooms(fd: FormData) {
   const db = createAdminClient(); const aid = (await requireActiveAgency()).profile.agency_id!;
   await autoAllocateRoomsFor(db, aid, String(fd.get('departure_id')));
-  revalidatePath(`/dashboard/tour-ops/${String(fd.get('departure_id'))}`);
+  revalidatePath(`/dashboard/tour-sales/departure/${String(fd.get('departure_id'))}`);
 }
 export async function toggleSeatBlock(fd: FormData) {
   const db = createAdminClient(); const aid = (await requireActiveAgency()).profile.agency_id!;
@@ -271,5 +271,5 @@ export async function toggleSeatBlock(fd: FormData) {
     .eq('agency_id', aid).eq('departure_id', depId).eq('vehicle_id', vehId).eq('seat_no', seatNo).maybeSingle();
   if (existing) await db.from('tour_seat_blocks').delete().eq('id', existing.id);
   else await db.from('tour_seat_blocks').insert({ agency_id: aid, departure_id: depId, vehicle_id: vehId, seat_no: seatNo, kind, reason: S(fd, 'reason') });
-  revalidatePath(`/dashboard/tour-ops/${depId}`);
+  revalidatePath(`/dashboard/tour-sales/departure/${depId}`);
 }

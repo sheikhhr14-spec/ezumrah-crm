@@ -5,8 +5,8 @@ import { money } from '@/lib/format';
 import { createTourPackage, deleteTourPackage, createItineraryRow, deleteItineraryRow, createTourDeparture, deleteTourDeparture } from '@/lib/tour-actions';
 import Link from 'next/link';
 
-export default async function TourPackagesPage() {
-  const ctx = await requireModule('tourpackages');
+export default async function TourPackagesSection() {
+  const ctx = await requireModule('toursales');
   const db = createAdminClient();
   const aid = ctx.profile.agency_id!;
   const [{ data: packages }, { data: itin }, { data: departures }] = await Promise.all([
@@ -79,7 +79,7 @@ export default async function TourPackagesPage() {
                 <p className="mb-1 text-xs font-semibold text-slate-700">Departures</p>
                 {deps.map((d: any) => (
                   <p key={d.id} className="flex items-center gap-2 text-xs">
-                    <Link className="accent flex-1 font-semibold hover:underline" href={`/dashboard/tour-ops/${d.id}`}>
+                    <Link className="accent flex-1 font-semibold hover:underline" href={`/dashboard/tour-sales/departure/${d.id}`}>
                       {d.departure_date} → {d.return_date || '—'} <StatusBadge status={d.status} />
                     </Link>
                     <form action={deleteTourDeparture}><input type="hidden" name="id" value={d.id} /><button className="text-[10px] text-red-400" type="submit">✕</button></form>
