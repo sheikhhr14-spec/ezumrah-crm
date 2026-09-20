@@ -65,6 +65,8 @@ export const MODULES: { key: string; label: string; icon: string; min: 'staff' |
   { key: 'billing', label: 'Billing', icon: '💳', min: 'owner' },
   { key: 'hajjsales', label: 'Hajj Sales', icon: '🕌', min: 'staff' },
   { key: 'toursales', label: 'Tour Sales', icon: '🌍', min: 'staff' },
+  { key: 'tourpackages', label: 'Tour Packages', icon: '🧭', min: 'staff' },
+  { key: 'touroperations', label: 'Tour Operations', icon: '🚌', min: 'staff' },
   { key: 'packages', label: 'Packages', icon: '📦', min: 'staff' },
   { key: 'flights', label: 'Flights', icon: '✈️', min: 'staff' },
   { key: 'hotels', label: 'Hotels', icon: '🏨', min: 'staff' },
