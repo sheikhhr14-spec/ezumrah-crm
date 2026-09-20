@@ -1150,7 +1150,7 @@ export async function updateAgencySettings(fd: FormData) {
   if (ctx.role !== 'owner') throw new Error('Only the agency owner can change settings.');
   const aid = ctx.profile.agency_id!;
   const patch: Record<string, unknown> = { updated_at: new Date().toISOString() };
-  for (const f of ['name', 'label', 'brand_color', 'website', 'address', 'contact_email', 'contact_phone',
+  for (const f of ['name', 'brand_color', 'website', 'address', 'contact_email', 'contact_phone',
     'smtp_host', 'smtp_user', 'smtp_password', 'smtp_from_name', 'smtp_from_email']) {
     if (fd.get(f) !== null) patch[f] = str(fd, f);
   }
@@ -1222,18 +1222,4 @@ export async function updateEmployeeProfile(fd: FormData) {
   await db.from('employees').update(patch).eq('id', id);
   revalidatePath(`/dashboard/hr/${id}`);
   revalidatePath('/dashboard/hr');
-}
-
-export async function markSaasInvoicePaid(fd: FormData) {
-  const db = createAdminClient();
-  const ctx = await requireActiveAgency();
-  if (ctx.role !== 'owner') throw new Error('Only the owner can manage billing.');
-  const aid = ctx.profile.agency_id!;
-  const id = String(fd.get('id'));
-  const { data: inv } = await db.from('saas_invoices').select('id, agency_id').eq('id', id).single();
-  if (!inv || inv.agency_id !== aid) throw new Error('Invoice not found.');
-  await db.from('saas_invoices').update({
-    status: 'paid', paid_on: new Date().toISOString().slice(0, 10),
-  }).eq('id', id);
-  revalidatePath('/dashboard/billing');
 }

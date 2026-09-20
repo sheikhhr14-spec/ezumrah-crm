@@ -1,7 +1,10 @@
 import { requireModule, requireActiveAgency } from '@/lib/data';
+import { createAdminClient } from '@/lib/supabase/admin';
 import { updateAgencySettings, uploadAgencyAsset } from '@/lib/crm-actions';
-import { PageHeader } from '@/components/ui';
+import { PageHeader, Table, Empty, StatusBadge } from '@/components/ui';
 import SubmitButton from '@/components/submit-button';
+
+const PLAN_PRICE: Record<string, number> = { starter: 29, professional: 79, enterprise: 199 };
 
 const L = ({ label, name, def, type = 'text', ph = '' }: any) => (
   <label className="block"><span className="text-xs font-semibold text-slate-600">{label}</span>
@@ -12,6 +15,24 @@ export default async function SettingsPage() {
   await requireModule('settings');
   const ctx = await requireActiveAgency();
   const a: any = ctx.profile.agencies || {};
+  const aid = ctx.profile.agency_id!;
+  const db = createAdminClient();
+  const period = new Date().toISOString().slice(0, 7);
+  const { data: existing } = await db.from('saas_invoices').select('id')
+    .eq('agency_id', aid).eq('period', period).maybeSingle();
+  if (!existing) {
+    const { count } = await db.from('saas_invoices').select('id', { count: 'exact', head: true }).eq('agency_id', aid);
+    const plan = (a.plan || 'starter').toLowerCase();
+    await db.from('saas_invoices').insert({
+      agency_id: aid,
+      invoice_no: `EZ-${period.replace('-', '')}-${String((count || 0) + 1).padStart(3, '0')}`,
+      period, plan, amount: PLAN_PRICE[plan] ?? 29, status: 'unpaid',
+      due_date: new Date(new Date().getFullYear(), new Date().getMonth() + 1, 5).toISOString().slice(0, 10),
+    });
+  }
+  const { data: invoices } = await db.from('saas_invoices').select('*')
+    .eq('agency_id', aid).order('period', { ascending: false });
+  const plan = (a.plan || 'starter').toLowerCase();
   return (
     <div>
       <PageHeader title="Settings" subtitle="Your agency profile, branding, email (SMTP) and preferences." />
@@ -39,7 +60,6 @@ export default async function SettingsPage() {
         <form action={updateAgencySettings} className="space-y-4">
           <div className="grid gap-4 sm:grid-cols-3">
             <L label="Agency name" name="name" def={a.name} />
-            <L label="Brand label / tagline" name="label" def={a.label} ph="Al-Noor Travels & Umrah Services" />
             <label className="block"><span className="text-xs font-semibold text-slate-600">Brand color (accent)</span>
               <input className="input h-10" name="brand_color" type="color" defaultValue={a.brand_color || '#b8923f'} /></label>
             <L label="Website" name="website" def={a.website} ph="https://" />
@@ -69,6 +89,41 @@ export default async function SettingsPage() {
           <L label="From email" name="smtp_from_email" def={a.smtp_from_email} ph="bookings@yourdomain.com" />
           <div className="flex items-end"><SubmitButton pendingText="Saving…" className="btn-primary">Save SMTP settings</SubmitButton></div>
         </form>
+      </div>
+
+      <div className="card mt-6 p-5">
+        <h2 className="mb-1 text-lg font-semibold">💳 Subscription & billing</h2>
+        <p className="mb-4 text-xs text-slate-400">Your EzUmrah CRM subscription, billed monthly by EzTechify. Payments are verified by the EzUmrah admin team{` — online payment arrives with Stripe setup`}.</p>
+        <div className="mb-5 grid gap-4 sm:grid-cols-3">
+          <div className="rounded-lg border border-slate-200 bg-slate-50 p-4">
+            <p className="text-xs font-bold uppercase tracking-wide text-slate-400">Plan</p>
+            <p className="mt-1 text-xl font-bold capitalize">{plan}</p>
+            <p className="text-xs text-slate-400">${PLAN_PRICE[plan] ?? 29}/month · {a.subscription_status || 'active'}</p>
+          </div>
+          <div className="rounded-lg border border-slate-200 bg-slate-50 p-4">
+            <p className="text-xs font-bold uppercase tracking-wide text-slate-400">Renews on</p>
+            <p className="mt-1 text-xl font-bold">{a.current_period_end ? new Date(a.current_period_end).toLocaleDateString() : '—'}</p>
+            <p className="text-xs text-slate-400">To upgrade, contact EzTechify support.</p>
+          </div>
+          <div className="rounded-lg border border-slate-200 bg-slate-50 p-4">
+            <p className="text-xs font-bold uppercase tracking-wide text-slate-400">Billed to</p>
+            <p className="mt-1 text-xl font-bold">{a.name}</p>
+            <p className="text-xs text-slate-400">{a.contact_email || 'Set contact email above'}</p>
+          </div>
+        </div>
+        <Table head={['Invoice no.', 'Period', 'Plan', 'Amount', 'Due date', 'Status', 'Invoice']}>
+          {(invoices || []).length ? (invoices as any[]).map((r) => (
+            <tr key={r.id} className="hover:bg-slate-50">
+              <td className="px-4 py-2 font-semibold">{r.invoice_no}</td>
+              <td className="px-4 py-2">{r.period}</td>
+              <td className="px-4 py-2 capitalize">{r.plan}</td>
+              <td className="px-4 py-2 font-semibold">${Number(r.amount).toFixed(2)}</td>
+              <td className="px-4 py-2">{r.due_date || '—'}</td>
+              <td className="px-4 py-2"><StatusBadge status={r.status} /></td>
+              <td className="px-4 py-2"><a className="text-xs font-semibold accent hover:underline" href={`/api/invoice-pdf?type=saas&id=${r.id}`}>Download PDF</a></td>
+            </tr>
+          )) : <Empty msg="No invoices yet." />}
+        </Table>
       </div>
     </div>
   );
