@@ -1,5 +1,6 @@
 import Link from 'next/link';
 import NotificationBell from '@/components/notification-bell';
+import ThemeToggle from '@/components/theme-toggle';
 import { logout } from '@/lib/auth-actions';
 import { MODULES, allowedModules } from '@/lib/data';
 
@@ -44,7 +45,10 @@ export default function Sidebar({ agencyName, userName, isAdmin, role, accentCol
             {label && <span className="badge accent-soft-bg accent">{label}</span>}
           </p>
         </div>
+        <div className="flex items-center gap-2">
+        <ThemeToggle />
         <NotificationBell items={notifications} />
+      </div>
       </div>
       <nav className="flex-1 space-y-1 overflow-y-auto p-3">
         <Link href="/dashboard"

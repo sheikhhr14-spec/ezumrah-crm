@@ -37,3 +37,40 @@ body {
 .nav-active { background-color: color-mix(in srgb, var(--portal-accent, #b8923f) 14%, white); color: var(--portal-accent, #b8923f); font-weight: 600; }
 .stat-num { @apply text-2xl font-bold text-slate-900; }
 .stat-label { @apply text-xs font-medium uppercase tracking-wide text-slate-400; }
+
+/* ===== Brand color drives primary actions & focus states (tenant theming) ===== */
+.btn-primary { background-color: var(--portal-accent, #b8923f); color: #fff; }
+.btn-primary:hover { background-color: color-mix(in srgb, var(--portal-accent, #b8923f) 82%, black); }
+.input:focus { border-color: var(--portal-accent, #b8923f); box-shadow: 0 0 0 3px color-mix(in srgb, var(--portal-accent, #b8923f) 20%, transparent); outline: none; }
+.accent-soft-bg { background-color: color-mix(in srgb, var(--portal-accent, #b8923f) 12%, transparent); }
+.accent-hover:hover { background-color: color-mix(in srgb, var(--portal-accent, #b8923f) 14%, transparent); color: var(--portal-accent, #b8923f); }
+.nav-active { background-color: color-mix(in srgb, var(--portal-accent, #b8923f) 14%, transparent); color: var(--portal-accent, #b8923f); font-weight: 600; }
+
+/* ===== Dark theme (toggled from the sidebar; honors brand accent) ===== */
+.dark body { background: #020617; color: #e2e8f0; }
+.dark .card { background: #0f172a; border-color: #1e293b; }
+.dark .input { background: #1e293b; border-color: #334155; color: #e2e8f0; }
+.dark .btn-secondary { background: #1e293b; border-color: #334155; color: #cbd5e1; }
+.dark .btn-secondary:hover { border-color: var(--portal-accent, #b8923f); color: var(--portal-accent, #b8923f); }
+.dark .bg-white { background: #0f172a; }
+.dark .bg-slate-50 { background: #111c33; }
+.dark .bg-slate-100 { background: #1e293b; }
+.dark .text-slate-900 { color: #f1f5f9; }
+.dark .text-slate-800 { color: #e2e8f0; }
+.dark .text-slate-700 { color: #cbd5e1; }
+.dark .text-slate-600 { color: #cbd5e1; }
+.dark .text-slate-500 { color: #94a3b8; }
+.dark .text-slate-400 { color: #8b98ac; }
+.dark .border-slate-200 { border-color: #1e293b; }
+.dark .border-slate-300 { border-color: #334155; }
+.dark .hover\:bg-slate-50:hover { background: #1e293b; }
+.dark .stat-num { color: #f1f5f9; }
+/* status chips: pastel → translucent in dark */
+.dark .bg-emerald-100 { background: rgba(16, 185, 129, 0.18); }
+.dark .bg-red-100 { background: rgba(239, 68, 68, 0.18); }
+.dark .bg-amber-100 { background: rgba(245, 158, 11, 0.18); }
+.dark .bg-blue-100 { background: rgba(59, 130, 246, 0.18); }
+.dark .bg-purple-100 { background: rgba(168, 85, 247, 0.18); }
+.dark .bg-sky-100 { background: rgba(14, 165, 233, 0.18); }
+.dark .accent-soft-bg { background: color-mix(in srgb, var(--portal-accent, #b8923f) 22%, transparent); }
+.dark .nav-active { background: color-mix(in srgb, var(--portal-accent, #b8923f) 26%, transparent); }

@@ -21,7 +21,10 @@ export default async function DashboardLayout({ children }: { children: React.Re
   try { notifications = await syncNotifications(); } catch { /* bell is non-critical */ }
 
   return (
-    <div className="flex min-h-screen">
+    <div
+      className="flex min-h-screen"
+      style={{ '--portal-accent': agency.brand_color || '#b8923f' } as React.CSSProperties}
+    >
       <Sidebar
         agencyName={agency.name}
         userName={ctx.profile?.full_name || ctx.user.email || ''}
