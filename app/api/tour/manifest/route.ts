@@ -26,7 +26,7 @@ export async function GET(req: NextRequest) {
   for (let n = 1; n <= total; n++) if (!seated.has(n)) rows.push(empty(n));
   rows.sort((a, b) => Number(a[0]) - Number(b[0]));
   const title = `Driver sheet — ${v.vehicle_label || v.vehicle_type}`;
-  const sub = `${dep.tour_packages?.name || 'Tour'} · ${dep.departure_date} → ${dep.return_date || ''} · ${v.vehicle_type}${v.plate_no ? ` · ${v.plate_no}` : ''} · ${total} seats`;
+  const sub = `${(dep as any).pkgName} · ${dep.departure_date} → ${dep.return_date || ''} · ${v.vehicle_type}${v.plate_no ? ` · ${v.plate_no}` : ''} · ${total} seats`;
   if (req.nextUrl.searchParams.get('format') === 'html') {
     return new NextResponse(htmlDoc(title, sub, headers, rows), { headers: { 'content-type': 'text/html; charset=utf-8' } });
   }

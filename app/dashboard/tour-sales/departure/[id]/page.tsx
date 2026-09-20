@@ -94,7 +94,7 @@ export default async function DeparturePage({ params }: { params: { id: string }
           </form>
         </div>
         {(vehicles || []).length === 0 && <Empty msg="Add vehicles for this departure below — cars, SUVs, vans, coasters, minibuses and 40/45/50+ seat buses." />}
-      {vehicles?.length > 0 && (
+      {(vehicles || []).length > 0 && (
         <TourSeatMap
           departureId={dep.id}
           vehicles={(vehicles || []).map((v: any) => ({ id: v.id, label: v.vehicle_label || v.vehicle_type, type: v.vehicle_type, total: Number(v.total_seats || 0) }))}
@@ -123,7 +123,7 @@ export default async function DeparturePage({ params }: { params: { id: string }
       <div className="card mb-6 p-4">
         <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
           <h2 className="text-sm font-bold text-slate-900">🏨 Hotels, rooms & beds</h2>
-          {hotels?.length > 0 && <div className="flex gap-1">
+          {(hotels || []).length > 0 && <div className="flex gap-1">
             <a className="btn-secondary text-xs" href={`/api/tour/rooming?departure=${dep.id}`}>⬇ Rooming list (Excel)</a>
             <a className="btn-secondary text-xs" href={`/api/tour/rooming?departure=${dep.id}&format=html`} target="_blank" rel="noreferrer">🖨 Rooming list (PDF)</a>
           </div>}

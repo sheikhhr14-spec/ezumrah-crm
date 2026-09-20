@@ -12,9 +12,11 @@ export async function authAgency() {
 
 export async function departureData(depId: string, aid: string) {
   const db = createAdminClient();
-  const { data: dep } = await db.from('tour_departures').select('id, departure_date, return_date, tour_packages(name)')
+  const { data: dep } = await db.from('tour_departures').select('id, departure_date, return_date, package_id')
     .eq('id', depId).eq('agency_id', aid).single();
   if (!dep) return null;
+  const { data: pkg } = await db.from('tour_packages').select('name').eq('id', dep.package_id).single();
+  (dep as any).pkgName = pkg?.name || 'Tour';
   const { data: hotels } = await db.from('tour_departure_hotels').select('*').eq('agency_id', aid).eq('departure_id', depId).order('created_at');
   const { data: pickups } = await db.from('tour_departure_pickups').select('*').eq('agency_id', aid).eq('departure_id', depId);
   const { data: bookings } = await db.from('tour_bookings').select('id, ref, group_name').eq('agency_id', aid).eq('departure_id', depId);

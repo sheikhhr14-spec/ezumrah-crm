@@ -23,7 +23,7 @@ export async function GET(req: NextRequest) {
   const headers = ['Hotel', 'Room', 'Bed', 'Passenger', 'Gender', 'Age', 'Passport', 'Booking', 'Family/Group', 'Preference', 'Status'];
   const fname = `rooming-list-${dep.departure_date}`;
   if (req.nextUrl.searchParams.get('format') === 'html') {
-    return new NextResponse(htmlDoc(`Rooming list — ${dep.tour_packages?.name || 'Tour'}`, `${dep.departure_date} → ${dep.return_date || ''} · ${rows.length} passengers`, headers, rows), { headers: { 'content-type': 'text/html; charset=utf-8' } });
+    return new NextResponse(htmlDoc(`Rooming list — ${(dep as any).pkgName}`, `${dep.departure_date} → ${dep.return_date || ''} · ${rows.length} passengers`, headers, rows), { headers: { 'content-type': 'text/html; charset=utf-8' } });
   }
   return new NextResponse(toCsv([headers, ...rows]), {
     headers: {
