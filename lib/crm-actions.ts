@@ -1223,3 +1223,92 @@ export async function updateEmployeeProfile(fd: FormData) {
   revalidatePath(`/dashboard/hr/${id}`);
   revalidatePath('/dashboard/hr');
 }
+
+
+// ============ NOTIFICATIONS (auto-synced alerts per agency) ============
+export async function syncNotifications() {
+  const db = createAdminClient();
+  const ctx = await requireActiveAgency();
+  const aid = ctx.profile.agency_id!;
+  const today = new Date().toISOString().slice(0, 10);
+  const in30 = new Date(Date.now() + 30 * 86400000).toISOString().slice(0, 10);
+  const overdueCount = async (table: string) => {
+    const { count } = await db.from(table).select('id', { count: 'exact', head: true })
+      .eq('agency_id', aid).gt('balance', 0).lt('due_date', today);
+    return count || 0;
+  };
+  const [fs, hs, vs, ts, ps, departsR, saasR, visaR] = await Promise.all([
+    overdueCount('flight_sales'), overdueCount('hotel_sales'), overdueCount('visa_sales'),
+    overdueCount('transport_sales'), overdueCount('package_sales'),
+    db.from('package_sales').select('id', { count: 'exact', head: true }).eq('agency_id', aid).gte('departure_date', today).lte('departure_date', in30),
+    db.from('saas_invoices').select('id', { count: 'exact', head: true }).eq('agency_id', aid).eq('status', 'unpaid').lt('due_date', today),
+    db.from('visa_sales').select('id', { count: 'exact', head: true }).eq('agency_id', aid).gte('expiry_date', today).lte('expiry_date', in30),
+  ]);
+  const overdue = fs + hs + vs + ts + ps;
+  const visaExp = visaR?.count || 0;
+  const departs = departsR?.count || 0;
+  const saasCount = saasR?.count || 0;
+
+  const alerts: { kind: string; key: string; title: string; body: string; href: string }[] = [];
+  if (overdue > 0) alerts.push({ kind: 'overdue', key: 'overdue-payments', title: `${overdue} overdue payment${overdue > 1 ? 's' : ''}`,
+    body: 'Customer balances are past their due date. Follow up now.', href: '/dashboard/reports' });
+  if (visaExp > 0) alerts.push({ kind: 'visa', key: 'visa-expiry', title: `${visaExp} visa${visaExp > 1 ? 's' : ''} expiring soon`,
+    body: 'Issued visas expire within 30 days.', href: '/dashboard/visa-sales' });
+  if (departs > 0) alerts.push({ kind: 'departure', key: 'upcoming-departures', title: `${departs} departure${departs > 1 ? 's' : ''} in 30 days`,
+    body: 'Package groups travelling this month. Confirm bookings & docs.', href: '/dashboard/package-sales' });
+  if (saasCount > 0 && ctx.role === 'owner') alerts.push({ kind: 'saas', key: 'saas-unpaid', title: 'CRM subscription unpaid',
+    body: 'Your EzUmrah CRM invoice is past its due date.', href: '/dashboard/billing' });
+
+  if (alerts.length) {
+    await db.from('notifications').upsert(
+      alerts.map((x) => ({ agency_id: aid, ...x })), { onConflict: 'agency_id,key' }
+    );
+  }
+  const keys = alerts.map((x) => x.key);
+  const { data } = await db.from('notifications').select('id, title, body, href, read, created_at')
+    .eq('agency_id', aid).order('created_at', { ascending: false }).limit(20);
+  // drop alerts that no longer apply (e.g. everything got paid)
+  const stale = (data || []).filter((n: any) => !keys.includes(n.key)).map((n: any) => n.id);
+  if (stale.length) await db.from('notifications').delete().in('id', stale);
+  return (data || []).filter((n: any) => keys.includes(n.key));
+}
+
+export async function markAllNotificationsRead() {
+  const db = createAdminClient();
+  const ctx = await requireActiveAgency();
+  await db.from('notifications').update({ read: true }).eq('agency_id', ctx.profile.agency_id!);
+  revalidatePath('/dashboard');
+}
+
+// ============ CLOCK IN / OUT & BREAK (agency staff self-service) ============
+export async function punchClock(fd: FormData) {
+  const db = createAdminClient();
+  const ctx = await requireActiveAgency();
+  const aid = ctx.profile.agency_id!;
+  const pid = ctx.profile.id;
+  const type = String(fd.get('type'));
+  const now = new Date().toISOString();
+  const today = now.slice(0, 10);
+  const { data: row } = await db.from('user_attendance')
+    .select('*').eq('profile_id', pid).eq('att_date', today).maybeSingle();
+
+  if (!row) {
+    if (type !== 'in') throw new Error('Clock in first.');
+    await db.from('user_attendance').insert({
+      agency_id: aid, profile_id: pid, att_date: today, clock_in: now,
+    });
+  } else if (type === 'in') {
+    throw new Error('Already clocked in today.');
+  } else if (type === 'break_start') {
+    if (!row.clock_in || row.clock_out) throw new Error('Not clocked in.');
+    if (row.break_start) throw new Error('Break already started.');
+    await db.from('user_attendance').update({ break_start: now, updated_at: now }).eq('id', row.id);
+  } else if (type === 'break_end') {
+    if (!row.break_start || row.break_end) throw new Error('No break running.');
+    await db.from('user_attendance').update({ break_end: now, updated_at: now }).eq('id', row.id);
+  } else if (type === 'out') {
+    if (!row.clock_in || row.clock_out) throw new Error('Not clocked in.');
+    await db.from('user_attendance').update({ clock_out: now, updated_at: now }).eq('id', row.id);
+  }
+  revalidatePath('/dashboard');
+}

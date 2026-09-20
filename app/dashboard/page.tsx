@@ -1,5 +1,7 @@
 import { createAdminClient } from '@/lib/supabase/admin';
 import { requireActiveAgency } from '@/lib/data';
+import { punchClock } from '@/lib/crm-actions';
+import SubmitButton from '@/components/submit-button';
 import { PageHeader, StatusBadge, Table, Empty } from '@/components/ui';
 import Link from 'next/link';
 
@@ -26,9 +28,47 @@ export default async function Overview({ searchParams }: { searchParams: { denie
     { label: 'Revenue collected', value: `$${revenue.toLocaleString()}`, href: '/dashboard/invoices' },
   ];
 
+  // today's attendance for the logged-in user
+  const today = new Date().toISOString().slice(0, 10);
+  const { data: att } = await db.from('user_attendance').select('*')
+    .eq('profile_id', ctx.profile.id).eq('att_date', today).maybeSingle();
+  const fmt = (t: string | null) => (t ? new Date(t).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '—');
+  const onBreak = !!(att?.break_start && !att?.break_end);
+  const canClockIn = !att;
+  const canClockOut = !!(att?.clock_in && !att?.clock_out && (!att?.break_start || att?.break_end));
+  const canBreakStart = !!(att?.clock_in && !att?.clock_out && !att?.break_start);
+  const canBreakEnd = onBreak;
+  const Punch = ({ type, label, cls = 'btn-secondary' }: { type: string; label: string; cls?: string }) => (
+    <form action={punchClock}>
+      <input type="hidden" name="type" value={type} />
+      <SubmitButton pendingText="…" className={`${cls} px-3 py-1.5 text-xs`}>{label}</SubmitButton>
+    </form>
+  );
+
   return (
     <div>
-      <PageHeader title={`Welcome back, ${ctx.profile?.full_name?.split(' ')[0] || ''}`} subtitle={`${ctx.agency.name} — Umrah, Hajj, Ziyarah operations`} />
+      <div className="mb-6 flex flex-wrap items-center justify-between gap-4">
+        <PageHeader title={`Welcome back, ${ctx.profile?.full_name?.split(' ')[0] || ''}`} subtitle={`${ctx.agency.name} — Umrah, Hajj, Ziyarah operations`} />
+        <div className="card flex items-center gap-4 p-4">
+          <div>
+            <p className="text-[10px] font-bold uppercase tracking-wide text-slate-400">Today's attendance</p>
+            <p className="mt-0.5 text-sm font-semibold">
+              {att?.clock_out ? '✅ Day complete' : onBreak ? '☕ On break' : att?.clock_in ? '🟢 Clocked in' : '🔴 Not clocked in'}
+            </p>
+            <div className="mt-1 flex flex-wrap gap-x-4 gap-y-0.5 text-xs text-slate-500">
+              <span>⏰ In: <b className="text-slate-700">{fmt(att?.clock_in)}</b></span>
+              <span>☕ Break: <b className="text-slate-700">{fmt(att?.break_start)}–{fmt(att?.break_end)}</b></span>
+              <span>🏁 Out: <b className="text-slate-700">{fmt(att?.clock_out)}</b></span>
+            </div>
+          </div>
+          <div className="flex flex-col gap-1.5">
+            {canClockIn && <Punch type="in" label="🟢 Clock In" cls="btn-primary" />}
+            {canBreakStart && <Punch type="break_start" label="☕ Break Start" />}
+            {canBreakEnd && <Punch type="break_end" label="⏯ Break End" cls="btn-primary" />}
+            {canClockOut && <Punch type="out" label="🏁 Clock Out" />}
+          </div>
+        </div>
+      </div>
 
       {searchParams?.denied && (
         <div className="mb-4 rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-700">

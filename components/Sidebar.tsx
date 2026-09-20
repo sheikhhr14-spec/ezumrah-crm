@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import NotificationBell from '@/components/notification-bell';
 import { logout } from '@/lib/auth-actions';
 import { MODULES, allowedModules } from '@/lib/data';
 
@@ -10,13 +11,14 @@ const ROUTE: Record<string, string> = {
   transportsales: 'transport-sales',
   umrahsales: 'umrah-sales',
   settings: 'settings',
+  billing: 'billing',
   hajjsales: 'hajj-sales',
   toursales: 'tour-sales',
 };
 
-export default function Sidebar({ agencyName, userName, isAdmin, role, accentColor, label, profile }: {
+export default function Sidebar({ agencyName, userName, isAdmin, role, accentColor, label, profile, notifications = [] }: {
   agencyName: string; userName: string; isAdmin?: boolean; role?: string; accentColor?: string | null; label?: string | null;
-  profile?: any;
+  profile?: any; notifications?: { id: string; title: string; body: string | null; href: string | null; read: boolean; created_at: string }[];
 }) {
   const allowed = allowedModules(profile, role || 'staff');
   const NAV = MODULES.filter((m) => allowed.includes(m.key));
@@ -27,7 +29,7 @@ export default function Sidebar({ agencyName, userName, isAdmin, role, accentCol
     { label: 'Finance', keys: ['invoices', 'accounts', 'reports'] },
     { label: 'People', keys: ['hr'] },
     { label: 'Support', keys: ['support'] },
-    { label: 'System', keys: ['settings'] },
+    { label: 'System', keys: ['settings', 'billing'] },
   ];
 
   return (
@@ -42,6 +44,7 @@ export default function Sidebar({ agencyName, userName, isAdmin, role, accentCol
             {label && <span className="badge accent-soft-bg accent">{label}</span>}
           </p>
         </div>
+        <NotificationBell items={notifications} />
       </div>
       <nav className="flex-1 space-y-1 overflow-y-auto p-3">
         <Link href="/dashboard"

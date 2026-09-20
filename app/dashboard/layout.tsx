@@ -1,5 +1,6 @@
 import Sidebar from '@/components/Sidebar';
 import { requireActiveAgency } from '@/lib/data';
+import { syncNotifications } from '@/lib/crm-actions';
 import { createClient } from '@/lib/supabase/server';
 
 export default async function DashboardLayout({ children }: { children: React.ReactNode }) {
@@ -16,6 +17,9 @@ export default async function DashboardLayout({ children }: { children: React.Re
 
   const latest = announcements?.[0];
 
+  let notifications: any[] = [];
+  try { notifications = await syncNotifications(); } catch { /* bell is non-critical */ }
+
   return (
     <div className="flex min-h-screen">
       <Sidebar
@@ -26,6 +30,7 @@ export default async function DashboardLayout({ children }: { children: React.Re
         accentColor={agency.brand_color}
         label={agency.label}
         profile={ctx.profile}
+        notifications={notifications}
       />
       <main className="flex-1 overflow-x-auto bg-slate-50 p-8">
         {latest && (
