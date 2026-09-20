@@ -33,9 +33,11 @@ export default async function ServiceSaleView({ table, id }: { table: string; id
   if (!rec) notFound();
   let legs: any[] = [];
   if (table === 'hotel_sales') {
-    ({ data: legs } = await db.from('hotel_sale_stays').select('*').eq('hotel_sale_id', rec.id).order('created_at'));
+    const r1 = await db.from('hotel_sale_stays').select('*').eq('hotel_sale_id', rec.id).order('created_at');
+    legs = r1.data || [];
   } else if (table === 'transport_sales') {
-    ({ data: legs } = await db.from('transport_sale_legs').select('*').eq('transport_sale_id', rec.id).order('leg_no'));
+    const r2 = await db.from('transport_sale_legs').select('*').eq('transport_sale_id', rec.id).order('leg_no');
+    legs = r2.data || [];
   }
   const [{ data: customers }, { data: docs }] = await Promise.all([
     db.from('customers').select('id, full_name').eq('agency_id', aid).order('full_name').limit(500),
