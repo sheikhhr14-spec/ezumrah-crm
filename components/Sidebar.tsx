@@ -27,7 +27,7 @@ export default function Sidebar({ agencyName, userName, isAdmin, role, accentCol
     { label: 'Finance', keys: ['invoices', 'accounts', 'reports'] },
     { label: 'People', keys: ['hr'] },
     { label: 'Support', keys: ['support'] },
-    { label: 'System', keys: ['settings', 'billing'] },
+    { label: 'System', keys: ['vault', 'settings', 'billing'] },
   ];
 
   return (

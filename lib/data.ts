@@ -59,6 +59,7 @@ export const MODULES: { key: string; label: string; icon: string; min: 'staff' |
   { key: 'visasales', label: 'Visa Sales', icon: '🛂', min: 'staff' },
   { key: 'transportsales', label: 'Transport & Ziyarat', icon: '🚌', min: 'staff' },
   { key: 'umrahsales', label: 'Umrah Sales', icon: '🕋', min: 'staff' },
+  { key: 'vault', label: 'Credential Vault', icon: '🔐', min: 'manager' },
   { key: 'settings', label: 'Settings', icon: '⚙️', min: 'owner' },
   { key: 'billing', label: 'Billing', icon: '💳', min: 'owner' },
   { key: 'hajjsales', label: 'Hajj Sales', icon: '🕌', min: 'staff' },
