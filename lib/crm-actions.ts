@@ -16,6 +16,11 @@ async function agencyId() {
   return ctx.profile.agency_id;
 }
 
+async function currentProfileId(): Promise<string | null> {
+  const ctx = await requireActiveAgency();
+  return ctx.profile.id || null;
+}
+
 // ---------- CUSTOMERS ----------
 export async function createCustomer(fd: FormData) {
   const db = createAdminClient();
@@ -27,7 +32,7 @@ export async function createCustomer(fd: FormData) {
     whatsapp: str(fd, 'whatsapp'),
     country: str(fd, 'country'),
     passport_no: str(fd, 'passport_no'),
-    notes: str(fd, 'notes'), created_by: ctx.profile.id,});
+    notes: str(fd, 'notes'), created_by: await currentProfileId(),});
   revalidatePath('/dashboard/customers');
 }
 
@@ -332,7 +337,7 @@ export async function createLead(fd: FormData) {
     interest: str(fd, 'interest') || 'umrah',
     budget: num(fd, 'budget'),
     assigned_to: str(fd, 'assigned_to'),
-    notes: str(fd, 'notes'), created_by: ctx.profile.id,});
+    notes: str(fd, 'notes'), created_by: await currentProfileId(),});
   revalidatePath('/dashboard/leads');
 }
 
@@ -705,6 +710,7 @@ export async function updateSale(fd: FormData) {
   if (!rec || rec.agency_id !== aid) throw new Error('Record not found in your agency.');
   const amountPaid = num(fd, 'amount_paid');
   const adminFee = num(fd, 'admin_fee');
+  const taxV = num(fd, 'tax');
   const patch: Record<string, unknown> = {
     admin_fee: adminFee, tax: taxV, amount_paid: amountPaid,
     discount: num(fd, 'discount'), commission: num(fd, 'commission'),
