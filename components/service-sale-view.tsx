@@ -31,6 +31,12 @@ export default async function ServiceSaleView({ table, id }: { table: string; id
   const { data: rec } = await db.from(table).select('*, customers(full_name, phone, whatsapp, country, passport_no)')
     .eq('id', id).eq('agency_id', aid).single();
   if (!rec) notFound();
+  let legs: any[] = [];
+  if (table === 'hotel_sales') {
+    ({ data: legs } = await db.from('hotel_sale_stays').select('*').eq('hotel_sale_id', rec.id).order('created_at'));
+  } else if (table === 'transport_sales') {
+    ({ data: legs } = await db.from('transport_sale_legs').select('*').eq('transport_sale_id', rec.id).order('leg_no'));
+  }
   const [{ data: customers }, { data: docs }] = await Promise.all([
     db.from('customers').select('id, full_name').eq('agency_id', aid).order('full_name').limit(500),
     db.from('sale_documents').select('*').eq('sale_table', table).eq('sale_id', rec.id).order('created_at'),
@@ -38,7 +44,7 @@ export default async function ServiceSaleView({ table, id }: { table: string; id
 
   const discount = Number(rec.discount || 0);
   const commission = Number(rec.commission || 0);
-  const grand = Number(rec.sale_price) + Number(rec.admin_fee) - discount;
+  const grand = Number(rec.sale_price) + Number(rec.admin_fee) + Number(rec.tax || 0) - discount;
   const paid = Number(rec.amount_paid);
   const balance = grand - paid;
   const profit = grand + commission - Number(rec.cost);
@@ -153,6 +159,22 @@ export default async function ServiceSaleView({ table, id }: { table: string; id
       </form>
 
       <SaleDocuments table={table} saleId={rec.id} docs={docs || []} />
+      {legs && legs.length > 0 && (
+        <div className="card mt-4 p-4">
+          <p className="mb-2 text-sm font-bold text-slate-900">{table === 'hotel_sales' ? `More hotels in this sale (${legs.length})` : `More trips / Ziyarat in this sale (${legs.length})`}</p>
+          <div className="space-y-2">
+            {legs.map((l: any) => (
+              <div key={l.id} className="rounded-lg bg-slate-50 p-3 text-xs text-slate-600">
+                {table === 'hotel_sales' ? (
+                  <p><b className="text-slate-900">{l.hotel_name}</b>{l.city ? ` · ${l.city}` : ''}{l.nights ? ` · ${l.nights} night(s)` : ''}{l.check_in ? ` · ${l.check_in} → ${l.check_out}` : ''}{l.room_type ? ` · ${l.room_type}` : ''}{l.rooms_count ? ` · ${l.rooms_count} room(s)` : ''}{l.meal_plan ? ` · ${l.meal_plan}` : ''} · <b>{money(Number(l.sale_price), cur)}</b>{Number(l.cost) ? ` (cost ${money(Number(l.cost), cur)})` : ''}</p>
+                ) : (
+                  <p><b className="text-slate-900">{l.from_location} → {l.to_location}</b>{l.transport_date ? ` · ${l.transport_date}${l.transport_time ? ' ' + l.transport_time : ''}` : ''}{l.vehicle_type ? ` · ${l.vehicle_type}` : ''}{l.seats ? ` · ${l.seats} seats` : ''}{l.driver_name ? ` · driver: ${l.driver_name}` : ''} · <b>{money(Number(l.sale_price), cur)}</b>{Number(l.cost) ? ` (cost ${money(Number(l.cost), cur)})` : ''}</p>
+                )}
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
     </div>
   );
 }
