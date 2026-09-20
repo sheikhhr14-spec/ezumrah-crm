@@ -107,7 +107,8 @@ export async function GET(req: Request) {
     };
     items.push({ desc: descMap[type], qty: '1', unit: '', amount: Number(row.sale_price) || 0 });
     if (Number(row.admin_fee)) items.push({ desc: 'Admin / service fee', qty: '1', unit: '', amount: Number(row.admin_fee) });
-    total = Number(row.sale_price) + Number(row.admin_fee);
+    if (Number(row.discount)) items.push({ desc: 'Discount', qty: '1', unit: '', amount: -Number(row.discount) });
+    total = Number(row.sale_price) + Number(row.admin_fee) - (Number(row.discount) || 0);
     paid = Number(row.amount_paid) || 0;
   } else if (type === 'flightsale') {
     const fs = await one('flight_sales');
@@ -120,7 +121,8 @@ export async function GET(req: Request) {
       items.push({ desc: `Leg ${l.leg_no}: ${l.airline || ''} ${l.flight_no || ''} ${l.from_airport || ''} -> ${l.to_airport || ''} (${fs.trip_kind}, ${fs.pax || 1} pax)`, qty: String(fs.pax || 1), unit: '', amount: (Number(l.fare) + Number(l.tax)) * (fs.pax || 1) * 0 + Number(l.fare) + Number(l.tax) });
     }
     if (Number(fs.admin_fee)) items.push({ desc: 'Admin / service fee', qty: '1', unit: '', amount: Number(fs.admin_fee) });
-    total = Number(fs.sale_total) + Number(fs.admin_fee);
+    if (Number(fs.discount)) items.push({ desc: 'Discount', qty: '1', unit: '', amount: -Number(fs.discount) });
+    total = Number(fs.sale_total) + Number(fs.admin_fee) - (Number(fs.discount) || 0);
     paid = Number(fs.amount_paid) || 0;
   } else if (type === 'package') {
     const p = await one('packages');

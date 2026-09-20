@@ -34,10 +34,12 @@ export default async function ServiceSaleView({ table, id }: { table: string; id
     db.from('sale_documents').select('*').eq('sale_table', table).eq('sale_id', rec.id).order('created_at'),
   ]);
 
-  const grand = Number(rec.sale_price) + Number(rec.admin_fee);
+  const discount = Number(rec.discount || 0);
+  const commission = Number(rec.commission || 0);
+  const grand = Number(rec.sale_price) + Number(rec.admin_fee) - discount;
   const paid = Number(rec.amount_paid);
   const balance = grand - paid;
-  const profit = grand - Number(rec.cost);
+  const profit = grand + commission - Number(rec.cost);
 
   return (
     <div>
@@ -45,7 +47,7 @@ export default async function ServiceSaleView({ table, id }: { table: string; id
       <div className="mt-2 mb-6 flex flex-wrap items-center justify-between gap-3">
         <div>
           <h1 className="text-2xl font-bold text-slate-900">{rec.ref}</h1>
-          <p className="text-sm text-slate-500">{cfg.desc(rec)}</p>
+          <p className="text-sm text-slate-500">{cfg.desc(rec)}{rec.sold_by ? ` · sold by ${rec.sold_by}` : ''}</p>
         </div>
         <div className="flex items-center gap-3">
           <a className="btn-primary" href={`/api/invoice-pdf?type=${PDF_TYPE[table]}&id=${rec.id}`}>⬇ Download PDF invoice</a>
@@ -62,14 +64,16 @@ export default async function ServiceSaleView({ table, id }: { table: string; id
         {[
           { l: 'Sale price', v: `$${Number(rec.sale_price).toFixed(2)}` },
           { l: 'Admin fee', v: `$${Number(rec.admin_fee).toFixed(2)}` },
+          { l: 'Discount', v: `-$${discount.toFixed(2)}`, red: discount > 0, hide: discount <= 0 },
+          { l: 'Commission (+)', v: `+$${commission.toFixed(2)}`, green: true, hide: commission <= 0 },
           { l: 'Grand total', v: `$${grand.toFixed(2)}` },
           { l: 'Paid', v: `$${paid.toFixed(2)}` },
           { l: 'Balance', v: `$${balance.toFixed(2)}`, red: balance > 0 },
           { l: `Profit (cost $${Number(rec.cost).toFixed(2)})`, v: `$${profit.toFixed(2)}`, gold: true },
-        ].map((k) => (
+        ].filter((k) => !k.hide).map((k) => (
           <div key={k.l} className={`card p-4 ${k.gold ? 'accent-soft-bg' : ''}`}>
             <p className="text-xs text-slate-400">{k.l}</p>
-            <p className={`mt-1 text-lg font-bold ${k.red ? 'text-red-500' : 'text-slate-900'}`}>{k.v}</p>
+            <p className={`mt-1 text-lg font-bold ${k.red ? 'text-red-500' : k.green ? 'text-emerald-600' : 'text-slate-900'}`}>{k.v}</p>
           </div>
         ))}
       </div>

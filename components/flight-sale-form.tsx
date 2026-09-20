@@ -10,6 +10,8 @@ export default function FlightSaleForm({ customers }: { customers: { id: string;
   const [kind, setKind] = useState('oneway');
   const [legs, setLegs] = useState<Leg[]>([emptyLeg()]);
   const [adminFee, setAdminFee] = useState('');
+  const [discount, setDiscount] = useState('');
+  const [commission, setCommission] = useState('');
   const [paid, setPaid] = useState('');
   const [useExisting, setUseExisting] = useState(false);
 
@@ -23,8 +25,8 @@ export default function FlightSaleForm({ customers }: { customers: { id: string;
   const n = (v: string) => Number(v) || 0;
   const saleTotal = legs.reduce((s, l) => s + n(l.fare) + n(l.tax), 0);
   const costTotal = legs.reduce((s, l) => s + n(l.cost), 0);
-  const grand = saleTotal + n(adminFee);
-  const profit = grand - costTotal;
+  const grand = saleTotal + n(adminFee) - n(discount);
+  const profit = grand + n(commission) - costTotal;
   const balance = grand - n(paid);
   const pStatus = n(paid) <= 0 ? 'Unpaid' : n(paid) >= grand ? 'Fully paid' : 'Partial';
 
@@ -68,6 +70,16 @@ export default function FlightSaleForm({ customers }: { customers: { id: string;
         <L label="Passengers" name="pax" type="number" />
         <L label="PNR / airline booking ref" name="pnr" ph="XYZ123" />
         <L label="Ticket numbers" name="ticket_numbers" ph="comma separated" />
+        <L label="Supplier / consolidator" name="supplier" ph="GDS / consolidator name" />
+        <L label="Ticket issue date" name="issue_date" type="date" />
+        <label className="block"><span className="text-xs font-semibold text-slate-600">Refundable?</span>
+          <select className="input" name="refundable" defaultValue="non-refundable">
+            <option value="non-refundable">Non-refundable</option>
+            <option value="refundable">Refundable</option>
+            <option value="partially refundable">Partially refundable</option>
+          </select>
+        </label>
+        <L label="Payment due date" name="due_date" type="date" />
       </div>
 
       {/* legs */}
@@ -120,6 +132,14 @@ export default function FlightSaleForm({ customers }: { customers: { id: string;
             <input className="input" name="admin_fee" type="number" step="0.01" value={adminFee}
               onChange={(e) => setAdminFee(e.target.value)} />
           </label>
+          <label className="block"><span className="text-xs font-semibold text-slate-600">Discount (-)</span>
+            <input className="input" name="discount" type="number" step="0.01" value={discount}
+              onChange={(e) => setDiscount(e.target.value)} />
+          </label>
+          <label className="block"><span className="text-xs font-semibold text-slate-600">Commission (from supplier, +)</span>
+            <input className="input" name="commission" type="number" step="0.01" value={commission}
+              onChange={(e) => setCommission(e.target.value)} />
+          </label>
           <label className="block"><span className="text-xs font-semibold text-slate-600">Amount paid</span>
             <input className="input" name="amount_paid" type="number" step="0.01" value={paid}
               onChange={(e) => setPaid(e.target.value)} />
@@ -146,7 +166,9 @@ export default function FlightSaleForm({ customers }: { customers: { id: string;
         <div className="mt-4 grid gap-3 text-sm sm:grid-cols-5">
           <div className="rounded-lg bg-slate-50 p-3"><p className="text-xs text-slate-400">Sale total</p><p className="font-bold">${saleTotal.toFixed(2)}</p></div>
           <div className="rounded-lg bg-slate-50 p-3"><p className="text-xs text-slate-400">Admin fee</p><p className="font-bold">${n(adminFee).toFixed(2)}</p></div>
-          <div className="rounded-lg bg-slate-50 p-3"><p className="text-xs text-slate-400">Grand total</p><p className="font-bold">${grand.toFixed(2)}</p></div>
+          <div className="rounded-lg bg-slate-50 p-3"><p className="text-xs text-slate-400">Discount</p><p className="font-bold text-red-500">-${n(discount).toFixed(2)}</p></div>
+          <div className="rounded-lg bg-slate-50 p-3"><p className="text-xs text-slate-400">Supplier commission</p><p className="font-bold text-emerald-600">+${n(commission).toFixed(2)}</p></div>
+          <div className="rounded-lg bg-slate-50 p-3"><p className="text-xs text-slate-400">Grand total (after discount)</p><p className="font-bold">${grand.toFixed(2)}</p></div>
           <div className="rounded-lg bg-slate-50 p-3"><p className="text-xs text-slate-400">Balance</p><p className={`font-bold ${balance > 0 ? 'text-red-500' : 'text-emerald-600'}`}>${balance.toFixed(2)}</p></div>
           <div className="rounded-lg accent-soft-bg p-3"><p className="text-xs text-slate-400">Profit (after cost ${costTotal.toFixed(2)})</p><p className="font-bold accent">${profit.toFixed(2)}</p></div>
         </div>

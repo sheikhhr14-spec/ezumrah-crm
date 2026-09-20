@@ -577,23 +577,24 @@ export async function updateRecord(fd: FormData) {
 // ================= FLIGHT SALES (standalone, multi-leg) =================
 async function recomputeSale(db: any, aid: string, saleId: string) {
   const { data: legs } = await db.from('flight_sale_legs').select('fare, tax, cost').eq('agency_id', aid).eq('flight_sale_id', saleId);
-  const { data: sale } = await db.from('flight_sales').select('admin_fee, amount_paid').eq('agency_id', aid).eq('id', saleId).single();
+  const { data: sale } = await db.from('flight_sales').select('admin_fee, amount_paid, discount, commission').eq('agency_id', aid).eq('id', saleId).single();
   if (!sale) return;
   const saleTotal = (legs || []).reduce((s: number, l: any) => s + Number(l.fare) + Number(l.tax), 0);
   const costTotal = (legs || []).reduce((s: number, l: any) => s + Number(l.cost), 0);
-  const grand = saleTotal + Number(sale.admin_fee);
+  const grand = saleTotal + Number(sale.admin_fee) - Number(sale.discount || 0);
   const paid = Number(sale.amount_paid);
   const paymentStatus = paid <= 0 ? 'unpaid' : paid >= grand ? 'full' : 'partial';
   await db.from('flight_sales').update({
     sale_total: saleTotal, cost_total: costTotal, payment_status: paymentStatus,
-    balance: grand - paid, profit: grand - costTotal,
+    balance: grand - paid, profit: grand + Number(sale.commission || 0) - costTotal,
     updated_at: new Date().toISOString(),
   }).eq('id', saleId);
 }
 
 export async function createFlightSale(fd: FormData) {
   const db = createAdminClient();
-  const aid = await agencyId();
+  const ctx = await requireActiveAgency();
+  const aid = ctx.profile.agency_id!;
   let customerId = String(fd.get('existing_customer_id')) || '';
   if (!customerId) {
     const name = str(fd, 'customer_name');
@@ -606,6 +607,8 @@ export async function createFlightSale(fd: FormData) {
     }
   }
   const adminFee = num(fd, 'admin_fee');
+  const discount = num(fd, 'discount');
+  const commission = num(fd, 'commission');
   const amountPaid = num(fd, 'amount_paid');
   const legs: Record<string, unknown>[] = [];
   for (let i = 0; i < 20; i++) {
@@ -623,7 +626,7 @@ export async function createFlightSale(fd: FormData) {
   }
   const saleTotal = legs.reduce((s, l) => s + Number(l.fare) + Number(l.tax), 0);
   const costTotal = legs.reduce((s, l) => s + Number(l.cost), 0);
-  const grand = saleTotal + adminFee;
+  const grand = saleTotal + adminFee - discount;
   const paymentStatus = amountPaid <= 0 ? 'unpaid' : amountPaid >= grand ? 'full' : 'partial';
   const { count } = await db.from('flight_sales').select('id', { count: 'exact', head: true }).eq('agency_id', aid);
   const ref = `FS-${new Date().getFullYear()}-${String((count || 0) + 1).padStart(4, '0')}`;
@@ -631,11 +634,15 @@ export async function createFlightSale(fd: FormData) {
     agency_id: aid, customer_id: customerId || null, ref,
     trip_kind: str(fd, 'trip_kind') || 'oneway', pax: num(fd, 'pax', 1),
     pnr: str(fd, 'pnr'), ticket_numbers: str(fd, 'ticket_numbers'),
+    supplier: str(fd, 'supplier'), issue_date: str(fd, 'issue_date') || null,
+    refundable: str(fd, 'refundable'), due_date: str(fd, 'due_date') || null,
+    sold_by: ctx.profile.full_name || null,
     sale_total: saleTotal, cost_total: costTotal, admin_fee: adminFee,
+    discount: discount, commission: commission,
     amount_paid: amountPaid, payment_method: str(fd, 'payment_method'),
     payment_status: paymentStatus, notes: str(fd, 'notes'),
     status: str(fd, 'status') || 'confirmed',
-    balance: grand - amountPaid, profit: grand - costTotal,
+    balance: grand - amountPaid, profit: grand + commission - costTotal,
   }).select('id').single();
   if (sale && legs.length) {
     await db.from('flight_sale_legs').insert(legs.map((l) => ({ ...l, agency_id: aid, flight_sale_id: sale.id })));
@@ -653,6 +660,8 @@ export async function updateSale(fd: FormData) {
   const adminFee = num(fd, 'admin_fee');
   const patch: Record<string, unknown> = {
     admin_fee: adminFee, amount_paid: amountPaid,
+    discount: num(fd, 'discount'), commission: num(fd, 'commission'),
+    due_date: str(fd, 'due_date') || null,
     payment_method: str(fd, 'payment_method'), notes: str(fd, 'notes'),
     status: str(fd, 'status') || 'confirmed',
     customer_id: String(fd.get('customer_id')) || null,
@@ -740,7 +749,8 @@ export async function createServiceSale(fd: FormData) {
   const cfg = SERVICE_SALES[table];
   if (!cfg) throw new Error('Unknown service type.');
   const db = createAdminClient();
-  const aid = await agencyId();
+  const ctx = await requireActiveAgency();
+  const aid = ctx.profile.agency_id!;
   const customerId = await saleCustomer(db, aid, fd);
   const patch: Record<string, unknown> = {};
   for (const f of cfg.fields) patch[f.name] = f.type === 'number' ? num(fd, f.name) : (str(fd, f.name) || null);
@@ -750,18 +760,23 @@ export async function createServiceSale(fd: FormData) {
     if (n > 0) patch.nights = n;
   }
   const adminFee = num(fd, 'admin_fee');
+  const discount = num(fd, 'discount');
+  const commission = num(fd, 'commission');
   const amountPaid = num(fd, 'amount_paid');
   const salePrice = num(fd, 'sale_price');
-  const grand = salePrice + adminFee;
+  const cost = num(fd, 'cost');
+  const grand = salePrice + adminFee - discount;
   const { count } = await db.from(table).select('id', { count: 'exact', head: true }).eq('agency_id', aid);
   const ref = `${cfg.prefix}-${new Date().getFullYear()}-${String((count || 0) + 1).padStart(4, '0')}`;
   await db.from(table).insert({
     ...patch, agency_id: aid, customer_id: customerId || null, ref,
-    sale_price: salePrice, cost: num(fd, 'cost'), admin_fee: adminFee,
+    sale_price: salePrice, cost: cost, admin_fee: adminFee,
+    discount: discount, commission: commission,
+    sold_by: ctx.profile.full_name || null,
     amount_paid: amountPaid, payment_method: str(fd, 'payment_method'),
     payment_status: saleStatus(grand, amountPaid), notes: str(fd, 'notes'),
     status: str(fd, 'status') || 'confirmed',
-    balance: grand - amountPaid, profit: grand - num(fd, 'cost'),
+    balance: grand - amountPaid, profit: grand + commission - cost,
   });
   revalidatePath(`/dashboard/${cfg.route}`);
 }
@@ -793,15 +808,19 @@ export async function updateServiceSale(fd: FormData) {
   const salePrice = fd.get('sale_price') !== null ? num(fd, 'sale_price') : Number(rec.sale_price);
   const cost = fd.get('cost') !== null ? num(fd, 'cost') : Number(rec.cost);
   const adminFee = fd.get('admin_fee') !== null ? num(fd, 'admin_fee') : Number(rec.admin_fee);
+  const discount = fd.get('discount') !== null ? num(fd, 'discount') : Number(rec.discount || 0);
+  const commission = fd.get('commission') !== null ? num(fd, 'commission') : Number(rec.commission || 0);
   const amountPaid = fd.get('amount_paid') !== null ? num(fd, 'amount_paid') : Number(rec.amount_paid);
   if (fd.get('payment_method') !== null) patch.payment_method = str(fd, 'payment_method');
   if (fd.get('notes') !== null) patch.notes = str(fd, 'notes');
   if (String(fd.get('status'))) patch.status = String(fd.get('status'));
   if (String(fd.get('customer_id'))) patch.customer_id = String(fd.get('customer_id'));
   patch.sale_price = salePrice; patch.cost = cost; patch.admin_fee = adminFee; patch.amount_paid = amountPaid;
-  patch.payment_status = saleStatus(salePrice + adminFee, amountPaid); // always auto
-  patch.balance = (salePrice + adminFee) - amountPaid;
-  patch.profit = (salePrice + adminFee) - cost;
+  patch.discount = discount; patch.commission = commission;
+  const grand = salePrice + adminFee - discount; // customer owes this
+  patch.payment_status = saleStatus(grand, amountPaid); // always auto
+  patch.balance = grand - amountPaid;
+  patch.profit = grand + commission - cost;
   await db.from(table).update(patch).eq('id', id);
   revalidatePath(`/dashboard/${cfg.route}`);
   revalidatePath(`/dashboard/${cfg.route}/${id}`);

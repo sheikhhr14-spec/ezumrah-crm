@@ -28,10 +28,12 @@ export default async function FlightSaleDetail({ params }: { params: { id: strin
     db.from('sale_documents').select('*').eq('sale_table', 'flight_sales').eq('sale_id', sale.id).order('created_at'),
   ]);
 
-  const grand = Number(sale.sale_total) + Number(sale.admin_fee);
+  const discount = Number(sale.discount || 0);
+  const commission = Number(sale.commission || 0);
+  const grand = Number(sale.sale_total) + Number(sale.admin_fee) - discount;
   const paid = Number(sale.amount_paid);
   const balance = grand - paid;
-  const profit = grand - Number(sale.cost_total);
+  const profit = grand + commission - Number(sale.cost_total);
   const dt = (v: string | null) => v ? new Date(v).toISOString().slice(0, 16) : '';
 
   return (
@@ -42,6 +44,7 @@ export default async function FlightSaleDetail({ params }: { params: { id: strin
           <h1 className="text-2xl font-bold text-slate-900">{sale.ref}</h1>
           <p className="text-sm text-slate-500">
             {sale.customers?.full_name || '—'} · {(sale.trip_kind || '').replace('multicity', 'multi-city')} · {sale.pax} pax
+            {sale.supplier ? ` · via ${sale.supplier}` : ''}{sale.refundable ? ` · ${sale.refundable}` : ''}{sale.sold_by ? ` · sold by ${sale.sold_by}` : ''}
           </p>
         </div>
         <div className="flex items-center gap-3">
@@ -59,14 +62,16 @@ export default async function FlightSaleDetail({ params }: { params: { id: strin
         {[
           { l: 'Legs sale total', v: `$${Number(sale.sale_total).toFixed(2)}` },
           { l: 'Admin fee', v: `$${Number(sale.admin_fee).toFixed(2)}` },
+          { l: 'Discount', v: `-$${discount.toFixed(2)}`, red: true, hide: discount <= 0 },
+          { l: 'Supplier commission', v: `+$${commission.toFixed(2)}`, green: true, hide: commission <= 0 },
           { l: 'Grand total', v: `$${grand.toFixed(2)}` },
           { l: 'Paid', v: `$${paid.toFixed(2)}` },
           { l: 'Balance', v: `$${balance.toFixed(2)}`, red: balance > 0 },
           { l: 'Profit (cost $' + Number(sale.cost_total).toFixed(2) + ')', v: `$${profit.toFixed(2)}`, gold: true },
-        ].map((k) => (
+        ].filter((k) => !k.hide).map((k) => (
           <div key={k.l} className={`card p-4 ${k.gold ? 'accent-soft-bg' : ''}`}>
             <p className="text-xs text-slate-400">{k.l}</p>
-            <p className={`mt-1 text-lg font-bold ${k.red ? 'text-red-500' : 'text-slate-900'}`}>{k.v}</p>
+            <p className={`mt-1 text-lg font-bold ${k.red ? 'text-red-500' : k.green ? 'text-emerald-600' : 'text-slate-900'}`}>{k.v}</p>
           </div>
         ))}
       </div>
@@ -141,7 +146,10 @@ export default async function FlightSaleDetail({ params }: { params: { id: strin
       <form action={updateSale} className="card grid gap-4 p-5 sm:grid-cols-4">
         <input type="hidden" name="id" value={sale.id} />
         <L label="Admin fee" name="admin_fee" def={sale.admin_fee} type="number" />
+        <L label="Discount" name="discount" def={sale.discount} type="number" />
+        <L label="Commission (from supplier)" name="commission" def={sale.commission} type="number" />
         <L label="Amount paid" name="amount_paid" def={sale.amount_paid} type="number" />
+        <L label="Payment due date" name="due_date" def={sale.due_date ? String(sale.due_date).slice(0, 10) : ''} type="date" />
         <label className="block"><span className="text-xs text-slate-500">Payment method</span>
           <select className="input" name="payment_method" defaultValue={sale.payment_method || ''}>
             <option value="">— none —</option>

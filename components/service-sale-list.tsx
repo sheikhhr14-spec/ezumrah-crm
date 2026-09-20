@@ -37,8 +37,9 @@ export default async function ServiceSaleList({ table, searchParams }: { table: 
 
       <Table head={['Ref', 'Customer', 'Details', 'Grand total', 'Paid', 'Balance', 'Profit', 'Status', 'Actions']}>
         {list.length ? list.map((r: any) => {
-          const grand = Number(r.sale_price) + Number(r.admin_fee);
+          const grand = Number(r.sale_price) + Number(r.admin_fee) - Number(r.discount || 0);
           const bal = grand - Number(r.amount_paid);
+          const overdue = bal > 0 && r.due_date && new Date(r.due_date) < new Date();
           return (
             <tr key={r.id} className="hover:bg-slate-50">
               <td className="px-4 py-2 font-semibold">
@@ -48,7 +49,7 @@ export default async function ServiceSaleList({ table, searchParams }: { table: 
               <td className="px-4 py-2">{cfg.desc(r)}</td>
               <td className="px-4 py-2 font-semibold">${grand.toFixed(2)}</td>
               <td className="px-4 py-2">${Number(r.amount_paid).toFixed(2)}</td>
-              <td className={`px-4 py-2 ${bal > 0 ? 'text-red-500' : 'text-emerald-600'}`}>${bal.toFixed(2)}</td>
+              <td className={`px-4 py-2 ${bal > 0 ? 'text-red-500' : 'text-emerald-600'}`}>${bal.toFixed(2)}{overdue ? ' ⚠' : ''}</td>
               <td className="px-4 py-2 font-semibold accent">${(grand - Number(r.cost)).toFixed(2)}</td>
               <td className="px-4 py-2"><StatusBadge status={r.payment_status} /></td>
               <td className="px-4 py-2"><div className="flex items-center gap-2">

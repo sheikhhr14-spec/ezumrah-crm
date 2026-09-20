@@ -18,8 +18,8 @@ export default async function FlightSalesPage({ searchParams }: { searchParams?:
   const list = (sales || []).filter((r: any) =>
     !q || JSON.stringify(r).toLowerCase().includes(q));
 
-  const tot = (r: any) => Number(r.sale_total) + Number(r.admin_fee);
-  const profit = (r: any) => tot(r) - Number(r.cost_total);
+  const tot = (r: any) => Number(r.sale_total) + Number(r.admin_fee) - Number(r.discount || 0);
+  const profit = (r: any) => tot(r) + Number(r.commission || 0) - Number(r.cost_total);
 
   return (
     <div>

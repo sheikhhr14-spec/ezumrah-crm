@@ -11,10 +11,10 @@ export default function ServiceSaleForm({
   const [dates, setDates] = useState({ ci: '', co: '' });
   const hasStay = fields.some((f) => f.name === 'check_in') && fields.some((f) => f.name === 'check_out');
   const nights = dates.ci && dates.co ? Math.round((new Date(dates.co).getTime() - new Date(dates.ci).getTime()) / 86400000) : null;
-  const [money, setMoney] = useState({ sale_price: '', cost: '', admin_fee: '', paid: '' });
+  const [money, setMoney] = useState({ sale_price: '', cost: '', admin_fee: '', discount: '', commission: '', paid: '' });
   const n = (v: string) => Number(v) || 0;
-  const grand = n(money.sale_price) + n(money.admin_fee);
-  const profit = grand - n(money.cost);
+  const grand = n(money.sale_price) + n(money.admin_fee) - n(money.discount);
+  const profit = grand + n(money.commission) - n(money.cost);
   const balance = grand - n(money.paid);
   const pStatus = n(money.paid) <= 0 ? 'Unpaid' : n(money.paid) >= grand ? 'Fully paid' : 'Partial';
 
@@ -73,6 +73,8 @@ export default function ServiceSaleForm({
           <M label="Sale price (to customer)" k="sale_price" money={money} set={set} />
           <M label="Cost (our price)" k="cost" money={money} set={set} />
           <M label="Admin fee" k="admin_fee" money={money} set={set} />
+          <M label="Discount (-)" k="discount" money={money} set={set} />
+          <M label="Commission (from supplier, +)" k="commission" money={money} set={set} />
           <M label="Amount paid" k="paid" money={money} set={set} />
           <label className="block"><span className="text-xs font-semibold text-slate-600">Payment method</span>
             <select className="input" name="payment_method">
