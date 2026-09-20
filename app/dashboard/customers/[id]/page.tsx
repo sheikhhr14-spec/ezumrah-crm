@@ -1,6 +1,8 @@
 import { createAdminClient } from '@/lib/supabase/admin';
 import { requireModule } from '@/lib/data';
 import { PageHeader, Table, Empty, StatusBadge } from '@/components/ui';
+import { updateRecord, deleteRecord } from '@/lib/crm-actions';
+import SubmitButton from '@/components/submit-button';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 
@@ -44,6 +46,30 @@ export default async function CustomerDetail({ params }: { params: { id: string 
         <div className="card p-5"><p className="text-sm text-slate-500">Bookings</p><p className="mt-1 text-2xl font-bold">{bookings?.length ?? 0}</p></div>
         <div className="card p-5"><p className="text-sm text-slate-500">Lifetime value</p><p className="mt-1 text-2xl font-bold">${totalValue.toLocaleString()}</p></div>
         <div className="card p-5"><p className="text-sm text-slate-500">Paid to date</p><p className="mt-1 text-2xl font-bold">${totalPaid.toLocaleString()}</p></div>
+      </div>
+
+      {/* edit customer */}
+      <div className="card mb-6 p-5">
+        <h2 className="mb-4 text-lg font-semibold">✏️ Edit customer</h2>
+        <form action={updateRecord} className="grid gap-4 sm:grid-cols-3">
+          <input type="hidden" name="table" value="customers" />
+          <input type="hidden" name="id" value={c.id} />
+          <label className="block"><span className="text-xs font-semibold text-slate-600">Full name</span><input className="input" name="full_name" defaultValue={c.full_name || ''} /></label>
+          <label className="block"><span className="text-xs font-semibold text-slate-600">Country</span><input className="input" name="country" defaultValue={c.country || ''} /></label>
+          <label className="block"><span className="text-xs font-semibold text-slate-600">Phone</span><input className="input" name="phone" defaultValue={c.phone || ''} /></label>
+          <label className="block"><span className="text-xs font-semibold text-slate-600">WhatsApp</span><input className="input" name="whatsapp" defaultValue={c.whatsapp || ''} /></label>
+          <label className="block"><span className="text-xs font-semibold text-slate-600">Email</span><input className="input" name="email" defaultValue={c.email || ''} /></label>
+          <label className="block"><span className="text-xs font-semibold text-slate-600">Passport no.</span><input className="input" name="passport_no" defaultValue={c.passport_no || ''} /></label>
+          <label className="block sm:col-span-3"><span className="text-xs font-semibold text-slate-600">Notes</span><input className="input" name="notes" defaultValue={c.notes || ''} /></label>
+          <div className="flex items-end gap-3">
+            <SubmitButton className="btn-primary px-4 py-2 text-xs">Save customer</SubmitButton>
+            <form action={deleteRecord}>
+              <input type="hidden" name="table" value="customers" />
+              <input type="hidden" name="id" value={c.id} />
+              <button className="btn-secondary px-4 py-2 text-xs text-red-500" type="submit">Delete customer</button>
+            </form>
+          </div>
+        </form>
       </div>
 
       <h2 className="mb-3 text-lg font-semibold">Bookings</h2>

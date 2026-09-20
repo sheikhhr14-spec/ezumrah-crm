@@ -282,8 +282,38 @@ export async function deleteRecord(fd: FormData) {
   const aid = await agencyId();
   const { data: rec } = await db.from(table).select('id, agency_id').eq('id', id).single();
   if (!rec || rec.agency_id !== aid) throw new Error('Record not found in your agency.');
+  await cleanupChildren(db, table, id);
   await db.from(table).delete().eq('id', id);
   revalidatePath(pathFor(table));
+}
+
+// removes child rows / storage files that belong to a record being deleted
+async function cleanupChildren(db: any, table: string, id: string) {
+  if (table === 'invoices') {
+    await db.from('invoice_items').delete().eq('invoice_id', id);
+  } else if (table === 'quotations') {
+    await db.from('quotation_items').delete().eq('quotation_id', id);
+  } else if (table === 'bookings') {
+    for (const t of ['flights', 'hotels', 'visas', 'transports']) {
+      await db.from(t).delete().eq('booking_id', id);
+    }
+  } else if (table === 'flight_sales') {
+    await db.from('flight_sale_legs').delete().eq('flight_sale_id', id);
+    await purgeSaleDocs(db, 'flight_sales', id);
+  } else if (['hotel_sales', 'visa_sales', 'transport_sales'].includes(table)) {
+    await purgeSaleDocs(db, table, id);
+  } else if (table === 'support_tickets') {
+    await db.from('support_ticket_replies').delete().eq('ticket_id', id);
+  }
+}
+
+async function purgeSaleDocs(db: any, saleTable: string, saleId: string) {
+  const { data: docs } = await db.from('sale_documents').select('storage_path')
+    .eq('sale_table', saleTable).eq('sale_id', saleId);
+  if (docs?.length) {
+    await db.storage.from('sale-documents').remove(docs.map((d: any) => d.storage_path));
+    await db.from('sale_documents').delete().eq('sale_table', saleTable).eq('sale_id', saleId);
+  }
 }
 
 // ---------- LEADS (sales pipeline) ----------
@@ -540,9 +570,11 @@ const EDITABLE: Record<string, string[]> = {
   hotel_sales: ['hotel_name', 'city', 'check_in', 'check_out', 'nights', 'room_type', 'rooms_count', 'meal_plan', 'confirmation_code', 'sale_price', 'cost', 'admin_fee', 'amount_paid', 'payment_method', 'notes', 'status', 'customer_id'],
   visa_sales: ['visa_type', 'application_date', 'visa_no', 'sale_price', 'cost', 'admin_fee', 'amount_paid', 'payment_method', 'notes', 'status', 'customer_id'],
   transport_sales: ['transport_type', 'from_location', 'to_location', 'transport_date', 'transport_time', 'vehicle_type', 'seats', 'driver_name', 'driver_phone', 'sale_price', 'cost', 'admin_fee', 'amount_paid', 'payment_method', 'notes', 'status', 'customer_id'],
+  support_tickets: ['subject', 'priority', 'status'],
 };
 
 function pathFor(table: string): string {
+  if (table === 'support_tickets') return '/dashboard/support';
   if (table === 'employees') return '/dashboard/hr';
   if (table === 'leaves') return '/dashboard/hr/leaves';
   if (table === 'expenses' || table === 'payments') return '/dashboard/accounts';

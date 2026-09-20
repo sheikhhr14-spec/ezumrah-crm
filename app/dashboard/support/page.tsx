@@ -1,6 +1,8 @@
 import { createClient } from '@/lib/supabase/server';
 import { requireModule } from '@/lib/data';
 import { createTenantTicket, replyTenantTicket } from '@/lib/support-actions';
+import { updateRecord, deleteRecord } from '@/lib/crm-actions';
+import RowEdit from '@/components/row-edit';
 import { PageHeader, StatusBadge, Empty, AddPanel, Field } from '@/components/ui';
 
 const PRIO: Record<string, string> = {

@@ -1,6 +1,8 @@
 import { createAdminClient } from '@/lib/supabase/admin';
 import { requireModule } from '@/lib/data';
-import { updateBookingStatus, addFlight, addHotel, addVisa, addTransport } from '@/lib/crm-actions';
+import { updateBookingStatus, addFlight, addHotel, addVisa, addTransport, updateRecord, deleteRecord } from '@/lib/crm-actions';
+import RowEdit from '@/components/row-edit';
+import SubmitButton from '@/components/submit-button';
 import { Table, Empty, StatusBadge, AddPanel, Field } from '@/components/ui';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
@@ -62,6 +64,40 @@ export default async function BookingDetail({ params }: { params: { id: string }
         <div><p className="text-xs uppercase text-slate-400">Country</p><p className="mt-1 font-semibold">{c?.country || '—'}</p></div>
       </div>
 
+      {/* edit booking */}
+      <Section title="✏️ Edit booking">
+        <form action={updateRecord} className="grid gap-4 sm:grid-cols-3">
+          <input type="hidden" name="table" value="bookings" />
+          <input type="hidden" name="id" value={booking.id} />
+          <Field label="Package name"><input className="input" name="package_name" defaultValue={booking.package_name || ''} /></Field>
+          <Field label="Trip type">
+            <select className="input" name="trip_type" defaultValue={booking.trip_type || 'umrah'}>
+              {['umrah', 'hajj', 'ziyarah', 'holiday'].map((t) => <option key={t} value={t}>{t}</option>)}
+            </select>
+          </Field>
+          <Field label="Pilgrims"><input className="input" name="pilgrims_count" type="number" defaultValue={booking.pilgrims_count || 1} /></Field>
+          <Field label="Departure"><input className="input" name="departure_date" type="date" defaultValue={booking.departure_date || ''} /></Field>
+          <Field label="Return"><input className="input" name="return_date" type="date" defaultValue={booking.return_date || ''} /></Field>
+          <Field label="Currency"><input className="input" name="currency" defaultValue={booking.currency || 'USD'} /></Field>
+          <Field label="Total amount"><input className="input" name="total_amount" type="number" step="0.01" defaultValue={booking.total_amount || ''} /></Field>
+          <Field label="Paid amount"><input className="input" name="paid_amount" type="number" step="0.01" defaultValue={booking.paid_amount || ''} /></Field>
+          <Field label="Status">
+            <select className="input" name="status" defaultValue={booking.status}>
+              {['pending', 'confirmed', 'completed', 'cancelled'].map((s) => <option key={s} value={s}>{s}</option>)}
+            </select>
+          </Field>
+          <Field label="Notes"><input className="input" name="notes" defaultValue={booking.notes || ''} /></Field>
+          <div className="flex items-end gap-3">
+            <SubmitButton className="btn-primary px-4 py-2 text-xs">Save booking</SubmitButton>
+            <form action={deleteRecord}>
+              <input type="hidden" name="table" value="bookings" />
+              <input type="hidden" name="id" value={booking.id} />
+              <button className="btn-secondary px-4 py-2 text-xs text-red-500" type="submit">Delete booking</button>
+            </form>
+          </div>
+        </form>
+      </Section>
+
       <Section title="✈️ Flights">
         <AddPanel label="Add flight">
           <form action={addFlight} className="grid gap-4 sm:grid-cols-4">
@@ -77,7 +113,7 @@ export default async function BookingDetail({ params }: { params: { id: string }
             <div className="sm:col-span-4"><button className="btn-primary" type="submit">Save flight</button></div>
           </form>
         </AddPanel>
-        <Table head={['Flight', 'Route', 'Departure', 'Arrival', 'PAX', 'Confirmation', 'Status']}>
+        <Table head={['Flight', 'Route', 'Departure', 'Arrival', 'PAX', 'Confirmation', 'Status', 'Actions']}>
           {flights.data?.length ? flights.data.map((f) => (
             <tr key={f.id}>
               <td className="px-4 py-2 font-medium">{f.airline} {f.flight_no}</td>
@@ -87,6 +123,25 @@ export default async function BookingDetail({ params }: { params: { id: string }
               <td className="px-4 py-2">{f.pax_count}</td>
               <td className="px-4 py-2">{f.confirmation_code || '—'}</td>
               <td className="px-4 py-2"><StatusBadge status={f.status} /></td>
+              <td className="px-4 py-2">
+                <div className="flex items-center gap-3">
+                  <RowEdit table="flights" id={f.id} title="Edit flight">
+                    <label className="text-[10px] text-slate-400">Airline</label><input className="input px-2 py-1 text-xs" name="airline" defaultValue={f.airline || ''} />
+                    <label className="text-[10px] text-slate-400">Flight no</label><input className="input px-2 py-1 text-xs" name="flight_no" defaultValue={f.flight_no || ''} />
+                    <label className="text-[10px] text-slate-400">From</label><input className="input px-2 py-1 text-xs" name="departure_airport" defaultValue={f.departure_airport || ''} />
+                    <label className="text-[10px] text-slate-400">To</label><input className="input px-2 py-1 text-xs" name="arrival_airport" defaultValue={f.arrival_airport || ''} />
+                    <label className="text-[10px] text-slate-400">Departure</label><input className="input px-2 py-1 text-xs" type="datetime-local" name="departure_time" defaultValue={f.departure_time ? new Date(f.departure_time).toISOString().slice(0, 16) : ''} />
+                    <label className="text-[10px] text-slate-400">Arrival</label><input className="input px-2 py-1 text-xs" type="datetime-local" name="arrival_time" defaultValue={f.arrival_time ? new Date(f.arrival_time).toISOString().slice(0, 16) : ''} />
+                    <label className="text-[10px] text-slate-400">PAX</label><input className="input px-2 py-1 text-xs" name="pax_count" type="number" defaultValue={f.pax_count || ''} />
+                    <label className="text-[10px] text-slate-400">Confirmation code</label><input className="input px-2 py-1 text-xs" name="confirmation_code" defaultValue={f.confirmation_code || ''} />
+                    <label className="text-[10px] text-slate-400">Status</label>
+                    <select className="input px-2 py-1 text-xs" name="status" defaultValue={f.status}>
+                      {['scheduled', 'confirmed', 'cancelled', 'completed'].map((s) => <option key={s} value={s}>{s}</option>)}
+                    </select>
+                  </RowEdit>
+                  <form action={deleteRecord}><input type="hidden" name="table" value="flights" /><input type="hidden" name="id" value={f.id} /><button className="text-xs font-semibold text-red-500 hover:underline" type="submit">Delete</button></form>
+                </div>
+              </td>
             </tr>
           )) : <Empty msg="No flights yet." />}
         </Table>
@@ -162,7 +217,7 @@ export default async function BookingDetail({ params }: { params: { id: string }
             <div className="sm:col-span-4"><button className="btn-primary" type="submit">Save transport</button></div>
           </form>
         </AddPanel>
-        <Table head={['Type', 'From → To', 'Date', 'Time', 'Vehicle', 'Driver', 'Status']}>
+        <Table head={['Type', 'From → To', 'Date', 'Time', 'Vehicle', 'Driver', 'Status', 'Actions']}>
           {transports.data?.length ? transports.data.map((t) => (
             <tr key={t.id}>
               <td className="px-4 py-2 capitalize">{t.transport_type.replace(/_/g, ' ')}</td>
@@ -172,6 +227,24 @@ export default async function BookingDetail({ params }: { params: { id: string }
               <td className="px-4 py-2">{t.vehicle_type || '—'}</td>
               <td className="px-4 py-2">{t.driver_name || '—'}</td>
               <td className="px-4 py-2"><StatusBadge status={t.status} /></td>
+              <td className="px-4 py-2">
+                <div className="flex items-center gap-3">
+                  <RowEdit table="transports" id={t.id} title="Edit transport">
+                    <label className="text-[10px] text-slate-400">From</label><input className="input px-2 py-1 text-xs" name="from_location" defaultValue={t.from_location || ''} />
+                    <label className="text-[10px] text-slate-400">To</label><input className="input px-2 py-1 text-xs" name="to_location" defaultValue={t.to_location || ''} />
+                    <label className="text-[10px] text-slate-400">Date</label><input className="input px-2 py-1 text-xs" type="date" name="transport_date" defaultValue={t.transport_date || ''} />
+                    <label className="text-[10px] text-slate-400">Time</label><input className="input px-2 py-1 text-xs" name="transport_time" defaultValue={t.transport_time || ''} />
+                    <label className="text-[10px] text-slate-400">Vehicle</label><input className="input px-2 py-1 text-xs" name="vehicle_type" defaultValue={t.vehicle_type || ''} />
+                    <label className="text-[10px] text-slate-400">Driver</label><input className="input px-2 py-1 text-xs" name="driver_name" defaultValue={t.driver_name || ''} />
+                    <label className="text-[10px] text-slate-400">Driver phone</label><input className="input px-2 py-1 text-xs" name="driver_phone" defaultValue={t.driver_phone || ''} />
+                    <label className="text-[10px] text-slate-400">Status</label>
+                    <select className="input px-2 py-1 text-xs" name="status" defaultValue={t.status}>
+                      {['pending', 'confirmed', 'cancelled', 'completed'].map((s) => <option key={s} value={s}>{s}</option>)}
+                    </select>
+                  </RowEdit>
+                  <form action={deleteRecord}><input type="hidden" name="table" value="transports" /><input type="hidden" name="id" value={t.id} /><button className="text-xs font-semibold text-red-500 hover:underline" type="submit">Delete</button></form>
+                </div>
+              </td>
             </tr>
           )) : <Empty msg="No transport yet." />}
         </Table>
