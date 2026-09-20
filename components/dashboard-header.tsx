@@ -21,6 +21,7 @@ export default function DashboardHeader({ userName, notifications = [] }: {
         <NotificationBell items={notifications} />
         <ThemeToggle />
       </div>
+      <div className="flex-1"></div>
       <div className="hidden h-6 w-px bg-slate-200 sm:block" />
       <div className="flex items-center gap-2">
         <span className="hidden text-xs font-medium text-slate-400 md:block">{userName}</span>
