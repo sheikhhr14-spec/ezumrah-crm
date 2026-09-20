@@ -51,7 +51,6 @@ export async function requireRole(min: 'owner' | 'manager' | 'staff') {
 /* ============ Per-user module permissions ============ */
 // All tenant modules. 'min' = minimum role that can ever be granted it.
 export const MODULES: { key: string; label: string; icon: string; min: 'staff' | 'manager' | 'owner' }[] = [
-  { key: 'chat', label: 'Team Chat', icon: '💬', min: 'staff' },
   { key: 'leads', label: 'Leads', icon: '🎯', min: 'staff' },
   { key: 'customers', label: 'Customers', icon: '👥', min: 'staff' },
   { key: 'bookings', label: 'Bookings', icon: '🧾', min: 'staff' },

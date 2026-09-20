@@ -8,7 +8,6 @@ const ROUTE: Record<string, string> = {
   visasales: 'visa-sales',
   transportsales: 'transport-sales',
   umrahsales: 'umrah-sales',
-  chat: 'team-chat',
   settings: 'settings',
   billing: 'billing',
   hajjsales: 'hajj-sales',
@@ -26,7 +25,7 @@ export default function Sidebar({ agencyName, userName, isAdmin, role, accentCol
     { label: 'Bookings', keys: ['bookings', 'packages'] },
     { label: 'Operations', keys: ['flights', 'hotels', 'visas', 'transports', 'documents', 'tasks'] },
     { label: 'Finance', keys: ['invoices', 'accounts', 'reports'] },
-    { label: 'People', keys: ['hr', 'chat'] },
+    { label: 'People', keys: ['hr'] },
     { label: 'Support', keys: ['support'] },
     { label: 'System', keys: ['settings', 'billing'] },
   ];

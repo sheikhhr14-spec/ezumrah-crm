@@ -1,5 +1,6 @@
 import Sidebar from '@/components/Sidebar';
 import DashboardHeader from '@/components/dashboard-header';
+import ChatWidget from '@/components/chat-widget';
 import { requireActiveAgency } from '@/lib/data';
 import { syncNotifications } from '@/lib/crm-actions';
 import { createClient } from '@/lib/supabase/server';
@@ -37,6 +38,7 @@ export default async function DashboardLayout({ children }: { children: React.Re
         notifications={notifications}
       />
       <main className="flex-1 overflow-x-auto bg-slate-50 p-8">
+        <ChatWidget />
         <DashboardHeader
           userName={ctx.profile?.full_name || ctx.user.email || ''}
           notifications={notifications}
