@@ -23,13 +23,15 @@ export async function GET(req: NextRequest) {
     db.from('chat_conversations').select('id, a_id, b_id, created_at').eq('agency_id', aid).eq('b_id', me),
   ]);
 
-  const thread = convo
-    ? (convo === 'group'
-        ? await db.from('chat_messages').select('id, conversation_id, profile_id, body, created_at, deleted_at')
-            .eq('agency_id', aid).is('conversation_id', null).order('created_at', { ascending: true }).limit(150)
-        : await db.from('chat_messages').select('id, conversation_id, profile_id, body, created_at, deleted_at')
-            .eq('conversation_id', convo).order('created_at', { ascending: true }).limit(150))
-    : null;
+  let threadData: any[] | null = null;
+  if (convo) {
+    const base = db.from('chat_messages').select('id, conversation_id, profile_id, body, created_at, deleted_at');
+    const q = convo === 'group'
+      ? base.eq('agency_id', aid).is('conversation_id', null)
+      : base.eq('conversation_id', convo);
+    const { data: td } = await q.order('created_at', { ascending: true }).limit(150);
+    threadData = td || [];
+  }
 
   const readMap = new Map((reads || []).map((r: any) => [r.scope, new Date(r.last_read_at).getTime()]));
   const all = (recent || []) as any[];
@@ -68,7 +70,7 @@ export async function GET(req: NextRequest) {
     me: { id: me, name: ctx.profile.full_name, role: ctx.role },
     team: team || [],
     convos,
-    messages: thread || null,
+    messages: threadData,
   });
 }
 
