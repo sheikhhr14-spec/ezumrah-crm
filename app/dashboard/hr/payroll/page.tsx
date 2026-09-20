@@ -1,6 +1,6 @@
 import { createAdminClient } from '@/lib/supabase/admin';
 import { requireModule } from '@/lib/data';
-import { runPayroll, updatePayrollLine, markPayrollPaid } from '@/lib/crm-actions';
+import { runPayroll, updatePayrollLine, markPayrollPaid, deleteRecord } from '@/lib/crm-actions';
 import { PageHeader, Table, Empty, AddPanel, Field, StatusBadge } from '@/components/ui';
 import HRTabs from '@/components/hr-tabs';
 
@@ -55,6 +55,7 @@ export default async function PayrollPage({ searchParams }: { searchParams: { mo
                   <button className="text-xs font-semibold text-green-600 hover:underline" type="submit">Mark paid</button>
                 </form>
               ) : <span className="text-xs text-slate-400">paid {p.paid_on || ''}</span>}
+              <form action={deleteRecord} className="mt-1"><input type="hidden" name="table" value="payroll" /><input type="hidden" name="id" value={p.id} /><button className="text-xs font-semibold text-red-500 hover:underline" type="submit">Delete</button></form>
             </td>
           </tr>
         )) : <tr><td colSpan={10}><Empty msg={`No payroll generated for ${month}. Use "Run payroll" above.`} /></td></tr>}

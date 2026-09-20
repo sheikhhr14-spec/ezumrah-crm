@@ -1,8 +1,8 @@
 import { createAdminClient } from '@/lib/supabase/admin';
 import { requireModule } from '@/lib/data';
-import { addFlight, setRecordStatus, deleteRecord } from '@/lib/crm-actions';
+import { setRecordStatus, deleteRecord } from '@/lib/crm-actions';
 import RowEdit from '@/components/row-edit';
-import { PageHeader, Table, Empty, AddPanel, Field, StatusBadge } from '@/components/ui';
+import { PageHeader, Table, Empty, StatusBadge } from '@/components/ui';
 import Link from 'next/link';
 
 export default async function FlightsPage({ searchParams }: { searchParams: { q?: string } }) {
@@ -23,45 +23,6 @@ export default async function FlightsPage({ searchParams }: { searchParams: { q?
   return (
     <div>
       <PageHeader title="Flights" subtitle={`${records?.length ?? 0} flight segments across all bookings`} />
-
-      <AddPanel label="Add flight">
-        <form action={addFlight} className="grid gap-4 sm:grid-cols-3">
-          <Field label="Booking">
-            <select className="input" name="booking_id">
-              <option value="">— Standalone (no booking) —</option>
-              {(bookings || []).map((b: any) => (
-                <option key={b.id} value={b.id}>{b.booking_ref} — {b.package_name || 'trip'}</option>
-              ))}
-            </select>
-          </Field>
-          <Field label="Customer (standalone)">
-            <select className="input" name="customer_id">
-              <option value="">— none —</option>
-              {(customers || []).map((c: any) => (
-                <option key={c.id} value={c.id}>{c.full_name}</option>
-              ))}
-            </select>
-          </Field>
-          <Field label="Amount (USD)"><input className="input" name="amount" type="number" step="0.01" /></Field>
-          <Field label="Trip kind">
-            <select className="input" name="trip_kind">
-              <option value="oneway">One-way</option>
-              <option value="return">Return</option>
-              <option value="multicity">Multi-city</option>
-            </select>
-          </Field>
-          <Field label="Airline *"><input className="input" name="airline" required /></Field>
-          <Field label="Flight no."><input className="input" name="flight_no"  /></Field>
-          <Field label="Departure airport"><input className="input" name="departure_airport"  /></Field>
-          <Field label="Arrival airport"><input className="input" name="arrival_airport"  /></Field>
-          <Field label="Departure time"><input className="input" name="departure_time" type="datetime-local" /></Field>
-          <Field label="Arrival time"><input className="input" name="arrival_time" type="datetime-local" /></Field>
-          <Field label="Passengers"><input className="input" name="pax_count" type="number" /></Field>
-          <Field label="Cabin class"><input className="input" name="cabin_class" placeholder="economy / business" /></Field>
-          <Field label="Confirmation code"><input className="input" name="confirmation_code"  /></Field>
-          <div className="sm:col-span-3"><button className="btn-primary" type="submit">Save flight</button></div>
-        </form>
-      </AddPanel>
 
       <form className="mb-4">
         <input className="input max-w-xs" name="q" placeholder="Search…" defaultValue={searchParams?.q || ''} />

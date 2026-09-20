@@ -1,8 +1,8 @@
 import { createAdminClient } from '@/lib/supabase/admin';
 import { requireModule } from '@/lib/data';
-import { addVisa, setRecordStatus, deleteRecord } from '@/lib/crm-actions';
+import { setRecordStatus, deleteRecord } from '@/lib/crm-actions';
 import RowEdit from '@/components/row-edit';
-import { PageHeader, Table, Empty, AddPanel, Field, StatusBadge } from '@/components/ui';
+import { PageHeader, Table, Empty, StatusBadge } from '@/components/ui';
 import Link from 'next/link';
 
 export default async function VisasPage({ searchParams }: { searchParams: { q?: string } }) {
@@ -23,33 +23,6 @@ export default async function VisasPage({ searchParams }: { searchParams: { q?: 
   return (
     <div>
       <PageHeader title="Visas" subtitle={`${records?.length ?? 0} visa applications across all bookings`} />
-
-      <AddPanel label="Add visa">
-        <form action={addVisa} className="grid gap-4 sm:grid-cols-3">
-          <Field label="Booking">
-            <select className="input" name="booking_id">
-              <option value="">— Standalone (no booking) —</option>
-              {(bookings || []).map((b: any) => (
-                <option key={b.id} value={b.id}>{b.booking_ref} — {b.package_name || 'trip'}</option>
-              ))}
-            </select>
-          </Field>
-          <Field label="Customer (standalone)">
-            <select className="input" name="customer_id">
-              <option value="">— none —</option>
-              {(customers || []).map((c: any) => (
-                <option key={c.id} value={c.id}>{c.full_name}</option>
-              ))}
-            </select>
-          </Field>
-          <Field label="Amount (USD)"><input className="input" name="amount" type="number" step="0.01" /></Field>
-          <Field label="Visa type"><input className="input" name="visa_type" placeholder="umrah / hajj / ziyarah" /></Field>
-          <Field label="Application date"><input className="input" name="application_date" type="date" /></Field>
-          <Field label="Visa no."><input className="input" name="visa_no"  /></Field>
-          <Field label="Notes"><input className="input" name="notes"  /></Field>
-          <div className="sm:col-span-3"><button className="btn-primary" type="submit">Save visa</button></div>
-        </form>
-      </AddPanel>
 
       <form className="mb-4">
         <input className="input max-w-xs" name="q" placeholder="Search…" defaultValue={searchParams?.q || ''} />

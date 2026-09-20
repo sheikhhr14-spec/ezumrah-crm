@@ -1,8 +1,8 @@
 import { createAdminClient } from '@/lib/supabase/admin';
 import { requireModule } from '@/lib/data';
-import { addTransport, setRecordStatus, deleteRecord } from '@/lib/crm-actions';
+import { setRecordStatus, deleteRecord } from '@/lib/crm-actions';
 import RowEdit from '@/components/row-edit';
-import { PageHeader, Table, Empty, AddPanel, Field, StatusBadge } from '@/components/ui';
+import { PageHeader, Table, Empty, StatusBadge } from '@/components/ui';
 import Link from 'next/link';
 
 export default async function TransportsPage({ searchParams }: { searchParams: { q?: string } }) {
@@ -23,38 +23,6 @@ export default async function TransportsPage({ searchParams }: { searchParams: {
   return (
     <div>
       <PageHeader title="Transports" subtitle={`${records?.length ?? 0} ground transfers across all bookings`} />
-
-      <AddPanel label="Add transport">
-        <form action={addTransport} className="grid gap-4 sm:grid-cols-3">
-          <Field label="Booking">
-            <select className="input" name="booking_id">
-              <option value="">— Standalone (no booking) —</option>
-              {(bookings || []).map((b: any) => (
-                <option key={b.id} value={b.id}>{b.booking_ref} — {b.package_name || 'trip'}</option>
-              ))}
-            </select>
-          </Field>
-          <Field label="Customer (standalone)">
-            <select className="input" name="customer_id">
-              <option value="">— none —</option>
-              {(customers || []).map((c: any) => (
-                <option key={c.id} value={c.id}>{c.full_name}</option>
-              ))}
-            </select>
-          </Field>
-          <Field label="Amount (USD)"><input className="input" name="amount" type="number" step="0.01" /></Field>
-          <Field label="Type"><input className="input" name="transport_type" placeholder="airport_transfer / ziyarah" /></Field>
-          <Field label="From"><input className="input" name="from_location"  /></Field>
-          <Field label="To"><input className="input" name="to_location"  /></Field>
-          <Field label="Date"><input className="input" name="transport_date" type="date" /></Field>
-          <Field label="Time"><input className="input" name="transport_time" placeholder="14:30" /></Field>
-          <Field label="Vehicle"><input className="input" name="vehicle_type" placeholder="Bus 45 / GMC / Hiace" /></Field>
-          <Field label="Seats"><input className="input" name="seats" type="number" /></Field>
-          <Field label="Driver name"><input className="input" name="driver_name"  /></Field>
-          <Field label="Driver phone"><input className="input" name="driver_phone"  /></Field>
-          <div className="sm:col-span-3"><button className="btn-primary" type="submit">Save transport</button></div>
-        </form>
-      </AddPanel>
 
       <form className="mb-4">
         <input className="input max-w-xs" name="q" placeholder="Search…" defaultValue={searchParams?.q || ''} />

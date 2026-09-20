@@ -1,8 +1,8 @@
 import { createAdminClient } from '@/lib/supabase/admin';
 import { requireModule } from '@/lib/data';
-import { addHotel, setRecordStatus, deleteRecord } from '@/lib/crm-actions';
+import { setRecordStatus, deleteRecord } from '@/lib/crm-actions';
 import RowEdit from '@/components/row-edit';
-import { PageHeader, Table, Empty, AddPanel, Field, StatusBadge } from '@/components/ui';
+import { PageHeader, Table, Empty, StatusBadge } from '@/components/ui';
 import Link from 'next/link';
 
 export default async function HotelsPage({ searchParams }: { searchParams: { q?: string } }) {
@@ -23,38 +23,6 @@ export default async function HotelsPage({ searchParams }: { searchParams: { q?:
   return (
     <div>
       <PageHeader title="Hotels" subtitle={`${records?.length ?? 0} hotel stays across all bookings`} />
-
-      <AddPanel label="Add hotel">
-        <form action={addHotel} className="grid gap-4 sm:grid-cols-3">
-          <Field label="Booking">
-            <select className="input" name="booking_id">
-              <option value="">— Standalone (no booking) —</option>
-              {(bookings || []).map((b: any) => (
-                <option key={b.id} value={b.id}>{b.booking_ref} — {b.package_name || 'trip'}</option>
-              ))}
-            </select>
-          </Field>
-          <Field label="Customer (standalone)">
-            <select className="input" name="customer_id">
-              <option value="">— none —</option>
-              {(customers || []).map((c: any) => (
-                <option key={c.id} value={c.id}>{c.full_name}</option>
-              ))}
-            </select>
-          </Field>
-          <Field label="Amount (USD)"><input className="input" name="amount" type="number" step="0.01" /></Field>
-          <Field label="City *"><input className="input" name="city" required placeholder="Makkah / Madinah" /></Field>
-          <Field label="Hotel name *"><input className="input" name="hotel_name" required /></Field>
-          <Field label="Check-in"><input className="input" name="check_in" type="date" /></Field>
-          <Field label="Check-out"><input className="input" name="check_out" type="date" /></Field>
-          <Field label="Nights"><input className="input" name="nights" type="number" /></Field>
-          <Field label="Room type"><input className="input" name="room_type" placeholder="Quad / Triple / Double" /></Field>
-          <Field label="Rooms"><input className="input" name="rooms_count" type="number" /></Field>
-          <Field label="Meal plan"><input className="input" name="meal_plan" placeholder="HB / BB / RO" /></Field>
-          <Field label="Confirmation code"><input className="input" name="confirmation_code"  /></Field>
-          <div className="sm:col-span-3"><button className="btn-primary" type="submit">Save hotel</button></div>
-        </form>
-      </AddPanel>
 
       <form className="mb-4">
         <input className="input max-w-xs" name="q" placeholder="Search…" defaultValue={searchParams?.q || ''} />

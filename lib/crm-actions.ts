@@ -300,7 +300,7 @@ async function cleanupChildren(db: any, table: string, id: string) {
   } else if (table === 'flight_sales') {
     await db.from('flight_sale_legs').delete().eq('flight_sale_id', id);
     await purgeSaleDocs(db, 'flight_sales', id);
-  } else if (['hotel_sales', 'visa_sales', 'transport_sales'].includes(table)) {
+  } else if (['hotel_sales', 'visa_sales', 'transport_sales', 'package_sales'].includes(table)) {
     await purgeSaleDocs(db, table, id);
   } else if (table === 'support_tickets') {
     await db.from('support_ticket_replies').delete().eq('ticket_id', id);
@@ -571,10 +571,23 @@ const EDITABLE: Record<string, string[]> = {
   visa_sales: ['visa_type', 'application_date', 'visa_no', 'sale_price', 'cost', 'admin_fee', 'amount_paid', 'payment_method', 'notes', 'status', 'customer_id'],
   transport_sales: ['transport_type', 'from_location', 'to_location', 'transport_date', 'transport_time', 'vehicle_type', 'seats', 'driver_name', 'driver_phone', 'sale_price', 'cost', 'admin_fee', 'amount_paid', 'payment_method', 'notes', 'status', 'customer_id'],
   support_tickets: ['subject', 'priority', 'status'],
+  package_sales: ['package_category', 'package_name', 'departure_date', 'return_date', 'pax',
+    'airline', 'flight_no', 'from_airport', 'to_airport', 'depart_at', 'return_flight_no', 'pnr',
+    'bus_company', 'bus_from', 'bus_to', 'bus_date', 'bus_seats',
+    'makkah_hotel', 'makkah_nights', 'madinah_hotel', 'madinah_nights',
+    'tour_destination', 'tour_hotel', 'tour_nights',
+    'rooms_quint', 'rooms_quad', 'rooms_triple', 'rooms_double', 'rooms_single',
+    'sale_price', 'supplement', 'admin_fee', 'discount', 'commission', 'cost',
+    'amount_paid', 'payment_method', 'due_date', 'notes', 'status', 'customer_id'],
+  attendance: ['att_date', 'check_in', 'check_out', 'status'],
+  payroll: ['basic', 'allowances', 'deductions', 'net', 'status'],
 };
 
 function pathFor(table: string): string {
   if (table === 'support_tickets') return '/dashboard/support';
+  if (table === 'package_sales') return '/dashboard/package-sales';
+  if (table === 'attendance') return '/dashboard/hr/attendance';
+  if (table === 'payroll') return '/dashboard/hr/payroll';
   if (table === 'employees') return '/dashboard/hr';
   if (table === 'leaves') return '/dashboard/hr/leaves';
   if (table === 'expenses' || table === 'payments') return '/dashboard/accounts';
@@ -863,6 +876,7 @@ export async function updateServiceSale(fd: FormData) {
 const SALE_DOC_TABLES: Record<string, string> = {
   flight_sales: 'flight-sales', hotel_sales: 'hotel-sales',
   visa_sales: 'visa-sales', transport_sales: 'transport-sales',
+  package_sales: 'package-sales',
 };
 
 export async function uploadSaleDocument(fd: FormData) {
@@ -913,4 +927,81 @@ export async function deleteSaleDocument(fd: FormData) {
   await db.storage.from('sale-documents').remove([doc.storage_path]);
   await db.from('sale_documents').delete().eq('id', id);
   revalidatePath(`/dashboard/${SALE_DOC_TABLES[doc.sale_table] || 'flight-sales'}/${doc.sale_id}`);
+}
+
+
+// ============ PACKAGE SALES (Umrah / Hajj / Tour) ============
+const PKG_PREFIX: Record<string, string> = { umrah: 'UPS', hajj: 'HPS', tour: 'TPS' };
+
+function packageGrand(r: { sale_price: any; supplement: any; admin_fee: any; discount: any }) {
+  return Number(r.sale_price || 0) + Number(r.supplement || 0) + Number(r.admin_fee || 0) - Number(r.discount || 0);
+}
+
+export async function createPackageSale(fd: FormData) {
+  const db = createAdminClient();
+  const ctx = await requireActiveAgency();
+  const aid = ctx.profile.agency_id!;
+  const customerId = await saleCustomer(db, aid, fd);
+  const category = str(fd, 'package_category') || 'umrah';
+  const { count } = await db.from('package_sales').select('id', { count: 'exact', head: true }).eq('agency_id', aid);
+  const ref = `${PKG_PREFIX[category] || 'UPS'}-${new Date().getFullYear()}-${String((count || 0) + 1).padStart(4, '0')}`;
+  const rec: Record<string, unknown> = {
+    agency_id: aid, customer_id: customerId || null, ref,
+    package_category: category,
+    package_name: str(fd, 'package_name'),
+    departure_date: str(fd, 'departure_date') || null,
+    return_date: str(fd, 'return_date') || null,
+    pax: num(fd, 'pax', 1),
+    airline: str(fd, 'airline'), flight_no: str(fd, 'flight_no'),
+    from_airport: str(fd, 'from_airport'), to_airport: str(fd, 'to_airport'),
+    depart_at: str(fd, 'depart_at') || null, return_flight_no: str(fd, 'return_flight_no'),
+    pnr: str(fd, 'pnr'),
+    bus_company: str(fd, 'bus_company'), bus_from: str(fd, 'bus_from'), bus_to: str(fd, 'bus_to'),
+    bus_date: str(fd, 'bus_date') || null, bus_seats: str(fd, 'bus_seats'),
+    makkah_hotel: str(fd, 'makkah_hotel'), makkah_nights: num(fd, 'makkah_nights'),
+    madinah_hotel: str(fd, 'madinah_hotel'), madinah_nights: num(fd, 'madinah_nights'),
+    tour_destination: str(fd, 'tour_destination'), tour_hotel: str(fd, 'tour_hotel'),
+    tour_nights: num(fd, 'tour_nights'),
+    rooms_quint: num(fd, 'rooms_quint'), rooms_quad: num(fd, 'rooms_quad'),
+    rooms_triple: num(fd, 'rooms_triple'), rooms_double: num(fd, 'rooms_double'),
+    rooms_single: num(fd, 'rooms_single'),
+    sale_price: num(fd, 'sale_price'), supplement: num(fd, 'supplement'),
+    admin_fee: num(fd, 'admin_fee'), discount: num(fd, 'discount'),
+    commission: num(fd, 'commission'), cost: num(fd, 'cost'),
+    amount_paid: num(fd, 'amount_paid'), payment_method: str(fd, 'payment_method'),
+    due_date: str(fd, 'due_date') || null,
+    sold_by: ctx.profile.full_name || null,
+    notes: str(fd, 'notes'), status: str(fd, 'status') || 'confirmed',
+  };
+  const grand = packageGrand(rec as any);
+  const paid = Number(rec.amount_paid);
+  await db.from('package_sales').insert({
+    ...rec,
+    payment_status: saleStatus(grand, paid),
+    balance: grand - paid,
+    profit: grand + Number(rec.commission) - Number(rec.cost),
+  });
+  revalidatePath('/dashboard/package-sales');
+}
+
+export async function updatePackageSale(fd: FormData) {
+  const db = createAdminClient();
+  const aid = await agencyId();
+  const id = String(fd.get('id'));
+  const { data: rec } = await db.from('package_sales').select('*').eq('id', id).single();
+  if (!rec || rec.agency_id !== aid) throw new Error('Record not found in your agency.');
+  const patch: Record<string, unknown> = { updated_at: new Date().toISOString() };
+  for (const f of EDITABLE.package_sales) {
+    const v = fd.get(f);
+    if (v !== null) patch[f] = str(fd, f) === '' && !['pax','makkah_nights','madinah_nights','tour_nights','rooms_quint','rooms_quad','rooms_triple','rooms_double','rooms_single','sale_price','supplement','admin_fee','discount','commission','cost','amount_paid'].includes(f) ? null : (['pax','makkah_nights','madinah_nights','tour_nights','rooms_quint','rooms_quad','rooms_triple','rooms_double','rooms_single','sale_price','supplement','admin_fee','discount','commission','cost','amount_paid'].includes(f) ? num(fd, f) : str(fd, f));
+  }
+  const merged = { ...rec, ...patch } as any;
+  const grand = packageGrand(merged);
+  const paid = Number(merged.amount_paid || 0);
+  patch.payment_status = saleStatus(grand, paid);
+  patch.balance = grand - paid;
+  patch.profit = grand + Number(merged.commission || 0) - Number(merged.cost || 0);
+  await db.from('package_sales').update(patch).eq('id', id);
+  revalidatePath('/dashboard/package-sales');
+  revalidatePath(`/dashboard/package-sales/${id}`);
 }

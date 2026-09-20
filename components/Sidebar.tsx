@@ -8,6 +8,7 @@ const ROUTE: Record<string, string> = {
   hotelsales: 'hotel-sales',
   visasales: 'visa-sales',
   transportsales: 'transport-sales',
+  packagesales: 'package-sales',
 };
 
 export default function Sidebar({ agencyName, userName, isAdmin, role, accentColor, label, profile }: {
@@ -17,7 +18,7 @@ export default function Sidebar({ agencyName, userName, isAdmin, role, accentCol
   const allowed = allowedModules(profile, role || 'staff');
   const NAV = MODULES.filter((m) => allowed.includes(m.key));
   const GROUPS: { label: string; keys: string[] }[] = [
-    { label: 'Sales', keys: ['leads', 'customers', 'flightsales', 'hotelsales', 'visasales', 'transportsales', 'quotations'] },
+    { label: 'Sales', keys: ['leads', 'customers', 'flightsales', 'hotelsales', 'visasales', 'transportsales', 'packagesales', 'quotations'] },
     { label: 'Bookings', keys: ['bookings', 'packages'] },
     { label: 'Operations', keys: ['flights', 'hotels', 'visas', 'transports', 'documents', 'tasks'] },
     { label: 'Finance', keys: ['invoices', 'accounts', 'reports'] },

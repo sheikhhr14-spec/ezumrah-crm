@@ -15,7 +15,7 @@ export async function GET(req: Request) {
   const url = new URL(req.url);
   const type = url.searchParams.get('type') || '';
   const id = url.searchParams.get('id') || '';
-  const TYPES = ['booking', 'quotation', 'invoice', 'package', 'flight', 'hotel', 'transport', 'visa', 'flightsale', 'hotel_sale', 'visa_sale', 'transport_sale'];
+  const TYPES = ['booking', 'quotation', 'invoice', 'package', 'flight', 'hotel', 'transport', 'visa', 'flightsale', 'hotel_sale', 'visa_sale', 'transport_sale', 'package_sale'];
   if (!TYPES.includes(type) || !id) return new Response('Bad request', { status: 400 });
 
   const ctx = await getCurrentUser();
@@ -92,6 +92,22 @@ export async function GET(req: Request) {
     if (!items.length) items.push({ desc: 'Services as agreed', qty: '1', unit: '', amount: Number(inv.subtotal) || 0 });
     total = Number(inv.total) || 0;
     paid = inv.status === 'paid' ? total : null;
+  } else if (type === 'package_sale') {
+    const row = await one('package_sales');
+    if (!row) return new Response('Not found', { status: 404 });
+    ref = row.ref;
+    docTitle = `${(row.package_category || 'PACKAGE').toUpperCase()} PACKAGE INVOICE`;
+    dateStr = (row.created_at || '').slice(0, 10) || dateStr;
+    if (row.customer_id) customer = (await db.from('customers').select('*').eq('id', row.customer_id).maybeSingle()).data;
+    const rooms = [row.rooms_quint && `${row.rooms_quint}x quint room`, row.rooms_quad && `${row.rooms_quad}x quad room`,
+      row.rooms_triple && `${row.rooms_triple}x triple`, row.rooms_double && `${row.rooms_double}x double`,
+      row.rooms_single && `${row.rooms_single}x single`].filter(Boolean).join(', ');
+    items.push({ desc: `${row.package_category} package: ${row.package_name || ''} - ${row.pax || 1} pax${rooms ? ' (' + rooms + ')' : ''}`, qty: String(row.pax || 1), unit: '', amount: Number(row.sale_price) || 0 });
+    if (Number(row.supplement)) items.push({ desc: 'Separate room supplement', qty: '1', unit: '', amount: Number(row.supplement) });
+    if (Number(row.admin_fee)) items.push({ desc: 'Admin / service fee', qty: '1', unit: '', amount: Number(row.admin_fee) });
+    if (Number(row.discount)) items.push({ desc: 'Discount', qty: '1', unit: '', amount: -Number(row.discount) });
+    total = Number(row.sale_price) + Number(row.supplement || 0) + Number(row.admin_fee || 0) - (Number(row.discount) || 0);
+    paid = Number(row.amount_paid) || 0;
   } else if (type === 'hotel_sale' || type === 'visa_sale' || type === 'transport_sale') {
     const table = type.replace('_sale', '_sales');
     const row = await one(table);

@@ -1,6 +1,7 @@
 import { createAdminClient } from '@/lib/supabase/admin';
 import { requireModule } from '@/lib/data';
-import { markAttendance } from '@/lib/crm-actions';
+import { markAttendance, deleteRecord } from '@/lib/crm-actions';
+import RowEdit from '@/components/row-edit';
 import { PageHeader, Table, Empty, AddPanel, Field, StatusBadge } from '@/components/ui';
 import HRTabs from '@/components/hr-tabs';
 
@@ -44,7 +45,7 @@ export default async function AttendancePage({ searchParams }: { searchParams: {
         <button className="btn-secondary ml-2" type="submit">Show date</button>
       </form>
 
-      <Table head={['Employee', 'Date', 'Check-in', 'Check-out', 'Status']}>
+      <Table head={['Employee', 'Date', 'Check-in', 'Check-out', 'Status', 'Actions']}>
         {records?.length ? records.map((r) => (
           <tr key={r.id} className="hover:bg-slate-50">
             <td className="px-4 py-2 font-semibold">{(r.employees as any)?.full_name || '—'}</td>
@@ -52,6 +53,20 @@ export default async function AttendancePage({ searchParams }: { searchParams: {
             <td className="px-4 py-2">{r.check_in || '—'}</td>
             <td className="px-4 py-2">{r.check_out || '—'}</td>
             <td className="px-4 py-2"><StatusBadge status={r.status} /></td>
+            <td className="px-4 py-2">
+              <div className="flex items-center gap-3">
+                <RowEdit table="attendance" id={r.id} title="Edit attendance">
+                  <label className="text-[10px] text-slate-400">Date</label><input className="input px-2 py-1 text-xs" type="date" name="att_date" defaultValue={r.att_date || ''} />
+                  <label className="text-[10px] text-slate-400">Check-in</label><input className="input px-2 py-1 text-xs" name="check_in" defaultValue={r.check_in || ''} />
+                  <label className="text-[10px] text-slate-400">Check-out</label><input className="input px-2 py-1 text-xs" name="check_out" defaultValue={r.check_out || ''} />
+                  <label className="text-[10px] text-slate-400">Status</label>
+                  <select className="input px-2 py-1 text-xs" name="status" defaultValue={r.status}>
+                    {['present', 'absent', 'leave', 'half_day'].map((s) => <option key={s} value={s}>{s.replace('_', ' ')}</option>)}
+                  </select>
+                </RowEdit>
+                <form action={deleteRecord}><input type="hidden" name="table" value="attendance" /><input type="hidden" name="id" value={r.id} /><button className="text-xs font-semibold text-red-500 hover:underline" type="submit">Delete</button></form>
+              </div>
+            </td>
           </tr>
         )) : <tr><td colSpan={10}><Empty msg="No attendance recorded for this date." /></td></tr>}
       </Table>
