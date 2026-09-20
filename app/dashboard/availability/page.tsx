@@ -3,6 +3,8 @@ import { createAdminClient } from '@/lib/supabase/admin';
 import { PageHeader, AddPanel, Empty } from '@/components/ui';
 import { createHotelInventory, deleteHotelInventory, createFleetVehicle, deleteFleetVehicle } from '@/lib/crm-actions';
 
+const addDays = (d: string, n: number) => new Date(new Date(d).getTime() + n * 86400000).toISOString().slice(0, 10);
+
 export default async function AvailabilityPage({ searchParams }: { searchParams?: { start?: string } }) {
   const ctx = await requireModule('availability');
   const db = createAdminClient();
@@ -12,21 +14,31 @@ export default async function AvailabilityPage({ searchParams }: { searchParams?
   const DAYS = 14;
   const dates = [...Array(DAYS)].map((_, i) => { const d = new Date(start.getTime() + i * 86400000); return d.toISOString().slice(0, 10); });
 
-  const [{ data: inv }, { data: hs }, { data: hss }, { data: fleet }, { data: ts }, { data: tsl }] = await Promise.all([
+  const [{ data: tours }, { data: inv }, { data: fleet }] = await Promise.all([
+    db.from('package_sales').select('*, package_sale_transports(*)')
+      .eq('agency_id', aid).eq('package_category', 'tour').neq('status', 'cancelled'),
     db.from('hotel_inventory').select('*').eq('agency_id', aid).order('hotel_name'),
-    db.from('hotel_sales').select('hotel_name, check_in, check_out, rooms_count, status').eq('agency_id', aid).neq('status', 'cancelled'),
-    db.from('hotel_sale_stays').select('hotel_name, check_in, check_out, rooms_count, hotel_sales(status)'),
     db.from('transport_fleet').select('*').eq('agency_id', aid).order('vehicle_type'),
-    db.from('transport_sales').select('vehicle_type, transport_date, seats, status').eq('agency_id', aid).neq('status', 'cancelled'),
-    db.from('transport_sale_legs').select('vehicle_type, transport_date, seats, transport_sales(status)'),
   ]);
 
-  // ---- hotel occupancy per night ----
-  const stays: any[] = [
-    ...(hs || []).filter((r: any) => r.check_in && r.check_out).map((r: any) => ({ hotel_name: r.hotel_name, check_in: r.check_in, check_out: r.check_out, rooms: Number(r.rooms_count || 0) })),
-    ...(hss || []).filter((r: any) => r.check_in && r.check_out && (!r.hotel_sales || r.hotel_sales.status !== 'cancelled'))
-      .map((r: any) => ({ hotel_name: r.hotel_name, check_in: r.check_in, check_out: r.check_out, rooms: Number(r.rooms_count || 0) })),
-  ];
+  // ---- rooms needed per hotel per night, from TOUR sales ----
+  const stays: { hotel: string; ci: string; co: string; rooms: number }[] = [];
+  for (const t of (tours || []) as any[]) {
+    const rooms = Number(t.rooms_quint || 0) + Number(t.rooms_quad || 0) + Number(t.rooms_triple || 0) + Number(t.rooms_double || 0) + Number(t.rooms_single || 0);
+    if (!rooms || !t.departure_date) continue;
+    let cursor = String(t.departure_date).slice(0, 10);
+    const segs: [string, number][] = [
+      [t.makkah_hotel || '', Number(t.makkah_nights || 0)],
+      [t.madinah_hotel || '', Number(t.madinah_nights || 0)],
+      [t.tour_hotel || '', Number(t.tour_nights || 0)],
+    ];
+    for (const [hotel, nights] of segs) {
+      if (nights > 0) {
+        if (hotel && cursor) stays.push({ hotel, ci: cursor, co: addDays(cursor, nights), rooms });
+        cursor = addDays(cursor, nights);
+      }
+    }
+  }
   const hotels = new Map<string, { name: string; city: string | null; cap: number }>();
   for (const r of (inv || []) as any[]) {
     const k = (r.hotel_name || '').toLowerCase();
@@ -35,19 +47,19 @@ export default async function AvailabilityPage({ searchParams }: { searchParams?
     hotels.set(k, e);
   }
   for (const s of stays) {
-    const k = (s.hotel_name || '').toLowerCase();
-    if (k && !hotels.has(k)) hotels.set(k, { name: s.hotel_name || '(unnamed)', city: null, cap: 0 });
+    const k = s.hotel.toLowerCase();
+    if (!hotels.has(k)) hotels.set(k, { name: s.hotel, city: null, cap: 0 });
   }
   const soldRooms = (hotelKey: string, night: string) =>
-    stays.filter((s) => (s.hotel_name || '').toLowerCase() === hotelKey && s.check_in <= night && night < s.check_out)
-      .reduce((sm, s) => sm + s.rooms, 0);
+    stays.filter((s) => s.hotel.toLowerCase() === hotelKey && s.ci <= night && night < s.co).reduce((sm, s) => sm + s.rooms, 0);
 
-  // ---- transport seats per date ----
-  const trips: any[] = [
-    ...(ts || []).map((r: any) => ({ vehicle: r.vehicle_type, date: r.transport_date, seats: Number(r.seats || 0) })),
-    ...(tsl || []).filter((r: any) => !r.transport_sales || r.transport_sales.status !== 'cancelled')
-      .map((r: any) => ({ vehicle: r.vehicle_type, date: r.transport_date, seats: Number(r.seats || 0) })),
-  ];
+  // ---- transport seats per date per mode, from TOUR sale legs ----
+  const trips: { vehicle: string; date: string; seats: number }[] = [];
+  for (const t of (tours || []) as any[]) {
+    for (const l of (t.package_sale_transports || []) as any[]) {
+      if (l.leg_date && l.seats) trips.push({ vehicle: String(l.mode || 'bus'), date: String(l.leg_date).slice(0, 10), seats: Number(l.seats) });
+    }
+  }
   const vehicles = new Map<string, { name: string; cap: number }>();
   for (const r of (fleet || []) as any[]) {
     const k = (r.vehicle_type || '').toLowerCase();
@@ -56,11 +68,11 @@ export default async function AvailabilityPage({ searchParams }: { searchParams?
     vehicles.set(k, e);
   }
   for (const t of trips) {
-    const k = (t.vehicle || '').toLowerCase();
-    if (k && !vehicles.has(k)) vehicles.set(k, { name: t.vehicle || '(type)', cap: 0 });
+    const k = t.vehicle.toLowerCase();
+    if (!vehicles.has(k)) vehicles.set(k, { name: t.vehicle, cap: 0 });
   }
   const soldSeats = (vk: string, day: string) =>
-    trips.filter((t) => (t.vehicle || '').toLowerCase() === vk && t.date === day).reduce((sm, t) => sm + t.seats, 0);
+    trips.filter((t) => t.vehicle.toLowerCase() === vk && t.date === day).reduce((sm, t) => sm + t.seats, 0);
 
   const cell = (sold: number, cap: number) => {
     if (!cap) return <span className="text-slate-400">{sold} / —</span>;
@@ -71,7 +83,7 @@ export default async function AvailabilityPage({ searchParams }: { searchParams?
 
   return (
     <div>
-      <PageHeader title="Availability & Slots" subtitle="Real-time room allocation for Makkah/Madinah hotels and transport seats per day — computed live from your sales" />
+      <PageHeader title="Availability & Slots" subtitle="Real-time room allocation and transport slots for Tour sales — computed live from your tour bookings" />
 
       <form className="mb-4 flex flex-wrap items-end gap-2">
         <label className="block"><span className="text-xs font-semibold text-slate-600">Start date</span>
@@ -80,15 +92,15 @@ export default async function AvailabilityPage({ searchParams }: { searchParams?
       </form>
 
       <div className="card mb-6 overflow-x-auto p-4">
-        <h2 className="mb-3 text-sm font-bold text-slate-900">🏨 Room allocation — rooms sold / capacity per night</h2>
-        {hotels.size === 0 ? <Empty title="No hotels yet" desc="Add your hotel inventory below — then every hotel sale checks against it automatically." /> : (
+        <h2 className="mb-3 text-sm font-bold text-slate-900">🏨 Tour room allocation — rooms needed / capacity per night</h2>
+        {hotels.size === 0 ? <Empty msg="Add your hotel capacity below — every tour sale's rooms (quint/quad/triple/double/single) check against it automatically." /> : (
           <table className="w-full min-w-[900px] text-xs">
             <thead><tr className="border-b border-slate-200">
               <th className="p-2 text-left">Hotel</th>
               {dates.map((d) => <th key={d} className="p-1 text-center font-semibold">{d.slice(5)}</th>)}
             </tr></thead>
             <tbody>
-              {[...hotels.entries()].map(([k, h]) => (
+              {Array.from(hotels.entries()).map(([k, h]) => (
                 <tr key={k} className="border-b border-slate-100">
                   <td className="p-2 font-semibold text-slate-900">{h.name}{h.city ? <span className="text-slate-400"> · {h.city}</span> : null}</td>
                   {dates.map((d) => <td key={d} className="p-1 text-center">{cell(soldRooms(k, d), h.cap)}</td>)}
@@ -97,19 +109,19 @@ export default async function AvailabilityPage({ searchParams }: { searchParams?
             </tbody>
           </table>
         )}
-        <p className="mt-2 text-[11px] text-slate-400">Red = overbooked · amber = full. New hotel sales automatically warn in their notes when a night exceeds capacity.</p>
+        <p className="mt-2 text-[11px] text-slate-400">Rooms come from each tour&apos;s room-sharing counts (Makkah nights → Madinah nights → tour hotel nights). Red = overbooked · amber = full. New tour sales automatically warn in their notes when capacity is exceeded.</p>
       </div>
 
       <div className="card mb-6 overflow-x-auto p-4">
-        <h2 className="mb-3 text-sm font-bold text-slate-900">🚌 Transport slots — seats sold / fleet capacity per day</h2>
-        {vehicles.size === 0 ? <Empty title="No vehicles yet" desc="Add your fleet below — then transport and ziyarat sales check against available seats." /> : (
+        <h2 className="mb-3 text-sm font-bold text-slate-900">🚌 Tour transport slots — seats needed / fleet capacity per day</h2>
+        {vehicles.size === 0 ? <Empty msg="Add your fleet below — every tour's arrival, intercity, ziyarat and departure transfers check against available seats." /> : (
           <table className="w-full min-w-[900px] text-xs">
             <thead><tr className="border-b border-slate-200">
-              <th className="p-2 text-left">Vehicle type</th>
+              <th className="p-2 text-left">Vehicle / mode</th>
               {dates.map((d) => <th key={d} className="p-1 text-center font-semibold">{d.slice(5)}</th>)}
             </tr></thead>
             <tbody>
-              {[...vehicles.entries()].map(([k, v]) => (
+              {Array.from(vehicles.entries()).map(([k, v]) => (
                 <tr key={k} className="border-b border-slate-100">
                   <td className="p-2 font-semibold text-slate-900">{v.name}</td>
                   {dates.map((d) => <td key={d} className="p-1 text-center">{cell(soldSeats(k, d), v.cap)}</td>)}
@@ -118,7 +130,7 @@ export default async function AvailabilityPage({ searchParams }: { searchParams?
             </tbody>
           </table>
         )}
-        <p className="mt-2 text-[11px] text-slate-400">Includes every transport sale and every extra trip/Ziyarat leg. Cancelled sales are excluded.</p>
+        <p className="mt-2 text-[11px] text-slate-400">Includes every transport leg of your tours (bus / van / private car / train / taxi). Cancelled tours are excluded.</p>
       </div>
 
       <div className="grid gap-4 lg:grid-cols-2">
@@ -140,7 +152,7 @@ export default async function AvailabilityPage({ searchParams }: { searchParams?
           <AddPanel label="Add hotel capacity">
             <form action={createHotelInventory} className="grid gap-2 sm:grid-cols-2">
               <input className="input" name="hotel_name" placeholder="Hotel name *" required />
-              <input className="input" name="city" placeholder="City (Makkah / Madinah)" />
+              <input className="input" name="city" placeholder="City (Makkah / Madinah / tour city)" />
               <input className="input" name="room_type" placeholder="Room type (or 'any')" />
               <input className="input" name="total_rooms" type="number" placeholder="Total rooms *" required />
               <button className="btn-primary sm:col-span-2" type="submit">Save capacity</button>
@@ -165,7 +177,7 @@ export default async function AvailabilityPage({ searchParams }: { searchParams?
           </table>
           <AddPanel label="Add vehicle">
             <form action={createFleetVehicle} className="grid gap-2 sm:grid-cols-2">
-              <input className="input" name="vehicle_type" placeholder="Vehicle type * (Hiace / Bus / GMC)" required />
+              <input className="input" name="vehicle_type" placeholder="Mode / type * (bus / van / private_car)" required />
               <input className="input" name="vehicle_name" placeholder="Vehicle name" />
               <input className="input" name="plate_no" placeholder="Plate no." />
               <input className="input" name="seats" type="number" placeholder="Seats *" required />

@@ -849,25 +849,6 @@ export async function createServiceSale(fd: FormData) {
   }
   const taxV = num(fd, 'tax');
   const grand = salePrice + extrasPrice + adminFee - discount + taxV;
-  // real-time allocation warnings (only when the agency defined capacity)
-  let noteOut = str(fd, 'notes');
-  if (table === 'hotel_sales' && patch.check_in && patch.check_out) {
-    const w = await hotelCapacityWarn(db, aid, String(patch.hotel_name || ''), String(patch.check_in), String(patch.check_out), Number(patch.rooms_count || 0));
-    if (w) noteOut = `${noteOut ? noteOut + ' ' : ''}[⚠ ${w}]`;
-  }
-  if (table === 'transport_sales' && patch.transport_date) {
-    const w = await transportSlotWarn(db, aid, String(patch.transport_date), String(patch.vehicle_type || ''), Number(patch.seats || 0));
-    if (w) noteOut = `${noteOut ? noteOut + ' ' : ''}[⚠ ${w}]`;
-  }
-  for (const e of extras) {
-    if (table === 'hotel_sales' && e.check_in && e.check_out) {
-      const w = await hotelCapacityWarn(db, aid, String(e.hotel_name || ''), String(e.check_in), String(e.check_out), Number(e.rooms_count || 0));
-      if (w) noteOut = `${noteOut ? noteOut + ' ' : ''}[⚠ ${w}]`;
-    } else if (table === 'transport_sales' && e.transport_date) {
-      const w = await transportSlotWarn(db, aid, String(e.transport_date), String(e.vehicle_type || ''), Number(e.seats || 0));
-      if (w) noteOut = `${noteOut ? noteOut + ' ' : ''}[⚠ ${w}]`;
-    }
-  }
   const { count } = await db.from(table).select('id', { count: 'exact', head: true }).eq('agency_id', aid);
   const ref = `${cfg.prefix}-${new Date().getFullYear()}-${String((count || 0) + 1).padStart(4, '0')}`;
   const { data: rec2 } = await db.from(table).insert({
@@ -876,7 +857,7 @@ export async function createServiceSale(fd: FormData) {
     discount: discount, commission: commission,
     sold_by: ctx.profile.full_name || null,
     amount_paid: amountPaid, payment_method: str(fd, 'payment_method'),
-    payment_status: saleStatus(grand, amountPaid), notes: noteOut,
+    payment_status: saleStatus(grand, amountPaid), notes: str(fd, 'notes'),
     status: str(fd, 'status') || 'confirmed',
     balance: grand - amountPaid, profit: grand + commission - (cost + extrasCost),
   }).select('id').single();
@@ -1050,6 +1031,38 @@ export async function createPackageSale(fd: FormData) {
     sold_by: ctx.profile.full_name || null,
     notes: str(fd, 'notes'), status: str(fd, 'status') || 'confirmed',
   };
+  let legs: any[] = [];
+  try { legs = JSON.parse(String(fd.get('transports_json') || '[]')); } catch { legs = []; }
+  // real-time allocation warnings for TOUR sales (rooms + transport slots)
+  if (category === 'tour') {
+    const addDays = (d: string, n: number) => new Date(new Date(d).getTime() + n * 86400000).toISOString().slice(0, 10);
+    const roomsNeeded = num(fd, 'rooms_quint') + num(fd, 'rooms_quad') + num(fd, 'rooms_triple') + num(fd, 'rooms_double') + num(fd, 'rooms_single');
+    const warns: string[] = [];
+    if (roomsNeeded > 0 && String(rec.departure_date || '')) {
+      let cursor = String(rec.departure_date);
+      const segs: [string, number][] = [
+        [String(rec.makkah_hotel || ''), num(fd, 'makkah_nights')],
+        [String(rec.madinah_hotel || ''), num(fd, 'madinah_nights')],
+        [String(rec.tour_hotel || ''), num(fd, 'tour_nights')],
+      ];
+      for (const [hotel, nights] of segs) {
+        if (nights > 0 && cursor) {
+          if (hotel) {
+            const w = await hotelCapacityWarn(db, aid, hotel, cursor, addDays(cursor, nights), roomsNeeded);
+            if (w) warns.push(w);
+          }
+          cursor = addDays(cursor, nights);
+        }
+      }
+    }
+    for (const t of legs) {
+      if (t.leg_date && t.mode && t.seats) {
+        const w = await transportSlotWarn(db, aid, String(t.leg_date), String(t.mode), Number(t.seats));
+        if (w) warns.push(w);
+      }
+    }
+    if (warns.length) rec.notes = `${rec.notes ? rec.notes + ' ' : ''}[⚠ ${warns.join(' | ')}]`;
+  }
   const grand = packageGrand(rec as any);
   const paid = Number(rec.amount_paid);
   const { data: sale } = await db.from('package_sales').insert({
@@ -1058,8 +1071,6 @@ export async function createPackageSale(fd: FormData) {
     balance: grand - paid,
     profit: grand + Number(rec.commission) - Number(rec.cost),
   }).select('id').single();
-  let legs: any[] = [];
-  try { legs = JSON.parse(String(fd.get('transports_json') || '[]')); } catch { legs = []; }
   if (sale && legs.length) {
     await db.from('package_sale_transports').insert(
       legs.filter((t) => t.from_location || t.to_location || t.company).map((t) => ({
