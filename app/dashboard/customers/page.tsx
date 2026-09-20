@@ -1,5 +1,5 @@
 import { createAdminClient } from '@/lib/supabase/admin';
-import { requireModule } from '@/lib/data';
+import { requireModule, staffPrivacyOn } from '@/lib/data';
 import { createCustomer, deleteRecord } from '@/lib/crm-actions';
 import RowEdit from '@/components/row-edit';
 import { PageHeader, Table, Empty, AddPanel, Field } from '@/components/ui';
@@ -8,8 +8,9 @@ import Link from 'next/link';
 export default async function CustomersPage() {
   const ctx = await requireModule('customers');
   const db = createAdminClient();
-  const { data: customers } = await db
-    .from('customers').select('*').eq('agency_id', ctx.profile.agency_id)
+  const cq = db.from('customers').select('*').eq('agency_id', ctx.profile.agency_id);
+  if (staffPrivacyOn(ctx)) cq.eq('created_by', ctx.profile.id);
+  const { data: customers } = await cq
     .order('created_at', { ascending: false });
 
   return (

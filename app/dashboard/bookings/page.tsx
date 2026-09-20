@@ -1,6 +1,6 @@
 import { createAdminClient } from '@/lib/supabase/admin';
 import { money } from '@/lib/format';
-import { requireModule } from '@/lib/data';
+import { requireModule, staffPrivacyOn } from '@/lib/data';
 import { createBooking, deleteRecord } from '@/lib/crm-actions';
 import RowEdit from '@/components/row-edit';
 import { PageHeader, Table, Empty, StatusBadge, AddPanel, Field } from '@/components/ui';
@@ -12,7 +12,7 @@ export default async function BookingsPage() {
   const aid = ctx.profile.agency_id;
   const db = createAdminClient();
   const [{ data: bookings }, { data: customers }, { data: packages }] = await Promise.all([
-    db.from('bookings').select('*, customers(full_name)').eq('agency_id', aid).order('created_at', { ascending: false }),
+    (staffPrivacyOn(ctx) ? db.from('bookings').select('*, customers(full_name)').eq('agency_id', aid).eq('created_by', ctx.profile.id).order('created_at', { ascending: false }) : db.from('bookings').select('*, customers(full_name)').eq('agency_id', aid).order('created_at', { ascending: false })),
     db.from('customers').select('id, full_name').eq('agency_id', aid),
     db.from('packages').select('name').eq('agency_id', aid).eq('is_active', true),
   ]);

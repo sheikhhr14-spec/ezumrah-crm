@@ -17,7 +17,7 @@ export default async function Hajj_SalesPage() {
       <PageHeader title="Hajj Sales" subtitle="Hajj package bookings — families, group flights, buses, hotels & ziyarat" />
       <div className="card mb-6 p-5">
         <h2 className="mb-4 text-lg font-semibold">➕ New Hajj booking</h2>
-        <PackageSaleForm category="hajj" customers={(customers || []).map((c: any) => ({ id: c.id, full_name: c.full_name }))}  currency={(agctx.agency || {}).currency} />
+        <PackageSaleForm category="hajj" customers={(customers || []).map((c: any) => ({ id: c.id, full_name: c.full_name }))}  currency={(agctx.agency || {}).currency} taxRate={Number((agctx.agency || {}).tax_rate || 0)} />
       </div>
       <PackageSalesList list={(data || []) as any[]} currency={(agctx.agency || {}).currency} />
     </div>

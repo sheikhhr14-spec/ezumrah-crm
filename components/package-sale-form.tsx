@@ -17,16 +17,16 @@ const MODES = ['bus', 'van', 'private_car', 'train', 'taxi', 'other'];
 
 const SECT = "mb-2 mt-6 text-xs font-bold uppercase tracking-wide text-slate-500 border-b border-slate-100 pb-1";
 
-export default function PackageSaleForm({ category, customers, currency }: {
+export default function PackageSaleForm({ category, customers, currency, taxRate }: {
   category: 'umrah' | 'hajj' | 'tour';
   customers: { id: string; full_name: string }[];
-  currency?: string | null;
+  currency?: string | null; taxRate?: number;
 }) {
   const cur = currency;
   const [pax, setPax] = useState<Pax[]>([emptyPax()]);
   const [legs, setLegs] = useState<Leg[]>([]);
   const [ziyarat, setZiyarat] = useState({ scope: 'both', date: '', guide: false, notes: '' });
-  const [money, setMoney] = useState({ perPerson: '', supp: '', fee: '', discount: '', commission: '', cost: '', paid: '' });
+  const [money, setMoney] = useState({ perPerson: '', supp: '', fee: '', discount: '', tax: '', commission: '', cost: '', paid: '' });
 
   const set = (k: keyof typeof money) => (e: React.ChangeEvent<HTMLInputElement>) => setMoney({ ...money, [k]: e.target.value });
   const setP = (i: number, k: keyof Pax) => (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
@@ -38,7 +38,8 @@ export default function PackageSaleForm({ category, customers, currency }: {
 
   const travelers = pax.length;
   const base = n(money.perPerson) * travelers;
-  const grand = base + n(money.supp) + n(money.fee) - n(money.discount);
+  const taxAuto = (base + n(money.supp) + n(money.fee) - n(money.discount)) * (taxRate || 0) / 100;
+  const grand = base + n(money.supp) + n(money.fee) - n(money.discount) + (money.tax !== '' ? n(money.tax) : Math.round(taxAuto * 100) / 100);
   const profit = grand + n(money.commission) - n(money.cost);
   const balance = grand - n(money.paid);
   const rooms = ROOM_TYPES.map((rt) => ({ rt, count: pax.filter((p) => p.room_type === rt).length })).filter((r) => r.count);
@@ -214,6 +215,9 @@ export default function PackageSaleForm({ category, customers, currency }: {
           <input className="input" name="admin_fee" type="number" step="0.01" value={money.fee} onChange={set('fee')} /></label>
         <label className="block"><span className="text-xs font-semibold text-slate-600">Discount (-)</span>
           <input className="input" name="discount" type="number" step="0.01" value={money.discount} onChange={set('discount')} /></label>
+          <label className="block"><span className="text-xs font-semibold text-slate-600">Tax / VAT ({taxRate || 0}% auto)</span>
+            <input className="input" name="tax" type="number" step="0.01" value={money.tax} onChange={set('tax')} placeholder={String(Math.round(taxAuto * 100) / 100)} />
+          </label>
         <label className="block"><span className="text-xs font-semibold text-slate-600">Total cost to us</span>
           <input className="input" name="cost" type="number" step="0.01" value={money.cost} onChange={set('cost')} /></label>
         <label className="block"><span className="text-xs font-semibold text-slate-600">Supplier commission (+)</span>

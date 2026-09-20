@@ -27,8 +27,7 @@ export async function createCustomer(fd: FormData) {
     whatsapp: str(fd, 'whatsapp'),
     country: str(fd, 'country'),
     passport_no: str(fd, 'passport_no'),
-    notes: str(fd, 'notes'),
-  });
+    notes: str(fd, 'notes'), created_by: ctx.profile.id,});
   revalidatePath('/dashboard/customers');
 }
 
@@ -65,8 +64,7 @@ export async function createBooking(fd: FormData) {
     total_amount: num(fd, 'total_amount'),
     currency: str(fd, 'currency') || 'USD',
     source: str(fd, 'source'),
-    notes: str(fd, 'notes'),
-  }).select('id').single();
+    notes: str(fd, 'notes'), created_by: ctx.profile.id,}).select('id').single();
 
   // AUTOMATION: auto-generate operations checklist for every new booking
   if (data) {
@@ -334,8 +332,7 @@ export async function createLead(fd: FormData) {
     interest: str(fd, 'interest') || 'umrah',
     budget: num(fd, 'budget'),
     assigned_to: str(fd, 'assigned_to'),
-    notes: str(fd, 'notes'),
-  });
+    notes: str(fd, 'notes'), created_by: ctx.profile.id,});
   revalidatePath('/dashboard/leads');
 }
 
@@ -570,17 +567,17 @@ const EDITABLE: Record<string, string[]> = {
   expenses: ['category', 'description', 'amount', 'expense_date', 'payment_method', 'reference'],
   payments: ['amount', 'payment_date', 'method', 'reference', 'notes'],
   leaves: ['leave_type', 'leave_from', 'leave_to', 'days', 'reason'],
-  flight_sales: ['trip_kind', 'pax', 'admin_fee', 'amount_paid', 'payment_method', 'notes', 'status', 'customer_id'],
-  hotel_sales: ['hotel_name', 'city', 'check_in', 'check_out', 'nights', 'room_type', 'rooms_count', 'meal_plan', 'confirmation_code', 'sale_price', 'cost', 'admin_fee', 'amount_paid', 'payment_method', 'notes', 'status', 'customer_id'],
-  visa_sales: ['visa_type', 'application_date', 'visa_no', 'sale_price', 'cost', 'admin_fee', 'amount_paid', 'payment_method', 'notes', 'status', 'customer_id'],
-  transport_sales: ['transport_type', 'from_location', 'to_location', 'transport_date', 'transport_time', 'vehicle_type', 'seats', 'driver_name', 'driver_phone', 'sale_price', 'cost', 'admin_fee', 'amount_paid', 'payment_method', 'notes', 'status', 'customer_id'],
+  flight_sales: ['trip_kind', 'pax', 'admin_fee', 'tax', 'amount_paid', 'payment_method', 'notes', 'status', 'customer_id'],
+  hotel_sales: ['hotel_name', 'city', 'check_in', 'check_out', 'nights', 'room_type', 'rooms_count', 'meal_plan', 'confirmation_code', 'sale_price', 'cost', 'admin_fee', 'tax', 'amount_paid', 'payment_method', 'notes', 'status', 'customer_id'],
+  visa_sales: ['visa_type', 'application_date', 'visa_no', 'sale_price', 'cost', 'admin_fee', 'tax', 'amount_paid', 'payment_method', 'notes', 'status', 'customer_id'],
+  transport_sales: ['transport_type', 'from_location', 'to_location', 'transport_date', 'transport_time', 'vehicle_type', 'seats', 'driver_name', 'driver_phone', 'sale_price', 'cost', 'admin_fee', 'tax', 'amount_paid', 'payment_method', 'notes', 'status', 'customer_id'],
   support_tickets: ['subject', 'priority', 'status'],
   package_sales: ['package_category', 'package_name', 'departure_date', 'return_date', 'pax',
     'airline', 'flight_no', 'from_airport', 'to_airport', 'depart_at', 'return_flight_no', 'pnr',
     'makkah_hotel', 'makkah_nights', 'madinah_hotel', 'madinah_nights',
     'tour_destination', 'tour_hotel', 'tour_nights',
     'rooms_quint', 'rooms_quad', 'rooms_triple', 'rooms_double', 'rooms_single',
-    'sale_price', 'supplement', 'admin_fee', 'discount', 'commission', 'cost',
+    'sale_price', 'supplement', 'admin_fee', 'tax', 'discount', 'commission', 'cost',
     'amount_paid', 'payment_method', 'due_date', 'notes', 'status', 'customer_id',
     'ziyarat_scope', 'ziyarat_date', 'ziyarat_guide', 'ziyarat_notes'],
   attendance: ['att_date', 'check_in', 'check_out', 'status'],
@@ -626,11 +623,11 @@ export async function updateRecord(fd: FormData) {
 // ================= FLIGHT SALES (standalone, multi-leg) =================
 async function recomputeSale(db: any, aid: string, saleId: string) {
   const { data: legs } = await db.from('flight_sale_legs').select('fare, tax, cost').eq('agency_id', aid).eq('flight_sale_id', saleId);
-  const { data: sale } = await db.from('flight_sales').select('admin_fee, amount_paid, discount, commission').eq('agency_id', aid).eq('id', saleId).single();
+  const { data: sale } = await db.from('flight_sales').select('admin_fee, amount_paid, discount, commission, tax').eq('agency_id', aid).eq('id', saleId).single();
   if (!sale) return;
   const saleTotal = (legs || []).reduce((s: number, l: any) => s + Number(l.fare) + Number(l.tax), 0);
   const costTotal = (legs || []).reduce((s: number, l: any) => s + Number(l.cost), 0);
-  const grand = saleTotal + Number(sale.admin_fee) - Number(sale.discount || 0);
+  const grand = saleTotal + Number(sale.admin_fee) - Number(sale.discount || 0) + Number(sale.tax || 0);
   const paid = Number(sale.amount_paid);
   const paymentStatus = paid <= 0 ? 'unpaid' : paid >= grand ? 'full' : 'partial';
   await db.from('flight_sales').update({
@@ -675,7 +672,8 @@ export async function createFlightSale(fd: FormData) {
   }
   const saleTotal = legs.reduce((s, l) => s + Number(l.fare) + Number(l.tax), 0);
   const costTotal = legs.reduce((s, l) => s + Number(l.cost), 0);
-  const grand = saleTotal + adminFee - discount;
+  const taxV = num(fd, 'tax');
+  const grand = saleTotal + adminFee - discount + taxV;
   const paymentStatus = amountPaid <= 0 ? 'unpaid' : amountPaid >= grand ? 'full' : 'partial';
   const { count } = await db.from('flight_sales').select('id', { count: 'exact', head: true }).eq('agency_id', aid);
   const ref = `FS-${new Date().getFullYear()}-${String((count || 0) + 1).padStart(4, '0')}`;
@@ -686,7 +684,7 @@ export async function createFlightSale(fd: FormData) {
     supplier: str(fd, 'supplier'), issue_date: str(fd, 'issue_date') || null,
     refundable: str(fd, 'refundable'), due_date: str(fd, 'due_date') || null,
     sold_by: ctx.profile.full_name || null,
-    sale_total: saleTotal, cost_total: costTotal, admin_fee: adminFee,
+    sale_total: saleTotal, cost_total: costTotal, admin_fee: adminFee, tax: taxV,
     discount: discount, commission: commission,
     amount_paid: amountPaid, payment_method: str(fd, 'payment_method'),
     payment_status: paymentStatus, notes: str(fd, 'notes'),
@@ -708,7 +706,7 @@ export async function updateSale(fd: FormData) {
   const amountPaid = num(fd, 'amount_paid');
   const adminFee = num(fd, 'admin_fee');
   const patch: Record<string, unknown> = {
-    admin_fee: adminFee, amount_paid: amountPaid,
+    admin_fee: adminFee, tax: taxV, amount_paid: amountPaid,
     discount: num(fd, 'discount'), commission: num(fd, 'commission'),
     due_date: str(fd, 'due_date') || null,
     payment_method: str(fd, 'payment_method'), notes: str(fd, 'notes'),
@@ -818,12 +816,13 @@ export async function createServiceSale(fd: FormData) {
     salePrice = num(fd, 'rate_per_night') * Number(patch.nights) * Math.max(num(fd, 'rooms_count'), 1);
   }
   const cost = num(fd, 'cost');
-  const grand = salePrice + adminFee - discount;
+  const taxV = num(fd, 'tax');
+  const grand = salePrice + adminFee - discount + taxV;
   const { count } = await db.from(table).select('id', { count: 'exact', head: true }).eq('agency_id', aid);
   const ref = `${cfg.prefix}-${new Date().getFullYear()}-${String((count || 0) + 1).padStart(4, '0')}`;
   await db.from(table).insert({
     ...patch, agency_id: aid, customer_id: customerId || null, ref,
-    sale_price: salePrice, cost: cost, admin_fee: adminFee,
+    sale_price: salePrice, cost: cost, admin_fee: adminFee, tax: taxV,
     discount: discount, commission: commission,
     sold_by: ctx.profile.full_name || null,
     amount_paid: amountPaid, payment_method: str(fd, 'payment_method'),
@@ -876,7 +875,8 @@ export async function updateServiceSale(fd: FormData) {
   if (String(fd.get('customer_id'))) patch.customer_id = String(fd.get('customer_id'));
   patch.sale_price = salePrice; patch.cost = cost; patch.admin_fee = adminFee; patch.amount_paid = amountPaid;
   patch.discount = discount; patch.commission = commission;
-  const grand = salePrice + adminFee - discount; // customer owes this
+  const taxV = num(fd, 'tax');
+  const grand = salePrice + adminFee - discount + taxV; // customer owes this
   patch.payment_status = saleStatus(grand, amountPaid); // always auto
   patch.balance = grand - amountPaid;
   patch.profit = grand + commission - cost;
@@ -947,8 +947,8 @@ export async function deleteSaleDocument(fd: FormData) {
 // ============ PACKAGE SALES (Umrah / Hajj / Tour) ============
 const PKG_PREFIX: Record<string, string> = { umrah: 'UPS', hajj: 'HPS', tour: 'TPS' };
 
-function packageGrand(r: { sale_price: any; supplement: any; admin_fee: any; discount: any }) {
-  return Number(r.sale_price || 0) + Number(r.supplement || 0) + Number(r.admin_fee || 0) - Number(r.discount || 0);
+function packageGrand(r: any) {
+  return Number(r.sale_price || 0) + Number(r.supplement || 0) + Number(r.admin_fee || 0) - Number(r.discount || 0) + Number(r.tax || 0);
 }
 
 export async function createPackageSale(fd: FormData) {
@@ -988,7 +988,7 @@ export async function createPackageSale(fd: FormData) {
     rooms_single: num(fd, 'rooms_single'),
     sale_price: (Number(fd.get('price_per_person')) || 0) * paxCount || num(fd, 'sale_price'),
     supplement: num(fd, 'supplement'),
-    admin_fee: num(fd, 'admin_fee'), discount: num(fd, 'discount'),
+    admin_fee: num(fd, 'admin_fee'), tax: num(fd, 'tax'), discount: num(fd, 'discount'),
     commission: num(fd, 'commission'), cost: num(fd, 'cost'),
     amount_paid: num(fd, 'amount_paid'), payment_method: str(fd, 'payment_method'),
     due_date: str(fd, 'due_date') || null,
@@ -1150,13 +1150,17 @@ export async function updateAgencySettings(fd: FormData) {
   if (ctx.role !== 'owner') throw new Error('Only the agency owner can change settings.');
   const aid = ctx.profile.agency_id!;
   const patch: Record<string, unknown> = { updated_at: new Date().toISOString() };
-  for (const f of ['name', 'brand_color', 'website', 'address', 'contact_email', 'contact_phone', 'country', 'currency', 'timezone',
+  for (const f of ['name', 'brand_color', 'website', 'address', 'contact_email', 'contact_phone', 'country', 'currency', 'timezone', 'tax_no', 'tax_rate',
     'smtp_host', 'smtp_user', 'smtp_password', 'smtp_from_name', 'smtp_from_email']) {
     if (fd.get(f) !== null) patch[f] = str(fd, f);
   }
   if (fd.get('smtp_port') !== null) patch.smtp_port = num(fd, 'smtp_port');
   if (fd.get('smtp_secure') !== null) patch.smtp_secure = fd.get('smtp_secure') === 'true';
   if (fd.get('remove_logo') === 'true') patch.logo_url = null;
+  patch.staff_privacy = fd.get('staff_privacy') === 'on';
+  if (patch.tax_rate !== undefined && patch.tax_rate !== null && patch.tax_rate !== '') patch.tax_rate = Number(patch.tax_rate);
+  if (patch.tax_rate === '') patch.tax_rate = 0;
+
   await db.from('agencies').update(patch).eq('id', aid);
   revalidatePath('/dashboard/settings');
   revalidatePath('/dashboard');

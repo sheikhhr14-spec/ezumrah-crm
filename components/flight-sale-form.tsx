@@ -7,12 +7,13 @@ import { money } from '@/lib/format';
 type Leg = { fare: string; tax: string; cost: string };
 const emptyLeg = () => ({ fare: '', tax: '', cost: '' });
 
-export default function FlightSaleForm({ customers, currency }: { customers: { id: string; full_name: string }[]; currency?: string | null }) {
+export default function FlightSaleForm({ customers, currency, taxRate }: { customers: { id: string; full_name: string }[]; currency?: string | null; taxRate?: number }) {
   const cur = currency;
   const [kind, setKind] = useState('oneway');
   const [legs, setLegs] = useState<Leg[]>([emptyLeg()]);
   const [adminFee, setAdminFee] = useState('');
   const [discount, setDiscount] = useState('');
+  const [tax, setTax] = useState('');
   const [commission, setCommission] = useState('');
   const [paid, setPaid] = useState('');
   const [useExisting, setUseExisting] = useState(false);
@@ -27,7 +28,8 @@ export default function FlightSaleForm({ customers, currency }: { customers: { i
   const n = (v: string) => Number(v) || 0;
   const saleTotal = legs.reduce((s, l) => s + n(l.fare) + n(l.tax), 0);
   const costTotal = legs.reduce((s, l) => s + n(l.cost), 0);
-  const grand = saleTotal + n(adminFee) - n(discount);
+  const taxAuto = (saleTotal + n(adminFee) - n(discount)) * (taxRate || 0) / 100;
+  const grand = saleTotal + n(adminFee) - n(discount) + n(tax);
   const profit = grand + n(commission) - costTotal;
   const balance = grand - n(paid);
   const pStatus = n(paid) <= 0 ? 'Unpaid' : n(paid) >= grand ? 'Fully paid' : 'Partial';
@@ -137,6 +139,9 @@ export default function FlightSaleForm({ customers, currency }: { customers: { i
           <label className="block"><span className="text-xs font-semibold text-slate-600">Discount (-)</span>
             <input className="input" name="discount" type="number" step="0.01" value={discount}
               onChange={(e) => setDiscount(e.target.value)} />
+            <label className="block"><span className="text-xs font-semibold text-slate-600">Tax / VAT ({taxRate || 0}% auto)</span>
+            <input className="input" name="tax" type="number" step="0.01" value={tax} onChange={(e) => setTax(e.target.value)} placeholder={String(Math.round(taxAuto * 100) / 100)} />
+          </label>
           </label>
           <label className="block"><span className="text-xs font-semibold text-slate-600">Commission (from supplier, +)</span>
             <input className="input" name="commission" type="number" step="0.01" value={commission}
@@ -169,6 +174,7 @@ export default function FlightSaleForm({ customers, currency }: { customers: { i
           <div className="rounded-lg bg-slate-50 p-3"><p className="text-xs text-slate-400">Sale total</p><p className="font-bold">${money(saleTotal, cur)}</p></div>
           <div className="rounded-lg bg-slate-50 p-3"><p className="text-xs text-slate-400">Admin fee</p><p className="font-bold">${money(n(adminFee), cur)}</p></div>
           <div className="rounded-lg bg-slate-50 p-3"><p className="text-xs text-slate-400">Discount</p><p className="font-bold text-red-500">-${money(n(discount), cur)}</p></div>
+          <div className="rounded-lg bg-slate-50 p-3"><p className="text-xs text-slate-400">Tax / VAT</p><p className="font-bold">${money(n(tax) || Math.round(taxAuto * 100) / 100, cur)}</p></div>
           <div className="rounded-lg bg-slate-50 p-3"><p className="text-xs text-slate-400">Supplier commission</p><p className="font-bold text-emerald-600">+${money(n(commission), cur)}</p></div>
           <div className="rounded-lg bg-slate-50 p-3"><p className="text-xs text-slate-400">Grand total (after discount)</p><p className="font-bold">${money(grand, cur)}</p></div>
           <div className="rounded-lg bg-slate-50 p-3"><p className="text-xs text-slate-400">Balance</p><p className={`font-bold ${balance > 0 ? 'text-red-500' : 'text-emerald-600'}`}>${money(balance, cur)}</p></div>

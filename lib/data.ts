@@ -111,3 +111,8 @@ export async function requireSuperadmin() {
   if (ctx.profile?.role !== 'superadmin') redirect('/dashboard');
   return ctx;
 }
+
+// Staff privacy: when the agency owner enables it, staff-level users only see their own records
+export function staffPrivacyOn(ctx: any): boolean {
+  return ctx?.role === 'staff' && ctx?.agency?.staff_privacy === true;
+}

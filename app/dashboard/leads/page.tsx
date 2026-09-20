@@ -1,6 +1,6 @@
 import { createAdminClient } from '@/lib/supabase/admin';
 import { money } from '@/lib/format';
-import { requireModule } from '@/lib/data';
+import { requireModule, staffPrivacyOn } from '@/lib/data';
 import { createLead, setLeadStatus, convertLead, deleteLead } from '@/lib/crm-actions';
 import RowEdit from '@/components/row-edit';
 import { PageHeader, Table, Empty, AddPanel, Field, StatusBadge } from '@/components/ui';
@@ -10,6 +10,7 @@ export default async function LeadsPage({ searchParams }: { searchParams: { stat
   const cur = (ctx as any).agency?.currency;
   const db = createAdminClient();
   let q = db.from('leads').select('*').eq('agency_id', ctx.profile.agency_id).order('created_at', { ascending: false });
+  if (staffPrivacyOn(ctx)) q = q.or(`assigned_to.eq.${ctx.profile.id},created_by.eq.${ctx.profile.id}`);
   if (searchParams?.status) q = q.eq('status', searchParams.status);
   const { data: leads } = await q;
 

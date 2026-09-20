@@ -45,11 +45,17 @@ export default async function SettingsPage() {
               <input className="input h-10" name="brand_color" type="color" defaultValue={a.brand_color || '#b8923f'} /></label>
             <CountryRegionPicker country={a.country} currency={a.currency || 'USD'} timezone={a.timezone || 'UTC'} />
             <L label="Website" name="website" def={a.website} ph="https://" />
+            <L label="Tax registration no (VAT/TRN)" name="tax_no" def={a.tax_no} ph="e.g. 300123456700003" />
+            <L label="Default tax rate (%)" name="tax_rate" def={a.tax_rate ?? 0} type="number" />
             <L label="Contact email" name="contact_email" def={a.contact_email} />
             <L label="Contact phone" name="contact_phone" def={a.contact_phone} />
           </div>
           <label className="block"><span className="text-xs font-semibold text-slate-600">Address</span>
             <input className="input" name="address" defaultValue={a.address || ''} placeholder="Office address shown on documents" /></label>
+          <label className="flex items-start gap-2 rounded-lg border border-slate-200 p-3">
+            <input type="checkbox" name="staff_privacy" defaultChecked={!!a.staff_privacy} className="mt-0.5" />
+            <span className="text-xs text-slate-600"><strong className="block text-slate-900">Staff data privacy</strong>When ON, employees only see their own customers, leads, tasks and bookings — no more “that was my lead” fights. Managers and the owner always see everything.</span>
+          </label>
           <SubmitButton pendingText="Saving…">Save agency settings</SubmitButton>
         </form>
       </div>

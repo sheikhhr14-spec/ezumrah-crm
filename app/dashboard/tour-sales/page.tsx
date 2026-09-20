@@ -17,7 +17,7 @@ export default async function Tour_SalesPage() {
       <PageHeader title="Tour Sales" subtitle="Tour package bookings — groups, flights, hotels and itineraries" />
       <div className="card mb-6 p-5">
         <h2 className="mb-4 text-lg font-semibold">➕ New Tour booking</h2>
-        <PackageSaleForm category="tour" customers={(customers || []).map((c: any) => ({ id: c.id, full_name: c.full_name }))}  currency={(agctx.agency || {}).currency} />
+        <PackageSaleForm category="tour" customers={(customers || []).map((c: any) => ({ id: c.id, full_name: c.full_name }))}  currency={(agctx.agency || {}).currency} taxRate={Number((agctx.agency || {}).tax_rate || 0)} />
       </div>
       <PackageSalesList list={(data || []) as any[]} currency={(agctx.agency || {}).currency} />
     </div>

@@ -1,5 +1,5 @@
 import { createAdminClient } from '@/lib/supabase/admin';
-import { requireModule } from '@/lib/data';
+import { requireModule, staffPrivacyOn } from '@/lib/data';
 import { createTask, toggleTask, deleteRecord, updateRecord } from '@/lib/crm-actions';
 import RowEdit from '@/components/row-edit';
 import SubmitButton from '@/components/submit-button';
@@ -17,7 +17,7 @@ export default async function TasksPage({ searchParams }: { searchParams: { view
   const aid = ctx.profile.agency_id;
   const db = createAdminClient();
   const [{ data: tasks }, { data: bookings }, { data: staff }] = await Promise.all([
-    db.from('tasks').select('*, bookings(booking_ref)').eq('agency_id', aid).order('due_date'),
+    (staffPrivacyOn(ctx) ? db.from('tasks').select('*, bookings(booking_ref)').eq('agency_id', aid).eq('assigned_to', String(ctx.profile.id)).order('due_date') : db.from('tasks').select('*, bookings(booking_ref)').eq('agency_id', aid).order('due_date')),
     db.from('bookings').select('id, booking_ref').eq('agency_id', aid),
     db.from('profiles').select('id, full_name, role').eq('agency_id', aid),
   ]);
