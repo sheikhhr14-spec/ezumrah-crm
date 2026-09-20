@@ -1,6 +1,6 @@
 import { createAdminClient } from '@/lib/supabase/admin';
 import { requireModule } from '@/lib/data';
-import { updatePackageSale, deleteRecord, addPassenger, updatePassenger, deletePassenger } from '@/lib/crm-actions';
+import { updatePackageSale, deleteRecord, addPassenger, updatePassenger, deletePassenger, addTransportLeg, updateTransportLeg, deleteTransportLeg } from '@/lib/crm-actions';
 import SaleDocuments from '@/components/sale-documents';
 import SubmitButton from '@/components/submit-button';
 import RowEdit from '@/components/row-edit';
@@ -22,6 +22,8 @@ export default async function PackageSaleDetail({ params }: { params: { id: stri
     .eq('sale_table', 'package_sales').eq('sale_id', s.id);
   const { data: passengers } = await db.from('package_sale_passengers').select('*')
     .eq('package_sale_id', s.id).order('created_at');
+  const { data: legs } = await db.from('package_sale_transports').select('*')
+    .eq('package_sale_id', s.id).order('leg_date', { ascending: true });
 
   const { data: customers } = await db.from('customers').select('id, full_name').eq('agency_id', aid).order('full_name');
   const grand = Number(s.sale_price) + Number(s.supplement || 0) + Number(s.admin_fee || 0) - Number(s.discount || 0);
@@ -124,6 +126,71 @@ export default async function PackageSaleDetail({ params }: { params: { id: stri
         ) : <p className="text-xs text-slate-400">No passengers listed yet.</p>}
       </div>
 
+      {/* transport legs */}
+      <div className="card mb-6 p-5">
+        <h2 className="mb-1 text-lg font-semibold">🚌 Transport legs</h2>
+        <p className="mb-4 text-xs text-slate-400">Arrival, intercity (Makkah–Madinah), departure and ziyarat transfers — with seat assignments per leg.</p>
+        <div className="mb-4 grid gap-2 rounded-xl border border-slate-200 bg-slate-50 p-3 sm:grid-cols-8">
+          <form action={addTransportLeg} className="contents">
+            <input type="hidden" name="package_sale_id" value={s.id} />
+            <label><span className="text-[10px] font-semibold text-slate-500">Leg</span>
+              <select className="input px-2 py-1 text-xs" name="leg_type">{['arrival', 'intercity', 'departure', 'ziyarat_transfer', 'other'].map((v) => <option key={v} value={v}>{v.replace('_', ' ')}</option>)}</select></label>
+            <label><span className="text-[10px] font-semibold text-slate-500">Mode</span>
+              <select className="input px-2 py-1 text-xs" name="mode">{['bus', 'van', 'private_car', 'train', 'taxi', 'other'].map((v) => <option key={v} value={v}>{v.replace('_', ' ')}</option>)}</select></label>
+            <label><span className="text-[10px] font-semibold text-slate-500">Company</span>
+              <input className="input px-2 py-1 text-xs" name="company" placeholder="SAPTCO" /></label>
+            <label><span className="text-[10px] font-semibold text-slate-500">From</span>
+              <input className="input px-2 py-1 text-xs" name="from_location" placeholder="Jeddah airport" /></label>
+            <label><span className="text-[10px] font-semibold text-slate-500">To</span>
+              <input className="input px-2 py-1 text-xs" name="to_location" placeholder="Makkah hotel" /></label>
+            <label><span className="text-[10px] font-semibold text-slate-500">Date</span>
+              <input className="input px-2 py-1 text-xs" name="leg_date" type="date" /></label>
+            <label><span className="text-[10px] font-semibold text-slate-500">Seats</span>
+              <input className="input px-2 py-1 text-xs" name="seats" placeholder="12A, 12B" /></label>
+            <label className="flex items-end"><button className="btn-primary px-3 py-1.5 text-xs" type="submit">Add leg</button></label>
+          </form>
+        </div>
+        {legs?.length ? (
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead><tr className="border-b border-slate-200 text-left text-[10px] uppercase tracking-wide text-slate-400">
+                <th className="px-2 py-2">Leg</th><th className="px-2 py-2">Mode</th><th className="px-2 py-2">Company</th>
+                <th className="px-2 py-2">Route</th><th className="px-2 py-2">Date</th><th className="px-2 py-2">Seats</th><th className="px-2 py-2">Actions</th>
+              </tr></thead>
+              <tbody>
+                {legs.map((t: any) => (
+                  <tr key={t.id} className="border-b border-slate-50">
+                    <td className="px-2 py-2 font-semibold capitalize">{(t.leg_type || '').replace('_', ' ')}</td>
+                    <td className="px-2 py-2 capitalize">{(t.mode || '').replace('_', ' ')}</td>
+                    <td className="px-2 py-2">{t.company || '—'}</td>
+                    <td className="px-2 py-2">{t.from_location || '—'} → {t.to_location || '—'}</td>
+                    <td className="px-2 py-2">{t.leg_date || '—'}</td>
+                    <td className="px-2 py-2">{t.seats || '—'}</td>
+                    <td className="px-2 py-2">
+                      <div className="flex items-center gap-3">
+                        <RowEdit table="package_sale_transports" id={t.id} title="Edit transport leg" action={updateTransportLeg}>
+                          <label className="text-[10px] text-slate-400">Leg</label>
+                          <select className="input px-2 py-1 text-xs" name="leg_type" defaultValue={t.leg_type}>{['arrival', 'intercity', 'departure', 'ziyarat_transfer', 'other'].map((v) => <option key={v} value={v}>{v.replace('_', ' ')}</option>)}</select>
+                          <label className="text-[10px] text-slate-400">Mode</label>
+                          <select className="input px-2 py-1 text-xs" name="mode" defaultValue={t.mode}>{['bus', 'van', 'private_car', 'train', 'taxi', 'other'].map((v) => <option key={v} value={v}>{v.replace('_', ' ')}</option>)}</select>
+                          <label className="text-[10px] text-slate-400">Company</label><input className="input px-2 py-1 text-xs" name="company" defaultValue={t.company || ''} />
+                          <label className="text-[10px] text-slate-400">From</label><input className="input px-2 py-1 text-xs" name="from_location" defaultValue={t.from_location || ''} />
+                          <label className="text-[10px] text-slate-400">To</label><input className="input px-2 py-1 text-xs" name="to_location" defaultValue={t.to_location || ''} />
+                          <label className="text-[10px] text-slate-400">Date</label><input className="input px-2 py-1 text-xs" type="date" name="leg_date" defaultValue={t.leg_date || ''} />
+                          <label className="text-[10px] text-slate-400">Seats</label><input className="input px-2 py-1 text-xs" name="seats" defaultValue={t.seats || ''} />
+                          <label className="text-[10px] text-slate-400">Notes</label><input className="input px-2 py-1 text-xs" name="notes" defaultValue={t.notes || ''} />
+                        </RowEdit>
+                        <form action={deleteTransportLeg}><input type="hidden" name="id" value={t.id} /><button className="text-xs font-semibold text-red-500 hover:underline" type="submit">Delete</button></form>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        ) : <p className="text-xs text-slate-400">No transport legs yet.</p>}
+      </div>
+
       {/* itinerary summary */}
       <div className="mb-6 grid gap-4 lg:grid-cols-3">
         <div className="card p-5">
@@ -134,12 +201,29 @@ export default async function PackageSaleDetail({ params }: { params: { id: stri
           {s.pnr && <p className="mt-1 text-xs font-semibold accent">PNR {s.pnr}</p>}
         </div>
         <div className="card p-5">
-          <h3 className="mb-3 text-sm font-bold uppercase tracking-wide text-slate-500">🚌 Bus, seats & ziyarat</h3>
-          <p className="text-sm">{s.bus_company || '—'}</p>
-          <p className="text-xs text-slate-500">{s.bus_from || '—'} → {s.bus_to || '—'} {s.bus_date ? `· ${s.bus_date}` : ''}</p>
-          {s.bus_seats && <p className="mt-1 text-xs font-semibold accent">Seats: {s.bus_seats}</p>}
-          <p className="mt-2 text-xs">{s.ziyarat_included ? '🕌 Ziyarat included' : 'No ziyarat'}{s.ziyarat_notes ? ` — ${s.ziyarat_notes}` : ''}</p>
+          <h3 className="mb-3 text-sm font-bold uppercase tracking-wide text-slate-500">🚌 Transport — {legs?.length || 0} leg{legs?.length === 1 ? '' : 's'}</h3>
+          {legs?.length ? legs.map((t: any) => (
+            <div key={t.id} className="mb-2 border-b border-slate-100 pb-2 last:border-0">
+              <p className="text-sm font-semibold capitalize">{(t.leg_type || '').replace('_', ' ')} · {t.mode ? t.mode.replace('_', ' ') : 'transport'}</p>
+              <p className="text-xs text-slate-500">{t.company ? `${t.company} · ` : ''}{t.from_location || '—'} → {t.to_location || '—'}{t.leg_date ? ` · ${t.leg_date}` : ''}</p>
+              {t.seats && <p className="text-xs font-semibold accent">Seats: {t.seats}</p>}
+              {t.notes && <p className="text-xs text-slate-400">{t.notes}</p>}
+            </div>
+          )) : <p className="text-xs text-slate-400">No transport legs booked.</p>}
         </div>
+        {s.package_category !== 'tour' && (
+          <div className="card p-5">
+            <h3 className="mb-3 text-sm font-bold uppercase tracking-wide text-slate-500">🕌 Ziyarat</h3>
+            {s.ziyarat_scope === 'none' || !s.ziyarat_scope ? (
+              <p className="text-xs text-slate-400">Not included</p>
+            ) : (<>
+              <p className="text-sm font-semibold">{s.ziyarat_scope === 'both' ? 'Makkah + Madinah' : s.ziyarat_scope === 'makkah' ? 'Makkah only' : 'Madinah only'}</p>
+              {s.ziyarat_date && <p className="text-xs text-slate-500">Date: {s.ziyarat_date}</p>}
+              {s.ziyarat_guide && <p className="text-xs font-semibold accent">Guide included</p>}
+              {s.ziyarat_notes && <p className="text-xs text-slate-400">{s.ziyarat_notes}</p>}
+            </>)}
+          </div>
+        )}
         <div className="card p-5">
           <h3 className="mb-3 text-sm font-bold uppercase tracking-wide text-slate-500">🏨 Hotels & rooms</h3>
           {s.tour_destination ? (
@@ -179,16 +263,15 @@ export default async function PackageSaleDetail({ params }: { params: { id: stri
             <L label="Departure time" name="depart_at" type="datetime-local" def={dt(s.depart_at)} />
             <L label="Return flight" name="return_flight_no" def={s.return_flight_no} />
             <L label="Group PNR" name="pnr" def={s.pnr} />
-            <L label="Bus company" name="bus_company" def={s.bus_company} />
-            <L label="Bus from" name="bus_from" def={s.bus_from} />
-            <L label="Bus to" name="bus_to" def={s.bus_to} />
-            <L label="Bus date" name="bus_date" type="date" def={s.bus_date} />
-            <L label="Assigned seats" name="bus_seats" def={s.bus_seats} />
-            <label className="block"><span className="text-xs font-semibold text-slate-600">Ziyarat included</span>
-              <select className="input" name="ziyarat_included" defaultValue={s.ziyarat_included ? 'true' : 'false'}>
-                <option value="true">Yes</option><option value="false">No</option>
+            <label className="block"><span className="text-xs font-semibold text-slate-600">Ziyarat cities</span>
+              <select className="input" name="ziyarat_scope" defaultValue={s.ziyarat_scope || 'none'}>
+                <option value="none">Not included</option><option value="makkah">Makkah only</option>
+                <option value="madinah">Madinah only</option><option value="both">Makkah + Madinah</option>
               </select></label>
-            <L label="Ziyarat / transport notes" name="ziyarat_notes" def={s.ziyarat_notes} />
+            <L label="Ziyarat date" name="ziyarat_date" type="date" def={s.ziyarat_date} />
+            <label className="flex items-end gap-2 pb-2"><input type="checkbox" name="ziyarat_guide" className="h-4 w-4" defaultChecked={!!s.ziyarat_guide} />
+              <span className="text-xs font-semibold text-slate-600">Ziyarat guide included</span></label>
+            <L label="Ziyarat notes" name="ziyarat_notes" def={s.ziyarat_notes} />
             <L label="Makkah hotel" name="makkah_hotel" def={s.makkah_hotel} />
             <L label="Makkah nights" name="makkah_nights" type="number" def={s.makkah_nights} />
             <L label="Madinah hotel" name="madinah_hotel" def={s.madinah_hotel} />

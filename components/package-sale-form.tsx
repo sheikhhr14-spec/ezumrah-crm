@@ -7,8 +7,12 @@ const n = (v: string | number) => Number(v) || 0;
 const ROOM_TYPES = ['quint', 'quad', 'triple', 'double', 'single'];
 
 type Pax = { full_name: string; relationship: string; gender: string; age: string; passport_no: string; room_type: string; seat_no: string };
+type Leg = { leg_type: string; mode: string; company: string; from_location: string; to_location: string; leg_date: string; seats: string; notes: string };
 
 const emptyPax = (name = ''): Pax => ({ full_name: name, relationship: '', gender: '', age: '', passport_no: '', room_type: 'quad', seat_no: '' });
+const emptyLeg = (leg_type = 'arrival'): Leg => ({ leg_type, mode: 'bus', company: '', from_location: '', to_location: '', leg_date: '', seats: '', notes: '' });
+const LEG_TYPES = ['arrival', 'intercity', 'departure', 'ziyarat_transfer', 'other'];
+const MODES = ['bus', 'van', 'private_car', 'train', 'taxi', 'other'];
 
 const SECT = "mb-2 mt-6 text-xs font-bold uppercase tracking-wide text-slate-500 border-b border-slate-100 pb-1";
 
@@ -17,11 +21,16 @@ export default function PackageSaleForm({ category, customers }: {
   customers: { id: string; full_name: string }[];
 }) {
   const [pax, setPax] = useState<Pax[]>([emptyPax()]);
+  const [legs, setLegs] = useState<Leg[]>([]);
+  const [ziyarat, setZiyarat] = useState({ scope: 'both', date: '', guide: false, notes: '' });
   const [money, setMoney] = useState({ perPerson: '', supp: '', fee: '', discount: '', commission: '', cost: '', paid: '' });
 
   const set = (k: keyof typeof money) => (e: React.ChangeEvent<HTMLInputElement>) => setMoney({ ...money, [k]: e.target.value });
   const setP = (i: number, k: keyof Pax) => (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     const rows = [...pax]; rows[i] = { ...rows[i], [k]: e.target.value }; setPax(rows);
+  };
+  const setL = (i: number, k: keyof Leg) => (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
+    const rows = [...legs]; rows[i] = { ...rows[i], [k]: e.target.value }; setLegs(rows);
   };
 
   const travelers = pax.length;
@@ -41,6 +50,7 @@ export default function PackageSaleForm({ category, customers }: {
     <form action={createPackageSale} className="space-y-4">
       <input type="hidden" name="package_category" value={category} />
       <input type="hidden" name="passengers_json" value={JSON.stringify(pax)} />
+      <input type="hidden" name="transports_json" value={JSON.stringify(legs)} />
       <input type="hidden" name="sale_price" value={base} />
 
       {/* 1 — CUSTOMER (lead passenger) */}
@@ -135,23 +145,63 @@ export default function PackageSaleForm({ category, customers }: {
         </div>
       )}
 
-      {/* 6 — TRANSPORT & ZIYARAT */}
-      <p className={SECT}>6 · Transport & Ziyarat</p>
-      <div className="grid gap-4 sm:grid-cols-5">
-        <L label="Bus company" name="bus_company" ph="SAPTCO / private" />
-        <L label="From" name="bus_from" ph="Riyadh" />
-        <L label="To" name="bus_to" ph="Makkah" />
-        <L label="Bus date" name="bus_date" type="date" />
-        <label className="block"><span className="text-xs font-semibold text-slate-600">Ziyarat included</span>
-          <select className="input" name="ziyarat_included" defaultValue="true">
-            <option value="true">Yes</option><option value="false">No</option>
-          </select></label>
-        <label className="block sm:col-span-4"><span className="text-xs font-semibold text-slate-600">Ziyarat / transport notes</span>
-          <input className="input" name="ziyarat_notes" placeholder="Ziyarat schedule, pick-up points, group transport details…" /></label>
+      {/* 6 — TRANSPORT */}
+      <p className={SECT}>6 · Transport — {legs.length} leg{legs.length === 1 ? '' : 's'} booked</p>
+      <div className="space-y-2">
+        {legs.map((t, i) => (
+          <div key={i} className="grid gap-2 rounded-xl border border-slate-200 bg-white p-3 sm:grid-cols-8">
+            <label><span className="text-[10px] font-semibold text-slate-500">Leg</span>
+              <select className="input px-2 py-1 text-xs" value={t.leg_type} onChange={setL(i, 'leg_type')}>
+                {LEG_TYPES.map((v) => <option key={v} value={v}>{v.replace('_', ' ')}</option>)}
+              </select></label>
+            <label><span className="text-[10px] font-semibold text-slate-500">Mode</span>
+              <select className="input px-2 py-1 text-xs" value={t.mode} onChange={setL(i, 'mode')}>
+                {MODES.map((v) => <option key={v} value={v}>{v.replace('_', ' ')}</option>)}
+              </select></label>
+            <label><span className="text-[10px] font-semibold text-slate-500">Company</span>
+              <input className="input px-2 py-1 text-xs" value={t.company} onChange={setL(i, 'company')} placeholder="SAPTCO / private" /></label>
+            <label><span className="text-[10px] font-semibold text-slate-500">From</span>
+              <input className="input px-2 py-1 text-xs" value={t.from_location} onChange={setL(i, 'from_location')} placeholder="Jeddah airport" /></label>
+            <label><span className="text-[10px] font-semibold text-slate-500">To</span>
+              <input className="input px-2 py-1 text-xs" value={t.to_location} onChange={setL(i, 'to_location')} placeholder="Makkah hotel" /></label>
+            <label><span className="text-[10px] font-semibold text-slate-500">Date</span>
+              <input className="input px-2 py-1 text-xs" type="date" value={t.leg_date} onChange={setL(i, 'leg_date')} /></label>
+            <label><span className="text-[10px] font-semibold text-slate-500">Seats</span>
+              <input className="input px-2 py-1 text-xs" value={t.seats} onChange={setL(i, 'seats')} placeholder="12A, 12B…" /></label>
+            <label className="flex items-end gap-2"><span className="flex-1"><span className="text-[10px] font-semibold text-slate-500">Notes</span>
+              <input className="input px-2 py-1 text-xs" value={t.notes} onChange={setL(i, 'notes')} /></span>
+              <button type="button" className="pb-2 text-xs font-bold text-red-500" onClick={() => setLegs(legs.filter((_, j) => j !== i))}>✕</button></label>
+          </div>
+        ))}
+        <div className="flex flex-wrap gap-2">
+          <button type="button" className="btn-secondary px-3 py-1.5 text-xs" onClick={() => setLegs([...legs, emptyLeg('arrival')])}>+ Arrival transfer</button>
+          <button type="button" className="btn-secondary px-3 py-1.5 text-xs" onClick={() => setLegs([...legs, emptyLeg('intercity')])}>+ Makkah–Madinah leg</button>
+          <button type="button" className="btn-secondary px-3 py-1.5 text-xs" onClick={() => setLegs([...legs, emptyLeg('departure')])}>+ Departure transfer</button>
+          <button type="button" className="btn-secondary px-3 py-1.5 text-xs" onClick={() => setLegs([...legs, emptyLeg('other')])}>+ Other leg</button>
+        </div>
       </div>
 
-      {/* 7 — PRICE SUMMARY */}
-      <p className={SECT}>7 · Price summary</p>
+      {/* 7 — ZIYARAT (umrah & hajj) */}
+      {category !== 'tour' && (<>
+        <p className={SECT}>7 · Ziyarat</p>
+        <div className="grid gap-4 sm:grid-cols-4">
+          <label className="block"><span className="text-xs font-semibold text-slate-600">Ziyarat cities</span>
+            <select className="input" name="ziyarat_scope" value={ziyarat.scope} onChange={(e) => setZiyarat({ ...ziyarat, scope: e.target.value })}>
+              <option value="none">Not included</option>
+              <option value="makkah">Makkah only</option>
+              <option value="madinah">Madinah only</option>
+              <option value="both">Makkah + Madinah</option>
+            </select></label>
+          <label className="block"><span className="text-xs font-semibold text-slate-600">Ziyarat date</span>
+            <input className="input" name="ziyarat_date" type="date" value={ziyarat.date} onChange={(e) => setZiyarat({ ...ziyarat, date: e.target.value })} /></label>
+          <label className="flex items-end gap-2 pb-1"><input type="checkbox" name="ziyarat_guide" className="h-4 w-4" checked={ziyarat.guide} onChange={(e) => setZiyarat({ ...ziyarat, guide: e.target.checked })} />
+            <span className="text-xs font-semibold text-slate-600">Guide included</span></label>
+          <label className="block sm:col-span-2"><span className="text-xs font-semibold text-slate-600">Ziyarat notes</span>
+            <input className="input" name="ziyarat_notes" value={ziyarat.notes} onChange={(e) => setZiyarat({ ...ziyarat, notes: e.target.value })} placeholder="Sites visited, schedule, pick-up point…" /></label>
+        </div>
+      </>)}
+      {/* PRICE SUMMARY */}
+      <p className={SECT}>{category === 'tour' ? '7' : '8'} · Price summary</p>
       <div className="grid gap-3 sm:grid-cols-4">
         <label className="block"><span className="text-xs font-semibold text-slate-600">Package price per person</span>
           <input className="input" name="price_per_person" type="number" step="0.01" value={money.perPerson} onChange={set('perPerson')} /></label>
@@ -188,7 +238,7 @@ export default function PackageSaleForm({ category, customers }: {
       </div>
 
       {/* 8 — DOCUMENTATION */}
-      <p className={SECT}>8 · Documentation</p>
+      <p className={SECT}>{category === 'tour' ? '8' : '9'} · Documentation</p>
       <p className="rounded-lg border border-dashed border-slate-300 bg-slate-50 p-3 text-xs text-slate-500">
         📎 After saving, open the sale and upload passports, tickets, vouchers and receipts in its <b>Documents</b> section — every document stays attached to this booking.
       </p>

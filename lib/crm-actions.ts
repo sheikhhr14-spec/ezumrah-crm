@@ -302,6 +302,7 @@ async function cleanupChildren(db: any, table: string, id: string) {
     await purgeSaleDocs(db, 'flight_sales', id);
   } else if (table === 'package_sales') {
     await db.from('package_sale_passengers').delete().eq('package_sale_id', id);
+    await db.from('package_sale_transports').delete().eq('package_sale_id', id);
     await purgeSaleDocs(db, table, id);
   } else if (['hotel_sales', 'visa_sales', 'transport_sales'].includes(table)) {
     await purgeSaleDocs(db, table, id);
@@ -582,7 +583,7 @@ const EDITABLE: Record<string, string[]> = {
     'rooms_quint', 'rooms_quad', 'rooms_triple', 'rooms_double', 'rooms_single',
     'sale_price', 'supplement', 'admin_fee', 'discount', 'commission', 'cost',
     'amount_paid', 'payment_method', 'due_date', 'notes', 'status', 'customer_id',
-    'ziyarat_included', 'ziyarat_notes'],
+    'ziyarat_scope', 'ziyarat_date', 'ziyarat_guide', 'ziyarat_notes'],
   attendance: ['att_date', 'check_in', 'check_out', 'status'],
   payroll: ['basic', 'allowances', 'deductions', 'net', 'status'],
 };
@@ -966,7 +967,9 @@ export async function createPackageSale(fd: FormData) {
     pnr: str(fd, 'pnr'),
     bus_company: str(fd, 'bus_company'), bus_from: str(fd, 'bus_from'), bus_to: str(fd, 'bus_to'),
     bus_date: str(fd, 'bus_date') || null, bus_seats: str(fd, 'bus_seats'),
-    ziyarat_included: fd.get('ziyarat_included') === 'on' || fd.get('ziyarat_included') === 'true',
+    ziyarat_scope: str(fd, 'ziyarat_scope') || 'none',
+    ziyarat_date: str(fd, 'ziyarat_date') || null,
+    ziyarat_guide: fd.get('ziyarat_guide') === 'on' || fd.get('ziyarat_guide') === 'true',
     ziyarat_notes: str(fd, 'ziyarat_notes'),
     makkah_hotel: str(fd, 'makkah_hotel'), makkah_nights: num(fd, 'makkah_nights'),
     madinah_hotel: str(fd, 'madinah_hotel'), madinah_nights: num(fd, 'madinah_nights'),
@@ -992,6 +995,19 @@ export async function createPackageSale(fd: FormData) {
     balance: grand - paid,
     profit: grand + Number(rec.commission) - Number(rec.cost),
   }).select('id').single();
+  let legs: any[] = [];
+  try { legs = JSON.parse(String(fd.get('transports_json') || '[]')); } catch { legs = []; }
+  if (sale && legs.length) {
+    await db.from('package_sale_transports').insert(
+      legs.filter((t) => t.from_location || t.to_location || t.company).map((t) => ({
+        agency_id: aid, package_sale_id: sale.id,
+        leg_type: t.leg_type || 'arrival', mode: t.mode || 'bus',
+        company: t.company || null, from_location: t.from_location || null,
+        to_location: t.to_location || null, leg_date: t.leg_date || null,
+        seats: t.seats || null, pax_count: paxCount,
+        notes: t.notes || null,
+      })));
+  }
   if (sale && passengers.length) {
     await db.from('package_sale_passengers').insert(
       passengers.filter((p) => p.full_name).map((p) => ({
@@ -1075,4 +1091,46 @@ export async function deletePassenger(fd: FormData) {
   const { count } = await db.from('package_sale_passengers').select('id', { count: 'exact', head: true }).eq('package_sale_id', p.package_sale_id);
   await db.from('package_sales').update({ pax: Math.max(count || 1, 1) }).eq('id', p.package_sale_id);
   revalidatePath(`/dashboard/package-sales/${p.package_sale_id}`);
+}
+
+
+// ===== package sale transport legs CRUD =====
+export async function addTransportLeg(fd: FormData) {
+  const db = createAdminClient();
+  const aid = await agencyId();
+  const saleId = String(fd.get('package_sale_id'));
+  const { data: sale } = await db.from('package_sales').select('id, agency_id, pax').eq('id', saleId).single();
+  if (!sale || sale.agency_id !== aid) throw new Error('Sale not found in your agency.');
+  await db.from('package_sale_transports').insert({
+    agency_id: aid, package_sale_id: saleId,
+    leg_type: str(fd, 'leg_type') || 'arrival', mode: str(fd, 'mode') || 'bus',
+    company: str(fd, 'company'), from_location: str(fd, 'from_location'),
+    to_location: str(fd, 'to_location'), leg_date: str(fd, 'leg_date') || null,
+    seats: str(fd, 'seats'), pax_count: sale.pax || 1, notes: str(fd, 'notes'),
+  });
+  revalidatePath(`/dashboard/package-sales/${saleId}`);
+}
+
+export async function updateTransportLeg(fd: FormData) {
+  const db = createAdminClient();
+  const aid = await agencyId();
+  const id = String(fd.get('id'));
+  const { data: t } = await db.from('package_sale_transports').select('id, agency_id, package_sale_id').eq('id', id).single();
+  if (!t || t.agency_id !== aid) throw new Error('Transport leg not found in your agency.');
+  await db.from('package_sale_transports').update({
+    leg_type: str(fd, 'leg_type'), mode: str(fd, 'mode'), company: str(fd, 'company'),
+    from_location: str(fd, 'from_location'), to_location: str(fd, 'to_location'),
+    leg_date: str(fd, 'leg_date') || null, seats: str(fd, 'seats'), notes: str(fd, 'notes'),
+  }).eq('id', id);
+  revalidatePath(`/dashboard/package-sales/${t.package_sale_id}`);
+}
+
+export async function deleteTransportLeg(fd: FormData) {
+  const db = createAdminClient();
+  const aid = await agencyId();
+  const id = String(fd.get('id'));
+  const { data: t } = await db.from('package_sale_transports').select('id, agency_id, package_sale_id').eq('id', id).single();
+  if (!t || t.agency_id !== aid) throw new Error('Transport leg not found in your agency.');
+  await db.from('package_sale_transports').delete().eq('id', id);
+  revalidatePath(`/dashboard/package-sales/${t.package_sale_id}`);
 }
