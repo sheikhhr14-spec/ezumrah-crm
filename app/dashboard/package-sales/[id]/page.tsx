@@ -1,4 +1,5 @@
 import { createAdminClient } from '@/lib/supabase/admin';
+import { money } from '@/lib/format';
 import { requireModule } from '@/lib/data';
 import { updatePackageSale, deleteRecord, addPassenger, updatePassenger, deletePassenger, addTransportLeg, updateTransportLeg, deleteTransportLeg } from '@/lib/crm-actions';
 import SaleDocuments from '@/components/sale-documents';
@@ -10,7 +11,9 @@ import { notFound } from 'next/navigation';
 
 export default async function PackageSaleDetail({ params }: { params: { id: string } }) {
   const db = createAdminClient();
-  const aid0 = (await requireModule('umrahsales')).profile.agency_id;
+  const mctx: any = await requireModule('umrahsales');
+  const aid0 = mctx.profile.agency_id;
+  const cur = (mctx.agency || mctx.profile?.agencies || {}).currency;
   const { data: s } = await db.from('package_sales')
     .select('*, customers(full_name, phone, whatsapp, passport_no, country)')
     .eq('id', params.id).eq('agency_id', aid0).single();
@@ -46,12 +49,12 @@ export default async function PackageSaleDetail({ params }: { params: { id: stri
 
       <div className="mb-6 grid gap-4 sm:grid-cols-3 lg:grid-cols-6">
         {[
-          { l: 'Package price', v: `$${Number(s.sale_price).toFixed(2)}` },
-          { l: 'Supplement (separate rooms)', v: `+$${Number(s.supplement || 0).toFixed(2)}`, green: Number(s.supplement) > 0, hide: !Number(s.supplement) },
-          { l: 'Discount', v: `-$${Number(s.discount || 0).toFixed(2)}`, red: true, hide: !Number(s.discount) },
-          { l: 'Grand total', v: `$${grand.toFixed(2)}` },
-          { l: 'Paid / Balance', v: `$${paid.toFixed(2)} / $${balance.toFixed(2)}` },
-          { l: `Profit (cost $${Number(s.cost || 0).toFixed(2)})`, v: `$${profit.toFixed(2)}`, gold: true },
+          { l: 'Package price', v: `${money(Number(s.sale_price), cur)}` },
+          { l: 'Supplement (separate rooms)', v: `+${money(Number(s.supplement || 0), cur)}`, green: Number(s.supplement) > 0, hide: !Number(s.supplement) },
+          { l: 'Discount', v: `-${money(Number(s.discount || 0), cur)}`, red: true, hide: !Number(s.discount) },
+          { l: 'Grand total', v: `${money(grand, cur)}` },
+          { l: 'Paid / Balance', v: `${money(paid, cur)} / ${money(balance, cur)}` },
+          { l: `Profit (cost ${money(Number(s.cost || 0), cur)})`, v: `${money(profit, cur)}`, gold: true },
         ].filter((k) => !k.hide).map((k) => (
           <div key={k.l} className={`card p-4 ${k.gold ? 'accent-soft-bg' : ''}`}>
             <p className="text-xs text-slate-400">{k.l}</p>

@@ -1,4 +1,5 @@
 import { createAdminClient } from '@/lib/supabase/admin';
+import { money } from '@/lib/format';
 import { requireModule } from '@/lib/data';
 import { PageHeader, Empty } from '@/components/ui';
 
@@ -6,6 +7,7 @@ function monthKey(d: string) { return d.slice(0, 7); }
 
 export default async function ReportsPage() {
   const ctx = await requireModule('reports');
+  const cur = (ctx as any).agency?.currency;
   const db = createAdminClient();
   const [bookings, invoices, customers, visas] = await Promise.all([
     db.from('bookings').select('id, created_at, status, trip_type, total_amount, departure_date, pilgrims_count').eq('agency_id', ctx.profile.agency_id),
@@ -48,9 +50,9 @@ export default async function ReportsPage() {
   ).sort((a, b) => b[1] - a[1]).slice(0, 8);
 
   const kpis = [
-    { label: 'Revenue collected', value: `$${revenue.toLocaleString()}` },
-    { label: 'Outstanding', value: `$${outstanding.toLocaleString()}` },
-    { label: 'Pipeline (pending)', value: `$${pipeline.toLocaleString()}` },
+    { label: 'Revenue collected', value: `${money(revenue, cur)}` },
+    { label: 'Outstanding', value: `${money(outstanding, cur)}` },
+    { label: 'Pipeline (pending)', value: `${money(pipeline, cur)}` },
     { label: 'Total pilgrims', value: pilgrims },
   ];
 
@@ -93,7 +95,7 @@ export default async function ReportsPage() {
                 <div key={b.id} className="flex items-center justify-between rounded-lg border border-slate-100 p-3 text-sm">
                   <div>
                     <p className="font-semibold text-slate-800 capitalize">{b.trip_type} · {b.pilgrims_count} pilgrims</p>
-                    <p className="text-xs text-slate-400">${Number(b.total_amount).toLocaleString()}</p>
+                    <p className="text-xs text-slate-400">{money(Number(b.total_amount), cur)}</p>
                   </div>
                   <span className="badge accent-soft-bg accent">{new Date(b.departure_date!).toLocaleDateString()}</span>
                 </div>

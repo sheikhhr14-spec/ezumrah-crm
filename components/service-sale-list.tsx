@@ -5,6 +5,7 @@ import { deleteRecord } from '@/lib/crm-actions';
 import ServiceSaleForm from '@/components/service-sale-form';
 import { SERVICE_SALES } from '@/lib/service-sales';
 import Link from 'next/link';
+import { money } from '@/lib/format';
 
 const MODULE_KEY: Record<string, string> = {
   hotel_sales: 'hotelsales',
@@ -15,6 +16,8 @@ const MODULE_KEY: Record<string, string> = {
 export default async function ServiceSaleList({ table, searchParams }: { table: string; searchParams?: { q?: string } }) {
   const cfg = SERVICE_SALES[table];
   const ctx = await requireModule(MODULE_KEY[table]);
+  const ag: any = (ctx as any).agency || (ctx.profile as any)?.agencies || {};
+  const cur = ag.currency;
   const db = createAdminClient();
   const [{ data: sales }, { data: customers }] = await Promise.all([
     db.from(table).select('*, customers(full_name)').eq('agency_id', ctx.profile.agency_id)
@@ -47,10 +50,10 @@ export default async function ServiceSaleList({ table, searchParams }: { table: 
               </td>
               <td className="px-4 py-2">{r.customers?.full_name || '—'}</td>
               <td className="px-4 py-2">{cfg.desc(r)}</td>
-              <td className="px-4 py-2 font-semibold">${grand.toFixed(2)}</td>
-              <td className="px-4 py-2">${Number(r.amount_paid).toFixed(2)}</td>
-              <td className={`px-4 py-2 ${bal > 0 ? 'text-red-500' : 'text-emerald-600'}`}>${bal.toFixed(2)}{overdue ? ' ⚠' : ''}</td>
-              <td className="px-4 py-2 font-semibold accent">${(grand - Number(r.cost)).toFixed(2)}</td>
+              <td className="px-4 py-2 font-semibold">{money(grand, cur)}</td>
+              <td className="px-4 py-2">{money(Number(r.amount_paid), cur)}</td>
+              <td className={`px-4 py-2 ${bal > 0 ? 'text-red-500' : 'text-emerald-600'}`}>{money(bal, cur)}{overdue ? ' ⚠' : ''}</td>
+              <td className="px-4 py-2 font-semibold accent">{money((grand - Number(r.cost)), cur)}</td>
               <td className="px-4 py-2"><StatusBadge status={r.payment_status} /></td>
               <td className="px-4 py-2"><div className="flex items-center gap-2">
                 <Link className="text-xs font-semibold accent hover:underline" href={`/dashboard/${cfg.route}/${r.id}`}>Edit</Link>

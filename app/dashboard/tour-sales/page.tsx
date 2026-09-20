@@ -5,7 +5,7 @@ import PackageSalesList from '@/components/package-sales-list';
 import { PageHeader } from '@/components/ui';
 
 export default async function Tour_SalesPage() {
-  await requireModule('toursales');
+  const agctx: any = await requireModule('toursales');
   const db = createAdminClient();
   const { data } = await db.from('package_sales')
     .select('id, ref, package_name, pax, departure_date, return_date, sale_price, supplement, admin_fee, discount, amount_paid, balance, profit, payment_status, status, due_date, customers(full_name)')
@@ -19,7 +19,7 @@ export default async function Tour_SalesPage() {
         <h2 className="mb-4 text-lg font-semibold">➕ New Tour booking</h2>
         <PackageSaleForm category="tour" customers={(customers || []).map((c: any) => ({ id: c.id, full_name: c.full_name }))} />
       </div>
-      <PackageSalesList list={(data || []) as any[]} />
+      <PackageSalesList list={(data || []) as any[]} currency={(agctx.agency || {}).currency} />
     </div>
   );
 }

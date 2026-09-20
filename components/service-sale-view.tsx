@@ -1,4 +1,5 @@
 import { createAdminClient } from '@/lib/supabase/admin';
+import { money } from '@/lib/format';
 import { requireModule } from '@/lib/data';
 import { StatusBadge } from '@/components/ui';
 import { updateServiceSale, deleteRecord } from '@/lib/crm-actions';
@@ -23,6 +24,7 @@ const PDF_TYPE: Record<string, string> = {
 export default async function ServiceSaleView({ table, id }: { table: string; id: string }) {
   const cfg = SERVICE_SALES[table];
   const ctx = await requireModule(MODULE_KEY[table]);
+  const cur = (ctx as any).agency?.currency;
   const aid = ctx.profile.agency_id;
   const db = createAdminClient();
 
@@ -62,14 +64,14 @@ export default async function ServiceSaleView({ table, id }: { table: string; id
       {/* money summary */}
       <div className="mb-8 grid gap-4 sm:grid-cols-3 lg:grid-cols-6">
         {[
-          { l: 'Sale price', v: `$${Number(rec.sale_price).toFixed(2)}` },
-          { l: 'Admin fee', v: `$${Number(rec.admin_fee).toFixed(2)}` },
-          { l: 'Discount', v: `-$${discount.toFixed(2)}`, red: discount > 0, hide: discount <= 0 },
-          { l: 'Commission (+)', v: `+$${commission.toFixed(2)}`, green: true, hide: commission <= 0 },
-          { l: 'Grand total', v: `$${grand.toFixed(2)}` },
-          { l: 'Paid', v: `$${paid.toFixed(2)}` },
-          { l: 'Balance', v: `$${balance.toFixed(2)}`, red: balance > 0 },
-          { l: `Profit (cost $${Number(rec.cost).toFixed(2)})`, v: `$${profit.toFixed(2)}`, gold: true },
+          { l: 'Sale price', v: `${money(Number(rec.sale_price), cur)}` },
+          { l: 'Admin fee', v: `${money(Number(rec.admin_fee), cur)}` },
+          { l: 'Discount', v: `-${money(discount, cur)}`, red: discount > 0, hide: discount <= 0 },
+          { l: 'Commission (+)', v: `+${money(commission, cur)}`, green: true, hide: commission <= 0 },
+          { l: 'Grand total', v: `${money(grand, cur)}` },
+          { l: 'Paid', v: `${money(paid, cur)}` },
+          { l: 'Balance', v: `${money(balance, cur)}`, red: balance > 0 },
+          { l: `Profit (cost ${money(Number(rec.cost), cur)})`, v: `${money(profit, cur)}`, gold: true },
         ].filter((k) => !k.hide).map((k) => (
           <div key={k.l} className={`card p-4 ${k.gold ? 'accent-soft-bg' : ''}`}>
             <p className="text-xs text-slate-400">{k.l}</p>
@@ -146,7 +148,7 @@ export default async function ServiceSaleView({ table, id }: { table: string; id
             <input className="input" name="notes" defaultValue={rec.notes || ''} />
           </label>
           <div className="flex items-end"><SubmitButton className="btn-primary px-4 py-2 text-xs">Save changes</SubmitButton></div>
-          <div className="flex items-end"><span className="text-xs"><StatusBadge status={rec.payment_status} /> · Profit <b className="accent">${profit.toFixed(2)}</b></span></div>
+          <div className="flex items-end"><span className="text-xs"><StatusBadge status={rec.payment_status} /> · Profit <b className="accent">{money(profit, cur)}</b></span></div>
         </div>
       </form>
 

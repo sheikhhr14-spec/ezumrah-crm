@@ -1150,7 +1150,7 @@ export async function updateAgencySettings(fd: FormData) {
   if (ctx.role !== 'owner') throw new Error('Only the agency owner can change settings.');
   const aid = ctx.profile.agency_id!;
   const patch: Record<string, unknown> = { updated_at: new Date().toISOString() };
-  for (const f of ['name', 'brand_color', 'website', 'address', 'contact_email', 'contact_phone',
+  for (const f of ['name', 'brand_color', 'website', 'address', 'contact_email', 'contact_phone', 'country', 'currency', 'timezone',
     'smtp_host', 'smtp_user', 'smtp_password', 'smtp_from_name', 'smtp_from_email']) {
     if (fd.get(f) !== null) patch[f] = str(fd, f);
   }

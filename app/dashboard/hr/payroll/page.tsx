@@ -1,4 +1,5 @@
 import { createAdminClient } from '@/lib/supabase/admin';
+import { money } from '@/lib/format';
 import { requireModule } from '@/lib/data';
 import { runPayroll, updatePayrollLine, markPayrollPaid, deleteRecord } from '@/lib/crm-actions';
 import { PageHeader, Table, Empty, AddPanel, Field, StatusBadge } from '@/components/ui';
@@ -6,6 +7,7 @@ import HRTabs from '@/components/hr-tabs';
 
 export default async function PayrollPage({ searchParams }: { searchParams: { month?: string } }) {
   const ctx = await requireModule('hr');
+  const cur = (ctx as any).agency?.currency;
   const db = createAdminClient();
   const month = searchParams?.month || new Date().toISOString().slice(0, 7);
   const { data: payroll } = await db.from('payroll').select('*, employees(full_name, designation)')
@@ -16,7 +18,7 @@ export default async function PayrollPage({ searchParams }: { searchParams: { mo
 
   return (
     <div>
-      <PageHeader title="Payroll" subtitle={`${month} — ${paid}/${payroll?.length ?? 0} paid · $${totalNet.toLocaleString()} total`} />
+      <PageHeader title="Payroll" subtitle={`${month} — ${paid}/${payroll?.length ?? 0} paid · ${money(totalNet, cur)} total`} />
       <HRTabs />
 
       <AddPanel label="Generate payroll for a month">
@@ -37,7 +39,7 @@ export default async function PayrollPage({ searchParams }: { searchParams: { mo
           <tr key={p.id} className="hover:bg-slate-50">
             <td className="px-4 py-2 font-semibold">{(p.employees as any)?.full_name || '—'}<br />
               <span className="text-xs text-slate-400">{(p.employees as any)?.designation || ''}</span></td>
-            <td className="px-4 py-2">${Number(p.basic).toLocaleString()}</td>
+            <td className="px-4 py-2">{money(Number(p.basic), cur)}</td>
             <td className="px-4 py-2">
               <form action={updatePayrollLine} className="flex gap-1">
                 <input type="hidden" name="id" value={p.id} />
@@ -46,7 +48,7 @@ export default async function PayrollPage({ searchParams }: { searchParams: { mo
                 <button className="btn-secondary px-2 py-1 text-xs" type="submit">Apply</button>
               </form>
             </td>
-            <td className="px-4 py-2">${Number(p.net).toLocaleString()}</td>
+            <td className="px-4 py-2">{money(Number(p.net), cur)}</td>
             <td className="px-4 py-2"><StatusBadge status={p.status} /></td>
             <td className="px-4 py-2">
               {p.status === 'draft' ? (

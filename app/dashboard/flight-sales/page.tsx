@@ -4,9 +4,12 @@ import { PageHeader, Table, Empty, StatusBadge, AddPanel } from '@/components/ui
 import { deleteRecord } from '@/lib/crm-actions';
 import FlightSaleForm from '@/components/flight-sale-form';
 import Link from 'next/link';
+import { money } from '@/lib/format';
 
 export default async function FlightSalesPage({ searchParams }: { searchParams?: { q?: string } }) {
   const ctx = await requireModule('flightsales');
+  const ag: any = (ctx as any).agency || (ctx.profile as any)?.agencies || {};
+  const cur = ag.currency;
   const db = createAdminClient();
   const [{ data: sales }, { data: customers }] = await Promise.all([
     db.from('flight_sales').select('*, customers(full_name, phone), flight_sale_legs(from_airport, to_airport, fare, tax, cost)')
@@ -45,10 +48,10 @@ export default async function FlightSalesPage({ searchParams }: { searchParams?:
               <td className="px-4 py-2">{route}</td>
               <td className="px-4 py-2 capitalize">{(r.trip_kind || '').replace('multicity', 'multi-city')}</td>
               <td className="px-4 py-2">{r.pax}</td>
-              <td className="px-4 py-2 font-semibold">${tot(r).toFixed(2)}</td>
-              <td className="px-4 py-2">${Number(r.amount_paid).toFixed(2)}</td>
-              <td className={`px-4 py-2 ${bal > 0 ? 'text-red-500' : 'text-emerald-600'}`}>${bal.toFixed(2)}</td>
-              <td className="px-4 py-2 font-semibold accent">${profit(r).toFixed(2)}</td>
+              <td className="px-4 py-2 font-semibold">{money(tot(r), cur)}</td>
+              <td className="px-4 py-2">{money(Number(r.amount_paid), cur)}</td>
+              <td className={`px-4 py-2 ${bal > 0 ? 'text-red-500' : 'text-emerald-600'}`}>{money(bal, cur)}</td>
+              <td className="px-4 py-2 font-semibold accent">{money(profit(r), cur)}</td>
               <td className="px-4 py-2"><StatusBadge status={r.payment_status} /></td>
               <td className="px-4 py-2"><div className="flex items-center gap-2">
                 <Link className="text-xs font-semibold accent hover:underline" href={`/dashboard/flight-sales/${r.id}`}>Edit</Link>

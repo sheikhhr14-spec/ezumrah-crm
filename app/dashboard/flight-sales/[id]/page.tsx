@@ -1,4 +1,5 @@
 import { createAdminClient } from '@/lib/supabase/admin';
+import { money } from '@/lib/format';
 import { requireModule } from '@/lib/data';
 import { Table, Empty, StatusBadge } from '@/components/ui';
 import { updateSale, updateSaleLeg, addSaleLeg, deleteSaleLeg, deleteRecord } from '@/lib/crm-actions';
@@ -15,6 +16,7 @@ const L = ({ label, name, def, type = 'text', ph = '' }: { label: string; name: 
 
 export default async function FlightSaleDetail({ params }: { params: { id: string } }) {
   const ctx = await requireModule('flightsales');
+  const cur = (ctx as any).agency?.currency;
   const aid = ctx.profile.agency_id;
   const db = createAdminClient();
 
@@ -60,14 +62,14 @@ export default async function FlightSaleDetail({ params }: { params: { id: strin
       {/* money summary */}
       <div className="mb-8 grid gap-4 sm:grid-cols-3 lg:grid-cols-6">
         {[
-          { l: 'Legs sale total', v: `$${Number(sale.sale_total).toFixed(2)}` },
-          { l: 'Admin fee', v: `$${Number(sale.admin_fee).toFixed(2)}` },
-          { l: 'Discount', v: `-$${discount.toFixed(2)}`, red: true, hide: discount <= 0 },
-          { l: 'Supplier commission', v: `+$${commission.toFixed(2)}`, green: true, hide: commission <= 0 },
-          { l: 'Grand total', v: `$${grand.toFixed(2)}` },
-          { l: 'Paid', v: `$${paid.toFixed(2)}` },
-          { l: 'Balance', v: `$${balance.toFixed(2)}`, red: balance > 0 },
-          { l: 'Profit (cost $' + Number(sale.cost_total).toFixed(2) + ')', v: `$${profit.toFixed(2)}`, gold: true },
+          { l: 'Legs sale total', v: `${money(Number(sale.sale_total), cur)}` },
+          { l: 'Admin fee', v: `${money(Number(sale.admin_fee), cur)}` },
+          { l: 'Discount', v: `-${money(discount, cur)}`, red: true, hide: discount <= 0 },
+          { l: 'Supplier commission', v: `+${money(commission, cur)}`, green: true, hide: commission <= 0 },
+          { l: 'Grand total', v: `${money(grand, cur)}` },
+          { l: 'Paid', v: `${money(paid, cur)}` },
+          { l: 'Balance', v: `${money(balance, cur)}`, red: balance > 0 },
+          { l: 'Profit (cost $' + Number(sale.cost_total).toFixed(2) + ')', v: `${money(profit, cur)}`, gold: true },
         ].filter((k) => !k.hide).map((k) => (
           <div key={k.l} className={`card p-4 ${k.gold ? 'accent-soft-bg' : ''}`}>
             <p className="text-xs text-slate-400">{k.l}</p>
@@ -180,7 +182,7 @@ export default async function FlightSaleDetail({ params }: { params: { id: strin
         </label>
         <L label="Notes" name="notes" def={sale.notes} />
         <div className="flex items-end"><SubmitButton className="btn-primary px-4 py-2 text-xs">Save payment</SubmitButton></div>
-        <div className="flex items-end"><span className="text-xs"><StatusBadge status={sale.payment_status} /> · Profit <b className="accent">${profit.toFixed(2)}</b></span></div>
+        <div className="flex items-end"><span className="text-xs"><StatusBadge status={sale.payment_status} /> · Profit <b className="accent">{money(profit, cur)}</b></span></div>
       </form>
 
       <SaleDocuments table="flight_sales" saleId={sale.id} docs={docs || []} />

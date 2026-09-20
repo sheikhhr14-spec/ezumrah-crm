@@ -1,4 +1,5 @@
 import { createAdminClient } from '@/lib/supabase/admin';
+import { money } from '@/lib/format';
 import { requireActiveAgency } from '@/lib/data';
 import { punchClock } from '@/lib/crm-actions';
 import SubmitButton from '@/components/submit-button';
@@ -8,6 +9,8 @@ import Link from 'next/link';
 
 export default async function Overview({ searchParams }: { searchParams: { denied?: string } }) {
   const ctx = await requireActiveAgency();
+  const cur = (ctx as any).agency?.currency;
+  const tz = (ctx as any).agency?.timezone;
   const aid = ctx.profile.agency_id!;
   const db = createAdminClient();
 
@@ -26,7 +29,7 @@ export default async function Overview({ searchParams }: { searchParams: { denie
     { label: 'Total bookings', value: bookings.data?.length ?? 0, href: '/dashboard/bookings' },
     { label: 'Customers', value: customers.count ?? 0, href: '/dashboard/customers' },
     { label: 'Outstanding invoices', value: unpaid.length, href: '/dashboard/invoices' },
-    { label: 'Revenue collected', value: `$${revenue.toLocaleString()}`, href: '/dashboard/invoices' },
+    { label: 'Revenue collected', value: `${money(revenue, cur)}`, href: '/dashboard/invoices' },
   ];
 
   // today's attendance for the logged-in user
@@ -56,9 +59,9 @@ export default async function Overview({ searchParams }: { searchParams: { denie
               {att?.clock_out ? '✅ Day complete' : onBreak ? '☕ On break' : att?.clock_in ? '🟢 Clocked in' : '🔴 Not clocked in'}
             </p>
             <div className="mt-1 flex flex-wrap gap-x-4 gap-y-0.5 text-xs text-slate-500">
-              <span>⏰ In: <b className="text-slate-700"><LocalTime t={att?.clock_in} /></b></span>
-              <span>☕ Break: <b className="text-slate-700"><LocalTime t={att?.break_start} />–<LocalTime t={att?.break_end} /></b></span>
-              <span>🏁 Out: <b className="text-slate-700"><LocalTime t={att?.clock_out} /></b></span>
+              <span>⏰ In: <b className="text-slate-700"><LocalTime t={att?.clock_in} tz={tz} /></b></span>
+              <span>☕ Break: <b className="text-slate-700"><LocalTime t={att?.break_start} tz={tz} />–<LocalTime t={att?.break_end} tz={tz} /></b></span>
+              <span>🏁 Out: <b className="text-slate-700"><LocalTime t={att?.clock_out} tz={tz} /></b></span>
             </div>
           </div>
           <div className="flex flex-col gap-1.5">
@@ -114,7 +117,7 @@ export default async function Overview({ searchParams }: { searchParams: { denie
               <tr key={f.id}>
                 <td className="px-4 py-2 font-medium">{f.airline} {f.flight_no}</td>
                 <td className="px-4 py-2">{f.departure_airport} → {f.arrival_airport}</td>
-                <td className="px-4 py-2">{f.departure_time ? new Date(f.departure_time).toLocaleString() : '—'}</td>
+                <td className="px-4 py-2">{f.departure_time ? new Date(f.departure_time).toLocaleString([], { timeZone: tz || undefined }) : '—'}</td>
                 <td className="px-4 py-2"><StatusBadge status={f.status} /></td>
               </tr>
             )) : <Empty msg="No flights scheduled." />}

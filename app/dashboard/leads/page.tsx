@@ -1,4 +1,5 @@
 import { createAdminClient } from '@/lib/supabase/admin';
+import { money } from '@/lib/format';
 import { requireModule } from '@/lib/data';
 import { createLead, setLeadStatus, convertLead, deleteLead } from '@/lib/crm-actions';
 import RowEdit from '@/components/row-edit';
@@ -6,6 +7,7 @@ import { PageHeader, Table, Empty, AddPanel, Field, StatusBadge } from '@/compon
 
 export default async function LeadsPage({ searchParams }: { searchParams: { status?: string } }) {
   const ctx = await requireModule('leads');
+  const cur = (ctx as any).agency?.currency;
   const db = createAdminClient();
   let q = db.from('leads').select('*').eq('agency_id', ctx.profile.agency_id).order('created_at', { ascending: false });
   if (searchParams?.status) q = q.eq('status', searchParams.status);
@@ -61,7 +63,7 @@ export default async function LeadsPage({ searchParams }: { searchParams: { stat
             <td className="px-4 py-2 text-slate-500">{l.phone || l.whatsapp || l.email || '—'}<br /><span className="text-xs">{l.country || ''}</span></td>
             <td className="px-4 py-2 capitalize">{l.interest}</td>
             <td className="px-4 py-2 text-xs capitalize text-slate-500">{(l.source || '').replace(/_/g, ' ')}</td>
-            <td className="px-4 py-2">{l.budget ? `$${Number(l.budget).toLocaleString()}` : '—'}</td>
+            <td className="px-4 py-2">{l.budget ? `${money(Number(l.budget), cur)}` : '—'}</td>
             <td className="px-4 py-2"><StatusBadge status={l.status} /></td>
             <td className="px-4 py-2">
               <div className="flex items-center gap-2">

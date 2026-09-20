@@ -1,8 +1,10 @@
 import { deleteRecord } from '@/lib/crm-actions';
 import { Table, Empty, StatusBadge } from '@/components/ui';
 import Link from 'next/link';
+import { money } from '@/lib/format';
 
-export default function PackageSalesList({ list }: { list: any[] }) {
+export default function PackageSalesList({ list, currency }: { list: any[]; currency?: string | null }) {
+  const cur = currency;
   const grand = (r: any) => Number(r.sale_price) + Number(r.supplement || 0) + Number(r.admin_fee || 0) - Number(r.discount || 0);
   return (
     <div className="card p-4">
@@ -17,10 +19,10 @@ export default function PackageSalesList({ list }: { list: any[] }) {
               <td className="px-4 py-2">{r.customers?.full_name || '—'}</td>
               <td className="px-4 py-2">{r.pax}</td>
               <td className="px-4 py-2 text-xs">{r.departure_date || '—'} → {r.return_date || '—'}</td>
-              <td className="px-4 py-2 font-semibold">${grand(r).toFixed(2)}</td>
-              <td className="px-4 py-2">${Number(r.amount_paid).toFixed(2)}</td>
-              <td className={`px-4 py-2 ${bal > 0 ? 'text-red-500' : 'text-emerald-600'}`}>${bal.toFixed(2)}{overdue ? ' ⚠' : ''}</td>
-              <td className="px-4 py-2 font-semibold accent">${Number(r.profit).toFixed(2)}</td>
+              <td className="px-4 py-2 font-semibold">{money(grand(r), cur)}</td>
+              <td className="px-4 py-2">{money(Number(r.amount_paid), cur)}</td>
+              <td className={`px-4 py-2 ${bal > 0 ? 'text-red-500' : 'text-emerald-600'}`}>{money(bal, cur)}{overdue ? ' ⚠' : ''}</td>
+              <td className="px-4 py-2 font-semibold accent">{money(Number(r.profit), cur)}</td>
               <td className="px-4 py-2"><StatusBadge status={r.payment_status} /></td>
               <td className="px-4 py-2">
                 <div className="flex items-center gap-3">

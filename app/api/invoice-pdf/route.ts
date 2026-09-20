@@ -1,6 +1,7 @@
 import { PDFDocument, StandardFonts, rgb } from 'pdf-lib';
 import { getCurrentUser } from '@/lib/data';
 import { createAdminClient } from '@/lib/supabase/admin';
+import { moneyAscii } from '@/lib/format';
 
 // Helvetica (WinAnsi) can't encode arrows/unicode — sanitize every string we draw
 const clean = (t: string) => (t || '')
@@ -23,12 +24,13 @@ export async function GET(req: Request) {
   if (!profile?.agency_id) return new Response('Forbidden', { status: 403 });
   const aid = profile.agency_id;
   const agency = profile.agencies || {};
+  const cur = type === 'saas' ? 'USD' : agency.currency; // SaaS subscription always billed in USD
 
   const db = createAdminClient();
   type Item = { desc: string; qty: string; unit: string; amount: number };
   let docTitle = 'INVOICE';
   let ref = '';
-  let dateStr = new Date().toISOString().slice(0, 10);
+  let dateStr = new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric', timeZone: agency.timezone || 'UTC' });
   let customer: any = null;
   let items: Item[] = [];
   let total = 0;
@@ -226,7 +228,7 @@ export async function GET(req: Request) {
     page.drawText(clean(desc), { x: cols.desc, y, size: 10, font, color: DARK });
     page.drawText(clean(it.qty), { x: cols.qty, y, size: 10, font, color: DARK });
     page.drawText(clean(it.unit || '—'), { x: cols.unit, y, size: 10, font, color: DARK });
-    const amt = `$${it.amount.toFixed(2)}`;
+    const amt = moneyAscii(it.amount, cur);
     page.drawText(clean(amt), { x: 555 - bold.widthOfTextAtSize(amt, 10), y, size: 10, font: bold, color: DARK });
     y -= 18;
     if (y < 120) break;
@@ -235,9 +237,9 @@ export async function GET(req: Request) {
   y -= 10;
   page.drawLine({ start: { x: 340, y }, end: { x: 555, y }, thickness: 0.5, color: GRAY });
   y -= 20;
-  const totalStr = `TOTAL: $${total.toFixed(2)}`;
+  const totalStr = `TOTAL: ${moneyAscii(total, cur)}`;
   page.drawText(clean(totalStr), { x: 555 - bold.widthOfTextAtSize(totalStr, 12), y, size: 12, font: bold, color: DARK });
-  if (paid !== null) { y -= 16; const pStr = `Paid: $${paid.toFixed(2)}   Balance: $${(total - paid).toFixed(2)}`; page.drawText(clean(pStr), { x: 555 - font.widthOfTextAtSize(pStr, 10), y, size: 10, font, color: GRAY }); }
+  if (paid !== null) { y -= 16; const pStr = `Paid: ${moneyAscii(paid, cur)}   Balance: ${moneyAscii(total - paid, cur)}`; page.drawText(clean(pStr), { x: 555 - font.widthOfTextAtSize(pStr, 10), y, size: 10, font, color: GRAY }); }
   if (extraNote) { y -= 16; page.drawText(clean(extraNote), { x: 555 - font.widthOfTextAtSize(extraNote, 9), y, size: 9, font, color: GRAY }); }
 
   const footMain = type === 'saas' ? 'EzUmrah CRM — by EzTechify' : (agency.name || 'Agency');

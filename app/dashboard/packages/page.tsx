@@ -1,4 +1,5 @@
 import { createAdminClient } from '@/lib/supabase/admin';
+import { money } from '@/lib/format';
 import { requireModule } from '@/lib/data';
 import { createPackage, deleteRecord } from '@/lib/crm-actions';
 import RowEdit from '@/components/row-edit';
@@ -8,6 +9,7 @@ const TYPES = ['umrah', 'hajj', 'ziyarah', 'hotel', 'flight', 'transport', 'holi
 
 export default async function PackagesPage() {
   const ctx = await requireModule('packages');
+  const cur = (ctx as any).agency?.currency;
   const db = createAdminClient();
   const { data: packages } = await db
     .from('packages').select('*').eq('agency_id', ctx.profile.agency_id)
@@ -36,7 +38,7 @@ export default async function PackagesPage() {
             <td className="px-4 py-2 font-semibold">{p.name}</td>
             <td className="px-4 py-2 capitalize">{p.service_type}</td>
             <td className="px-4 py-2">{p.duration_days ? `${p.duration_days} days` : '—'}</td>
-            <td className="px-4 py-2">{p.price_from ? `$${Number(p.price_from).toLocaleString()}` : '—'}</td>
+            <td className="px-4 py-2">{p.price_from ? `${money(Number(p.price_from), cur)}` : '—'}</td>
             <td className="px-4 py-2 text-slate-500">{p.description || '—'}</td>
             <td className="px-4 py-2"><div className="flex items-center gap-2">
               <a className="text-xs font-semibold accent hover:underline" href={`/api/invoice-pdf?type=package&id=${p.id}`}>PDF</a>

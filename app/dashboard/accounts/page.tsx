@@ -1,4 +1,5 @@
 import { createAdminClient } from '@/lib/supabase/admin';
+import { money } from '@/lib/format';
 import { requireModule } from '@/lib/data';
 import { addExpense, deleteExpense, recordPayment, deleteRecord } from '@/lib/crm-actions';
 import RowEdit from '@/components/row-edit';
@@ -6,6 +7,7 @@ import { PageHeader, Table, Empty, AddPanel, Field, StatusBadge } from '@/compon
 
 export default async function AccountsPage({ searchParams }: { searchParams: { month?: string } }) {
   const ctx = await requireModule('accounts');
+  const cur = (ctx as any).agency?.currency;
   const db = createAdminClient();
   const aid = ctx.profile.agency_id;
   const month = searchParams?.month || new Date().toISOString().slice(0, 7);
@@ -21,9 +23,9 @@ export default async function AccountsPage({ searchParams }: { searchParams: { m
   const spent = (expenses || []).reduce((s, e) => s + Number(e.amount), 0);
 
   const kpis = [
-    { label: `Collected (${month})`, value: `$${collected.toLocaleString()}` },
-    { label: `Expenses (${month})`, value: `$${spent.toLocaleString()}` },
-    { label: 'Net cash flow', value: `$${(collected - spent).toLocaleString()}` },
+    { label: `Collected (${month})`, value: `${money(collected, cur)}` },
+    { label: `Expenses (${month})`, value: `${money(spent, cur)}` },
+    { label: 'Net cash flow', value: `${money((collected - spent), cur)}` },
     { label: 'Unpaid invoices', value: (invoices || []).filter((i) => i.status !== 'paid' && i.status !== 'cancelled').length },
   ];
 
@@ -74,7 +76,7 @@ export default async function AccountsPage({ searchParams }: { searchParams: { m
         {payments?.length ? payments.map((p) => (
           <tr key={p.id} className="hover:bg-slate-50">
             <td className="px-4 py-2 font-semibold">{(p.invoices as any)?.invoice_no || '—'}</td>
-            <td className="px-4 py-2 font-semibold text-green-600">${Number(p.amount).toLocaleString()}</td>
+            <td className="px-4 py-2 font-semibold text-green-600">{money(Number(p.amount), cur)}</td>
             <td className="px-4 py-2">{p.payment_date}</td>
             <td className="px-4 py-2 capitalize">{p.method}</td>
             <td className="px-4 py-2 text-xs text-slate-500">{p.reference || '—'}</td>
@@ -111,7 +113,7 @@ export default async function AccountsPage({ searchParams }: { searchParams: { m
           <tr key={e.id} className="hover:bg-slate-50">
             <td className="px-4 py-2"><span className="badge bg-slate-100 text-slate-600 capitalize">{(e.category || '').replace(/_/g, ' ')}</span></td>
             <td className="px-4 py-2">{e.description || '—'}</td>
-            <td className="px-4 py-2 font-semibold text-red-500">${Number(e.amount).toLocaleString()}</td>
+            <td className="px-4 py-2 font-semibold text-red-500">{money(Number(e.amount), cur)}</td>
             <td className="px-4 py-2">{e.expense_date}</td>
             <td className="px-4 py-2 capitalize">{e.payment_method}</td>
             <td className="px-4 py-2">
