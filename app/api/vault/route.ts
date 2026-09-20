@@ -10,6 +10,9 @@ async function auth() {
 export async function GET() {
   const ctx = await auth();
   if (!ctx) return Response.json({ error: 'unauthorized' }, { status: 401 });
+  if (ctx.role !== 'owner' && ctx.role !== 'manager') {
+    return Response.json({ error: 'Only owners and managers can access the credential vault' }, { status: 403 });
+  }
   const db = createAdminClient();
   const { data } = await db.from('credentials')
     .select('id, platform, category, username, url, notes, created_at, updated_at')
@@ -46,6 +49,7 @@ export async function POST(req: NextRequest) {
     }
     if (!body.password) return Response.json({ error: 'Password is required' }, { status: 400 });
     rec.password_enc = encryptSecret(String(body.password));
+    rec.agency_id = aid;
     rec.created_by = ctx.profile.id;
     const { data: c, error } = await db.from('credentials').insert(rec).select('id').single();
     if (error) return Response.json({ error: error.message }, { status: 400 });
