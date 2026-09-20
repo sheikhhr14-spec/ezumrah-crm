@@ -849,6 +849,25 @@ export async function createServiceSale(fd: FormData) {
   }
   const taxV = num(fd, 'tax');
   const grand = salePrice + extrasPrice + adminFee - discount + taxV;
+  // real-time allocation warnings (only when the agency defined capacity)
+  let noteOut = str(fd, 'notes');
+  if (table === 'hotel_sales' && patch.check_in && patch.check_out) {
+    const w = await hotelCapacityWarn(db, aid, String(patch.hotel_name || ''), String(patch.check_in), String(patch.check_out), Number(patch.rooms_count || 0));
+    if (w) noteOut = `${noteOut ? noteOut + ' ' : ''}[⚠ ${w}]`;
+  }
+  if (table === 'transport_sales' && patch.transport_date) {
+    const w = await transportSlotWarn(db, aid, String(patch.transport_date), String(patch.vehicle_type || ''), Number(patch.seats || 0));
+    if (w) noteOut = `${noteOut ? noteOut + ' ' : ''}[⚠ ${w}]`;
+  }
+  for (const e of extras) {
+    if (table === 'hotel_sales' && e.check_in && e.check_out) {
+      const w = await hotelCapacityWarn(db, aid, String(e.hotel_name || ''), String(e.check_in), String(e.check_out), Number(e.rooms_count || 0));
+      if (w) noteOut = `${noteOut ? noteOut + ' ' : ''}[⚠ ${w}]`;
+    } else if (table === 'transport_sales' && e.transport_date) {
+      const w = await transportSlotWarn(db, aid, String(e.transport_date), String(e.vehicle_type || ''), Number(e.seats || 0));
+      if (w) noteOut = `${noteOut ? noteOut + ' ' : ''}[⚠ ${w}]`;
+    }
+  }
   const { count } = await db.from(table).select('id', { count: 'exact', head: true }).eq('agency_id', aid);
   const ref = `${cfg.prefix}-${new Date().getFullYear()}-${String((count || 0) + 1).padStart(4, '0')}`;
   const { data: rec2 } = await db.from(table).insert({
@@ -857,7 +876,7 @@ export async function createServiceSale(fd: FormData) {
     discount: discount, commission: commission,
     sold_by: ctx.profile.full_name || null,
     amount_paid: amountPaid, payment_method: str(fd, 'payment_method'),
-    payment_status: saleStatus(grand, amountPaid), notes: str(fd, 'notes'),
+    payment_status: saleStatus(grand, amountPaid), notes: noteOut,
     status: str(fd, 'status') || 'confirmed',
     balance: grand - amountPaid, profit: grand + commission - (cost + extrasCost),
   }).select('id').single();
@@ -1351,4 +1370,75 @@ export async function punchClock(fd: FormData) {
     await db.from('user_attendance').update({ clock_out: now, updated_at: now }).eq('id', row.id);
   }
   revalidatePath('/dashboard');
+}
+
+// ================= AVAILABILITY: room allocation & transport slots =================
+async function hotelCapacityWarn(db: any, aid: string, hotel: string, ci: string, co: string, rooms: number): Promise<string | null> {
+  if (!hotel) return null;
+  const { data: inv } = await db.from('hotel_inventory').select('total_rooms').eq('agency_id', aid).ilike('hotel_name', hotel);
+  const cap = (inv || []).reduce((s: number, r: any) => s + Number(r.total_rooms || 0), 0);
+  if (!cap) return null;
+  const [{ data: s1 }, { data: s2 }] = await Promise.all([
+    db.from('hotel_sales').select('check_in, check_out, rooms_count').eq('agency_id', aid).neq('status', 'cancelled').ilike('hotel_name', hotel),
+    db.from('hotel_sale_stays').select('check_in, check_out, rooms_count').eq('agency_id', aid).ilike('hotel_name', hotel),
+  ]);
+  const all = [...(s1 || []), ...(s2 || [])];
+  for (let t = new Date(ci).getTime(); t < new Date(co).getTime(); t += 86400000) {
+    const night = new Date(t).toISOString().slice(0, 10);
+    let sold = rooms;
+    for (const r of all) if (r.check_in && r.check_out && r.check_in <= night && night < r.check_out) sold += Number(r.rooms_count || 0);
+    if (sold > cap) return `Overbooked at ${hotel}: ${sold} of ${cap} rooms on ${night}`;
+  }
+  return null;
+}
+
+async function transportSlotWarn(db: any, aid: string, date: string, vehicle: string, seats: number): Promise<string | null> {
+  if (!date || !vehicle) return null;
+  const { data: fleet } = await db.from('transport_fleet').select('seats').eq('agency_id', aid).ilike('vehicle_type', vehicle);
+  const cap = (fleet || []).reduce((s: number, r: any) => s + Number(r.seats || 0), 0);
+  if (!cap) return null;
+  const [{ data: s1 }, { data: s2 }] = await Promise.all([
+    db.from('transport_sales').select('seats').eq('agency_id', aid).eq('transport_date', date).neq('status', 'cancelled').ilike('vehicle_type', vehicle),
+    db.from('transport_sale_legs').select('seats').eq('agency_id', aid).eq('transport_date', date).ilike('vehicle_type', vehicle),
+  ]);
+  const sold = seats + (s1 || []).reduce((s: number, r: any) => s + Number(r.seats || 0), 0) + (s2 || []).reduce((s: number, r: any) => s + Number(r.seats || 0), 0);
+  if (sold > cap) return `Slot full: ${sold} of ${cap} ${vehicle} seats on ${date}`;
+  return null;
+}
+
+export async function createHotelInventory(fd: FormData) {
+  const db = createAdminClient();
+  const ctx = await requireActiveAgency();
+  await db.from('hotel_inventory').insert({
+    agency_id: ctx.profile.agency_id!,
+    hotel_name: str(fd, 'hotel_name'), city: str(fd, 'city') || null,
+    room_type: str(fd, 'room_type') || 'any', total_rooms: num(fd, 'total_rooms'),
+    notes: str(fd, 'notes') || null,
+  });
+  revalidatePath('/dashboard/availability');
+}
+
+export async function deleteHotelInventory(fd: FormData) {
+  const db = createAdminClient();
+  const aid = await agencyId();
+  await db.from('hotel_inventory').delete().eq('id', String(fd.get('id'))).eq('agency_id', aid);
+  revalidatePath('/dashboard/availability');
+}
+
+export async function createFleetVehicle(fd: FormData) {
+  const db = createAdminClient();
+  const ctx = await requireActiveAgency();
+  await db.from('transport_fleet').insert({
+    agency_id: ctx.profile.agency_id!,
+    vehicle_type: str(fd, 'vehicle_type'), vehicle_name: str(fd, 'vehicle_name') || null,
+    plate_no: str(fd, 'plate_no') || null, seats: num(fd, 'seats'),
+  });
+  revalidatePath('/dashboard/availability');
+}
+
+export async function deleteFleetVehicle(fd: FormData) {
+  const db = createAdminClient();
+  const aid = await agencyId();
+  await db.from('transport_fleet').delete().eq('id', String(fd.get('id'))).eq('agency_id', aid);
+  revalidatePath('/dashboard/availability');
 }
