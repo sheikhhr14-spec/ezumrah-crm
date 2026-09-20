@@ -2,8 +2,9 @@ import { requireModule } from '@/lib/data';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { PageHeader, AddPanel, Empty, StatusBadge } from '@/components/ui';
 import { money } from '@/lib/format';
-import { autoAllocateSeats, autoAllocateRooms, toggleSeatBlock, updateTourPassenger, deleteTourPassenger, setPassengerCheckin, createDepartureVehicle, deleteDepartureVehicle, createDepartureHotel, deleteDepartureHotel, createDeparturePickup, deleteDeparturePickup, deleteTourBooking, updateDepartureStatus, updateTourBooking } from '@/lib/tour-actions';
+import { autoAllocateSeats, autoAllocateRooms, toggleSeatBlock, createDepartureVehicle, deleteDepartureVehicle, createDepartureHotel, deleteDepartureHotel, createDeparturePickup, deleteDeparturePickup, deleteTourBooking, updateDepartureStatus, updateTourBooking } from '@/lib/tour-actions';
 import TourAddPassengerForm from '@/components/tour-add-passenger-form';
+import TourPassengerTable from '@/components/tour-passenger-table';
 import TourBookingForm from '@/components/tour-booking-form';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
@@ -221,54 +222,22 @@ export default async function DeparturePage({ params }: { params: { id: string }
       <div className="card mb-6 p-4">
         <h2 className="mb-1 text-sm font-bold text-slate-900">👥 Passenger management ({pax.length})</h2>
         <p className="mb-3 text-[11px] text-slate-400">Edit one passenger without touching anyone else: move a bus seat, a room, a bed or a pickup — the rest of their allocation stays.</p>
-        {pax.length === 0 && <Empty msg="No passengers yet — add a booking below." />}
-        {pax.map((p: any) => (
-          <div key={p.id} className="mb-2 rounded-lg border border-slate-200 p-2">
-            <form action={updateTourPassenger} className="flex flex-wrap items-center gap-1">
-              <input type="hidden" name="id" value={p.id} />
-              <input type="hidden" name="departure_id" value={dep.id} />
-              <span className="rounded bg-slate-100 px-1 text-[10px] font-bold text-slate-500">{bkMap.get(p.booking_id)?.ref}</span>
-              <input className="input !w-36 !py-1 text-xs" name="full_name" defaultValue={p.full_name} />
-              <select className="input !w-16 !py-1 text-xs" name="gender" defaultValue={p.gender || 'male'}><option value="male">M</option><option value="female">F</option></select>
-              <input className="input !w-14 !py-1 text-xs" name="age" type="number" defaultValue={p.age || ''} title="Age" />
-              <input className="input !w-28 !py-1 text-xs" name="passport_no" defaultValue={p.passport_no || ''} placeholder="Passport" />
-              <input className="input !w-24 !py-1 text-xs" name="room_group" defaultValue={p.room_group || ''} placeholder="Family grp" />
-              <select className="input !w-20 !py-1 text-xs" name="room_preference" defaultValue={p.room_preference || 'shared'}>
-                <option value="shared">shared</option><option value="private">private</option><option value="family">family</option>
-              </select>
-              <select className="input !w-20 !py-1 text-xs" name="room_type" defaultValue={p.room_type || 'quad'}>
-                {RTYPES.map((t) => <option key={t} value={t}>{t}</option>)}
-              </select>
-              <input className="input !w-24 !py-1 text-xs" name="hotel_room" defaultValue={p.hotel_room || ''} placeholder="Room (H1-D1)" title="Hotel room label" />
-              <input className="input !w-12 !py-1 text-xs" name="bed_label" defaultValue={p.bed_label || ''} placeholder="Bed" />
-              <select className="input !w-28 !py-1 text-xs" name="seat_vehicle_id" defaultValue={p.seat_vehicle_id || ''}>
-                <option value="">— no vehicle —</option>
-                {(vehicles || []).map((v: any) => <option key={v.id} value={v.id}>{v.vehicle_label || v.vehicle_type}</option>)}
-              </select>
-              <input className="input !w-14 !py-1 text-xs" name="seat_no" type="number" defaultValue={p.seat_no || ''} placeholder="Seat" title="Seat number" />
-              <select className="input !w-28 !py-1 text-xs" name="pickup_id" defaultValue={p.pickup_id || ''}>
-                <option value="">— pickup —</option>
-                {(pickups || []).map((k: any) => <option key={k.id} value={k.id}>{k.location}</option>)}
-              </select>
-              <select className="input !w-24 !py-1 text-xs" name="checkin_status" defaultValue={p.checkin_status || 'booked'}>
-                {CHECKIN.map((c) => <option key={c} value={c}>{c.replace('_', ' ')}</option>)}
-              </select>
-              <button className="btn-primary !py-1 text-xs" type="submit">Save</button>
-            </form>
-            <div className="mt-1 flex gap-1">
-              {['confirmed', 'checked_in', 'picked_up', 'no_show'].map((c) => (
-                <form key={c} action={setPassengerCheckin} className="inline">
-                  <input type="hidden" name="id" value={p.id} /><input type="hidden" name="departure_id" value={dep.id} /><input type="hidden" name="checkin_status" value={c} />
-                  <button className="rounded border border-slate-200 px-1.5 py-0.5 text-[10px] text-slate-500 hover:border-slate-400" type="submit">{c.replace('_', ' ')}</button>
-                </form>
-              ))}
-              <form action={deleteTourPassenger} className="inline">
-                <input type="hidden" name="id" value={p.id} /><input type="hidden" name="departure_id" value={dep.id} />
-                <button className="rounded border border-red-200 px-1.5 py-0.5 text-[10px] text-red-400 hover:border-red-400" type="submit">Remove pax</button>
-              </form>
-            </div>
-          </div>
-        ))}
+        {pax.length === 0 ? <Empty msg="No passengers yet — add a booking below." /> : (
+        <TourPassengerTable
+          departureId={dep.id}
+          passengers={pax.map((p: any) => ({
+            id: p.id, full_name: p.full_name, gender: p.gender, age: p.age, passport_no: p.passport_no, phone: p.phone,
+            booking_ref: bkMap.get(p.booking_id)?.ref || '', group_name: bkMap.get(p.booking_id)?.group_name || '',
+            room_group: p.room_group, room_preference: p.room_preference, room_type: p.room_type,
+            hotel_room: p.hotel_room, bed_label: p.bed_label,
+            seat_vehicle_id: p.seat_vehicle_id, seat_no: p.seat_no,
+            seat_label: vehMap.get(p.seat_vehicle_id)?.vehicle_label || vehMap.get(p.seat_vehicle_id)?.vehicle_type || '',
+            pickup_id: p.pickup_id, checkin_status: p.checkin_status, notes: p.notes,
+          }))}
+          vehicles={(vehicles || []).map((v: any) => ({ id: v.id, label: v.vehicle_label || v.vehicle_type, type: v.vehicle_type }))}
+          pickups={(pickups || []).map((k: any) => ({ id: k.id, location: k.location, time: k.pickup_time }))}
+        />
+      )}
       </div>
 
       {/* ===== BOOKINGS ===== */}
