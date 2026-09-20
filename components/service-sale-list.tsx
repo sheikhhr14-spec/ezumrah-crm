@@ -35,7 +35,7 @@ export default async function ServiceSaleList({ table, searchParams }: { table: 
       </PageHeader>
 
       <AddPanel label={`New sale (customer + details + payment in one form)`}>
-        <ServiceSaleForm table={table} fields={cfg.fields} customers={customers || []} />
+        <ServiceSaleForm table={table} fields={cfg.fields} customers={customers || []} currency={cur} />
       </AddPanel>
 
       <Table head={['Ref', 'Customer', 'Details', 'Grand total', 'Paid', 'Balance', 'Profit', 'Status', 'Actions']}>

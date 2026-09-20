@@ -1,4 +1,5 @@
 import { createAdminClient } from '@/lib/supabase/admin';
+import { money } from '@/lib/format';
 import { requireModule } from '@/lib/data';
 import { createInvoice, deleteRecord } from '@/lib/crm-actions';
 import RowEdit from '@/components/row-edit';
@@ -6,6 +7,7 @@ import { PageHeader, Table, Empty, StatusBadge, AddPanel, Field } from '@/compon
 
 export default async function InvoicesPage() {
   const ctx = await requireModule('invoices');
+  const cur = (ctx as any).agency?.currency;
   const aid = ctx.profile.agency_id;
   const db = createAdminClient();
   const [{ data: invoices }, { data: bookings }] = await Promise.all([
@@ -39,7 +41,7 @@ export default async function InvoicesPage() {
             <td className="px-4 py-2">{(i.bookings as any | null)?.booking_ref || '—'}</td>
             <td className="px-4 py-2">{i.issue_date}</td>
             <td className="px-4 py-2">{i.due_date || '—'}</td>
-            <td className="px-4 py-2 font-semibold">${Number(i.total).toLocaleString()} {i.currency}</td>
+            <td className="px-4 py-2 font-semibold">{money(Number(i.total), cur)}</td>
             <td className="px-4 py-2"><StatusBadge status={i.status} /></td>
             <td className="px-4 py-2"><div className="flex items-center gap-2">
               <a className="text-xs font-semibold accent hover:underline" href={`/api/invoice-pdf?type=invoice&id=${i.id}`}>PDF</a>

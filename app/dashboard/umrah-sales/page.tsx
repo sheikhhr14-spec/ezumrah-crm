@@ -17,7 +17,7 @@ export default async function Umrah_SalesPage() {
       <PageHeader title="Umrah Sales" subtitle="Umrah package bookings — families, group flights, buses, hotels & ziyarat" />
       <div className="card mb-6 p-5">
         <h2 className="mb-4 text-lg font-semibold">➕ New Umrah booking</h2>
-        <PackageSaleForm category="umrah" customers={(customers || []).map((c: any) => ({ id: c.id, full_name: c.full_name }))} />
+        <PackageSaleForm category="umrah" customers={(customers || []).map((c: any) => ({ id: c.id, full_name: c.full_name }))}  currency={(agctx.agency || {}).currency} />
       </div>
       <PackageSalesList list={(data || []) as any[]} currency={(agctx.agency || {}).currency} />
     </div>

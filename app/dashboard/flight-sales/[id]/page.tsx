@@ -113,7 +113,7 @@ export default async function FlightSaleDetail({ params }: { params: { id: strin
                 <SubmitButton className="btn-primary px-4 py-2 text-xs">Save leg</SubmitButton>
               </div>
               <div className="flex items-end">
-                <span className="text-xs font-semibold accent">Leg profit: ${(Number(l.fare) + Number(l.tax) - Number(l.cost)).toFixed(2)}</span>
+                <span className="text-xs font-semibold accent">Leg profit: ${money((Number(l.fare) + Number(l.tax) - Number(l.cost)), cur)}</span>
               </div>
             </div>
             <div className="mt-2">

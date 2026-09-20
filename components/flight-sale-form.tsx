@@ -2,11 +2,13 @@
 import { useState } from 'react';
 import { createFlightSale } from '@/lib/crm-actions';
 import SubmitButton from '@/components/submit-button';
+import { money } from '@/lib/format';
 
 type Leg = { fare: string; tax: string; cost: string };
 const emptyLeg = () => ({ fare: '', tax: '', cost: '' });
 
-export default function FlightSaleForm({ customers }: { customers: { id: string; full_name: string }[] }) {
+export default function FlightSaleForm({ customers, currency }: { customers: { id: string; full_name: string }[]; currency?: string | null }) {
+  const cur = currency;
   const [kind, setKind] = useState('oneway');
   const [legs, setLegs] = useState<Leg[]>([emptyLeg()]);
   const [adminFee, setAdminFee] = useState('');
@@ -164,13 +166,13 @@ export default function FlightSaleForm({ customers }: { customers: { id: string;
           </label>
         </div>
         <div className="mt-4 grid gap-3 text-sm sm:grid-cols-5">
-          <div className="rounded-lg bg-slate-50 p-3"><p className="text-xs text-slate-400">Sale total</p><p className="font-bold">${saleTotal.toFixed(2)}</p></div>
-          <div className="rounded-lg bg-slate-50 p-3"><p className="text-xs text-slate-400">Admin fee</p><p className="font-bold">${n(adminFee).toFixed(2)}</p></div>
-          <div className="rounded-lg bg-slate-50 p-3"><p className="text-xs text-slate-400">Discount</p><p className="font-bold text-red-500">-${n(discount).toFixed(2)}</p></div>
-          <div className="rounded-lg bg-slate-50 p-3"><p className="text-xs text-slate-400">Supplier commission</p><p className="font-bold text-emerald-600">+${n(commission).toFixed(2)}</p></div>
-          <div className="rounded-lg bg-slate-50 p-3"><p className="text-xs text-slate-400">Grand total (after discount)</p><p className="font-bold">${grand.toFixed(2)}</p></div>
-          <div className="rounded-lg bg-slate-50 p-3"><p className="text-xs text-slate-400">Balance</p><p className={`font-bold ${balance > 0 ? 'text-red-500' : 'text-emerald-600'}`}>${balance.toFixed(2)}</p></div>
-          <div className="rounded-lg accent-soft-bg p-3"><p className="text-xs text-slate-400">Profit (after cost ${costTotal.toFixed(2)})</p><p className="font-bold accent">${profit.toFixed(2)}</p></div>
+          <div className="rounded-lg bg-slate-50 p-3"><p className="text-xs text-slate-400">Sale total</p><p className="font-bold">${money(saleTotal, cur)}</p></div>
+          <div className="rounded-lg bg-slate-50 p-3"><p className="text-xs text-slate-400">Admin fee</p><p className="font-bold">${money(n(adminFee), cur)}</p></div>
+          <div className="rounded-lg bg-slate-50 p-3"><p className="text-xs text-slate-400">Discount</p><p className="font-bold text-red-500">-${money(n(discount), cur)}</p></div>
+          <div className="rounded-lg bg-slate-50 p-3"><p className="text-xs text-slate-400">Supplier commission</p><p className="font-bold text-emerald-600">+${money(n(commission), cur)}</p></div>
+          <div className="rounded-lg bg-slate-50 p-3"><p className="text-xs text-slate-400">Grand total (after discount)</p><p className="font-bold">${money(grand, cur)}</p></div>
+          <div className="rounded-lg bg-slate-50 p-3"><p className="text-xs text-slate-400">Balance</p><p className={`font-bold ${balance > 0 ? 'text-red-500' : 'text-emerald-600'}`}>${money(balance, cur)}</p></div>
+          <div className="rounded-lg accent-soft-bg p-3"><p className="text-xs text-slate-400">Profit (after cost ${money(costTotal, cur)})</p><p className="font-bold accent">${money(profit, cur)}</p></div>
         </div>
         <p className="mt-2 text-xs font-semibold text-slate-500">Payment status: <span className="accent">{pStatus}</span></p>
       </div>

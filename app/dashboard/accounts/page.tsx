@@ -54,7 +54,7 @@ export default async function AccountsPage({ searchParams }: { searchParams: { m
               <option value="">Select invoice…</option>
               {(invoices || []).map((i) => (
                 <option key={i.id} value={i.id}>
-                  {i.invoice_no} — ${Number(i.total).toLocaleString()} ({i.status})
+                  {i.invoice_no} — {money(Number(i.total), cur)} ({i.status})
                 </option>
               ))}
             </select>

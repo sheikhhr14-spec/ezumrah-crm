@@ -103,7 +103,7 @@ export default async function Overview({ searchParams }: { searchParams: { denie
             <td className="px-4 py-2">{b.package_name || '—'}</td>
             <td className="px-4 py-2 capitalize">{b.trip_type}</td>
             <td className="px-4 py-2">{b.departure_date || '—'}</td>
-            <td className="px-4 py-2">${Number(b.total_amount).toLocaleString()} {b.currency}</td>
+            <td className="px-4 py-2">{money(Number(b.total_amount), cur)}</td>
             <td className="px-4 py-2"><StatusBadge status={b.status} /></td>
           </tr>
         )) : <Empty msg="No bookings yet — create your first booking." />}

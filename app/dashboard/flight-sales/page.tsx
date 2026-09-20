@@ -31,7 +31,7 @@ export default async function FlightSalesPage({ searchParams }: { searchParams?:
       </PageHeader>
 
       <AddPanel label="New flight sale (customer + legs + payment in one form)">
-        <FlightSaleForm customers={customers || []} />
+        <FlightSaleForm customers={customers || []} currency={cur} />
       </AddPanel>
 
       <Table head={['Ref', 'Customer', 'Route', 'Trip', 'Pax', 'Grand total', 'Paid', 'Balance', 'Profit', 'Status', 'Actions']}>

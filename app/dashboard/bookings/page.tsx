@@ -1,4 +1,5 @@
 import { createAdminClient } from '@/lib/supabase/admin';
+import { money } from '@/lib/format';
 import { requireModule } from '@/lib/data';
 import { createBooking, deleteRecord } from '@/lib/crm-actions';
 import RowEdit from '@/components/row-edit';
@@ -7,6 +8,7 @@ import Link from 'next/link';
 
 export default async function BookingsPage() {
   const ctx = await requireModule('bookings');
+  const cur = (ctx as any).agency?.currency;
   const aid = ctx.profile.agency_id;
   const db = createAdminClient();
   const [{ data: bookings }, { data: customers }, { data: packages }] = await Promise.all([
@@ -49,7 +51,7 @@ export default async function BookingsPage() {
             <td className="px-4 py-2 capitalize">{b.trip_type}</td>
             <td className="px-4 py-2">{b.pilgrims_count}</td>
             <td className="px-4 py-2">{b.departure_date || '—'}</td>
-            <td className="px-4 py-2">${Number(b.total_amount).toLocaleString()} {b.currency}</td>
+            <td className="px-4 py-2">{money(Number(b.total_amount), cur)}</td>
             <td className="px-4 py-2"><StatusBadge status={b.status} /></td>
             <td className="px-4 py-2"><div className="flex items-center gap-2">
               <a className="text-xs font-semibold accent hover:underline" href={`/api/invoice-pdf?type=booking&id=${b.id}`}>PDF</a>

@@ -1,4 +1,5 @@
 import { createAdminClient } from '@/lib/supabase/admin';
+import { money } from '@/lib/format';
 import { requireModule } from '@/lib/data';
 import { PageHeader, Table, Empty, StatusBadge } from '@/components/ui';
 import { updateRecord, deleteRecord } from '@/lib/crm-actions';
@@ -8,6 +9,7 @@ import { notFound } from 'next/navigation';
 
 export default async function CustomerDetail({ params }: { params: { id: string } }) {
   const ctx = await requireModule('customers');
+  const cur = (ctx as any).agency?.currency;
   const db = createAdminClient();
   const { data: c } = await db.from('customers').select('*')
     .eq('id', params.id).eq('agency_id', ctx.profile.agency_id).single();
@@ -44,8 +46,8 @@ export default async function CustomerDetail({ params }: { params: { id: string 
 
       <div className="mb-6 grid gap-4 sm:grid-cols-3">
         <div className="card p-5"><p className="text-sm text-slate-500">Bookings</p><p className="mt-1 text-2xl font-bold">{bookings?.length ?? 0}</p></div>
-        <div className="card p-5"><p className="text-sm text-slate-500">Lifetime value</p><p className="mt-1 text-2xl font-bold">${totalValue.toLocaleString()}</p></div>
-        <div className="card p-5"><p className="text-sm text-slate-500">Paid to date</p><p className="mt-1 text-2xl font-bold">${totalPaid.toLocaleString()}</p></div>
+        <div className="card p-5"><p className="text-sm text-slate-500">Lifetime value</p><p className="mt-1 text-2xl font-bold">{money(totalValue, cur)}</p></div>
+        <div className="card p-5"><p className="text-sm text-slate-500">Paid to date</p><p className="mt-1 text-2xl font-bold">{money(totalPaid, cur)}</p></div>
       </div>
 
       {/* edit customer */}
@@ -80,8 +82,8 @@ export default async function CustomerDetail({ params }: { params: { id: string 
             <td className="px-4 py-2">{b.package_name || '—'}</td>
             <td className="px-4 py-2 capitalize">{b.trip_type}</td>
             <td className="px-4 py-2">{b.departure_date || '—'}</td>
-            <td className="px-4 py-2">${Number(b.total_amount).toLocaleString()} {b.currency}</td>
-            <td className="px-4 py-2">${Number(b.paid_amount).toLocaleString()}</td>
+            <td className="px-4 py-2">{money(Number(b.total_amount), cur)}</td>
+            <td className="px-4 py-2">{money(Number(b.paid_amount), cur)}</td>
             <td className="px-4 py-2"><StatusBadge status={b.status} /></td>
           </tr>
         )) : <tr><td colSpan={10}><Empty msg="No bookings for this customer yet." /></td></tr>}

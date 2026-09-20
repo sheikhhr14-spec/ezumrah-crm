@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import { money } from '@/lib/format';
 import { notFound } from 'next/navigation';
 import { requireModule, requireActiveAgency } from '@/lib/data';
 import { createAdminClient } from '@/lib/supabase/admin';
@@ -14,6 +15,7 @@ const L = ({ label, name, def, type = 'text', ph = '' }: any) => (
 export default async function EmployeeProfilePage({ params }: { params: { id: string } }) {
   await requireModule('hr');
   const ctx = await requireActiveAgency();
+  const cur = (ctx as any).agency?.currency;
   const db = createAdminClient();
   const { data: e } = await db.from('employees').select('*')
     .eq('id', params.id).eq('agency_id', ctx.profile.agency_id).single();
@@ -123,10 +125,10 @@ export default async function EmployeeProfilePage({ params }: { params: { id: st
                 {(payroll || []).length ? (payroll as any[]).map((p) => (
                   <tr key={p.id} className="border-b border-slate-50">
                     <td className="px-2 py-2 font-semibold">{p.pay_month}</td>
-                    <td className="px-2 py-2">${Number(p.basic).toFixed(2)}</td>
-                    <td className="px-2 py-2">${Number(p.allowances).toFixed(2)}</td>
-                    <td className="px-2 py-2 text-red-500">-${Number(p.deductions).toFixed(2)}</td>
-                    <td className="px-2 py-2 font-bold">${Number(p.net).toFixed(2)}</td>
+                    <td className="px-2 py-2">{money(Number(p.basic), cur)}</td>
+                    <td className="px-2 py-2">{money(Number(p.allowances), cur)}</td>
+                    <td className="px-2 py-2 text-red-500">-{money(Number(p.deductions), cur)}</td>
+                    <td className="px-2 py-2 font-bold">{money(Number(p.net), cur)}</td>
                     <td className="px-2 py-2"><StatusBadge status={p.status} /></td>
                     <td className="px-2 py-2">
                       <a className="text-xs font-semibold accent hover:underline" href={`/api/invoice-pdf?type=payslip&id=${p.id}`}>Download slip</a>

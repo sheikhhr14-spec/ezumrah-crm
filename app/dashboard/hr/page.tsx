@@ -1,4 +1,5 @@
 import { createAdminClient } from '@/lib/supabase/admin';
+import { money } from '@/lib/format';
 import { requireModule } from '@/lib/data';
 import { addEmployee, setEmployeeStatus, deleteEmployee } from '@/lib/crm-actions';
 import RowEdit from '@/components/row-edit';
@@ -8,6 +9,7 @@ import { PageHeader, Table, Empty, AddPanel, Field, StatusBadge } from '@/compon
 
 export default async function HREmployeesPage() {
   const ctx = await requireModule('hr');
+  const cur = (ctx as any).agency?.currency;
   const db = createAdminClient();
   const { data: employees } = await db.from('employees').select('*')
     .eq('agency_id', ctx.profile.agency_id).order('created_at', { ascending: false });
@@ -38,7 +40,7 @@ export default async function HREmployeesPage() {
             <td className="px-4 py-2">{e.department || '—'}</td>
             <td className="px-4 py-2">{e.phone || '—'}</td>
             <td className="px-4 py-2">{e.join_date || '—'}</td>
-            <td className="px-4 py-2">${Number(e.monthly_salary).toLocaleString()}</td>
+            <td className="px-4 py-2">{money(Number(e.monthly_salary), cur)}</td>
             <td className="px-4 py-2"><StatusBadge status={e.status} /></td>
             <td className="px-4 py-2">
               <div className="flex items-center gap-2">

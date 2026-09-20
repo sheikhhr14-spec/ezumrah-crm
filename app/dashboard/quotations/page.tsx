@@ -1,4 +1,5 @@
 import { createAdminClient } from '@/lib/supabase/admin';
+import { money } from '@/lib/format';
 import { requireModule } from '@/lib/data';
 import { createQuotation, deleteRecord } from '@/lib/crm-actions';
 import RowEdit from '@/components/row-edit';
@@ -6,6 +7,7 @@ import { PageHeader, Table, Empty, StatusBadge, AddPanel, Field } from '@/compon
 
 export default async function QuotationsPage() {
   const ctx = await requireModule('quotations');
+  const cur = (ctx as any).agency?.currency;
   const aid = ctx.profile.agency_id;
   const db = createAdminClient();
   const [{ data: quotations }, { data: customers }] = await Promise.all([
@@ -38,7 +40,7 @@ export default async function QuotationsPage() {
             <td className="px-4 py-2 font-semibold">{q.quote_no}</td>
             <td className="px-4 py-2">{(q.customers as any | null)?.full_name || '—'}</td>
             <td className="px-4 py-2">{q.valid_until || '—'}</td>
-            <td className="px-4 py-2 font-semibold">${Number(q.total).toLocaleString()} {q.currency}</td>
+            <td className="px-4 py-2 font-semibold">{money(Number(q.total), cur)}</td>
             <td className="px-4 py-2"><StatusBadge status={q.status} /></td>
             <td className="px-4 py-2"><div className="flex items-center gap-2">
               <a className="text-xs font-semibold accent hover:underline" href={`/api/invoice-pdf?type=quotation&id=${q.id}`}>PDF</a>

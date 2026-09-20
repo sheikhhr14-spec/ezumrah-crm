@@ -1,4 +1,5 @@
 import { createAdminClient } from '@/lib/supabase/admin';
+import { money } from '@/lib/format';
 import { requireModule } from '@/lib/data';
 import { updateBookingStatus, addFlight, addHotel, addVisa, addTransport, updateRecord, deleteRecord } from '@/lib/crm-actions';
 import RowEdit from '@/components/row-edit';
@@ -16,6 +17,7 @@ const Section = ({ title, children }: { title: string; children: React.ReactNode
 
 export default async function BookingDetail({ params }: { params: { id: string } }) {
   const ctx = await requireModule('bookings');
+  const cur = (ctx as any).agency?.currency;
   const aid = ctx.profile.agency_id;
   const db = createAdminClient();
 
@@ -55,7 +57,7 @@ export default async function BookingDetail({ params }: { params: { id: string }
 
       <div className="card grid gap-4 p-5 sm:grid-cols-4">
         <div><p className="text-xs uppercase text-slate-400">Status</p><div className="mt-1"><StatusBadge status={booking.status} /></div></div>
-        <div><p className="text-xs uppercase text-slate-400">Amount</p><p className="mt-1 font-semibold">${Number(booking.total_amount).toLocaleString()} {booking.currency}</p></div>
+        <div><p className="text-xs uppercase text-slate-400">Amount</p><p className="mt-1 font-semibold">{money(Number(booking.total_amount), cur)}</p></div>
         <div><p className="text-xs uppercase text-slate-400">Departure</p><p className="mt-1 font-semibold">{booking.departure_date || '—'}</p></div>
         <div><p className="text-xs uppercase text-slate-400">Return</p><p className="mt-1 font-semibold">{booking.return_date || '—'}</p></div>
         <div><p className="text-xs uppercase text-slate-400">Phone</p><p className="mt-1 font-semibold">{c?.phone || '—'}</p></div>

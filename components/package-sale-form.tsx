@@ -2,6 +2,7 @@
 import { useState } from 'react';
 import { createPackageSale } from '@/lib/crm-actions';
 import SubmitButton from '@/components/submit-button';
+import { money as fmtMoney } from '@/lib/format';
 
 const n = (v: string | number) => Number(v) || 0;
 const ROOM_TYPES = ['quint', 'quad', 'triple', 'double', 'single'];
@@ -16,10 +17,12 @@ const MODES = ['bus', 'van', 'private_car', 'train', 'taxi', 'other'];
 
 const SECT = "mb-2 mt-6 text-xs font-bold uppercase tracking-wide text-slate-500 border-b border-slate-100 pb-1";
 
-export default function PackageSaleForm({ category, customers }: {
+export default function PackageSaleForm({ category, customers, currency }: {
   category: 'umrah' | 'hajj' | 'tour';
   customers: { id: string; full_name: string }[];
+  currency?: string | null;
 }) {
+  const cur = currency;
   const [pax, setPax] = useState<Pax[]>([emptyPax()]);
   const [legs, setLegs] = useState<Leg[]>([]);
   const [ziyarat, setZiyarat] = useState({ scope: 'both', date: '', guide: false, notes: '' });
@@ -231,10 +234,10 @@ export default function PackageSaleForm({ category, customers }: {
         <L label="Notes" name="notes" />
       </div>
       <div className="grid gap-3 text-sm sm:grid-cols-4">
-        <div className="rounded-lg bg-slate-50 p-3"><p className="text-xs text-slate-400">Package total ({travelers} pax)</p><p className="font-bold">${base.toFixed(2)}</p></div>
-        <div className="rounded-lg bg-slate-50 p-3"><p className="text-xs text-slate-400">Grand total</p><p className="font-bold">${grand.toFixed(2)}</p></div>
-        <div className="rounded-lg bg-slate-50 p-3"><p className="text-xs text-slate-400">Balance</p><p className={`font-bold ${balance > 0 ? 'text-red-500' : 'text-emerald-600'}`}>${balance.toFixed(2)}</p></div>
-        <div className="rounded-lg accent-soft-bg p-3"><p className="text-xs text-slate-400">Profit</p><p className="font-bold accent">${profit.toFixed(2)}</p></div>
+        <div className="rounded-lg bg-slate-50 p-3"><p className="text-xs text-slate-400">Package total ({travelers} pax)</p><p className="font-bold">${fmtMoney(base, cur)}</p></div>
+        <div className="rounded-lg bg-slate-50 p-3"><p className="text-xs text-slate-400">Grand total</p><p className="font-bold">${fmtMoney(grand, cur)}</p></div>
+        <div className="rounded-lg bg-slate-50 p-3"><p className="text-xs text-slate-400">Balance</p><p className={`font-bold ${balance > 0 ? 'text-red-500' : 'text-emerald-600'}`}>${fmtMoney(balance, cur)}</p></div>
+        <div className="rounded-lg accent-soft-bg p-3"><p className="text-xs text-slate-400">Profit</p><p className="font-bold accent">${fmtMoney(profit, cur)}</p></div>
       </div>
 
       {/* 8 — DOCUMENTATION */}

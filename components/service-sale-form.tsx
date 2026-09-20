@@ -2,11 +2,13 @@
 import { useState } from 'react';
 import { createServiceSale } from '@/lib/crm-actions';
 import SubmitButton from '@/components/submit-button';
+import { money as fmtMoney } from '@/lib/format';
 import type { SvcField } from '@/lib/service-sales';
 
 export default function ServiceSaleForm({
-  table, fields, customers,
-}: { table: string; fields: SvcField[]; customers: { id: string; full_name: string }[] }) {
+  table, fields, customers, currency,
+}: { table: string; fields: SvcField[]; customers: { id: string; full_name: string }[]; currency?: string | null }) {
+  const cur = currency;
   const [useExisting, setUseExisting] = useState(false);
   const [dates, setDates] = useState({ ci: '', co: '' });
   const hasStay = fields.some((f) => f.name === 'check_in') && fields.some((f) => f.name === 'check_out');
@@ -96,9 +98,9 @@ export default function ServiceSaleForm({
           </label>
         </div>
         <div className="mt-4 grid gap-3 text-sm sm:grid-cols-4">
-          <div className="rounded-lg bg-slate-50 p-3"><p className="text-xs text-slate-400">Grand total (with fee)</p><p className="font-bold">${grand.toFixed(2)}</p></div>
-          <div className="rounded-lg bg-slate-50 p-3"><p className="text-xs text-slate-400">Balance</p><p className={`font-bold ${balance > 0 ? 'text-red-500' : 'text-emerald-600'}`}>${balance.toFixed(2)}</p></div>
-          <div className="rounded-lg bg-slate-50 p-3"><p className="text-xs text-slate-400">Profit</p><p className="font-bold accent">${profit.toFixed(2)}</p></div>
+          <div className="rounded-lg bg-slate-50 p-3"><p className="text-xs text-slate-400">Grand total (with fee)</p><p className="font-bold">${fmtMoney(grand, cur)}</p></div>
+          <div className="rounded-lg bg-slate-50 p-3"><p className="text-xs text-slate-400">Balance</p><p className={`font-bold ${balance > 0 ? 'text-red-500' : 'text-emerald-600'}`}>${fmtMoney(balance, cur)}</p></div>
+          <div className="rounded-lg bg-slate-50 p-3"><p className="text-xs text-slate-400">Profit</p><p className="font-bold accent">${fmtMoney(profit, cur)}</p></div>
           <div className="rounded-lg bg-slate-50 p-3"><p className="text-xs text-slate-400">Status</p><p className="font-semibold accent">{pStatus}</p></div>
         </div>
       </div>
