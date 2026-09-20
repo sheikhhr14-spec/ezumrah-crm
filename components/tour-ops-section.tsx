@@ -3,7 +3,7 @@ import { createAdminClient } from '@/lib/supabase/admin';
 import { PageHeader, Empty, StatusBadge } from '@/components/ui';
 import Link from 'next/link';
 
-export default async function TourOpsPage() {
+export default async function TourOpsSection() {
   const ctx = await requireModule('toursales');
   const db = createAdminClient();
   const aid = ctx.profile.agency_id!;
