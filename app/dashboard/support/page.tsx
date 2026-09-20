@@ -54,7 +54,25 @@ export default async function SupportPage() {
                 <span className={`badge ${PRIO[t.priority] || PRIO.normal}`}>{t.priority}</span>
                 <h3 className="font-bold text-slate-900">{t.subject}</h3>
               </div>
-              <StatusBadge status={t.status} />
+              <div className="flex items-center gap-3">
+                <StatusBadge status={t.status} />
+                <RowEdit table="support_tickets" id={t.id} title="Edit ticket">
+                  <label className="text-[10px] text-slate-400">Subject</label><input className="input px-2 py-1 text-xs" name="subject" defaultValue={t.subject || ''} />
+                  <label className="text-[10px] text-slate-400">Priority</label>
+                  <select className="input px-2 py-1 text-xs" name="priority" defaultValue={t.priority}>
+                    {['low', 'normal', 'high', 'urgent'].map((p) => <option key={p} value={p}>{p}</option>)}
+                  </select>
+                  <label className="text-[10px] text-slate-400">Status</label>
+                  <select className="input px-2 py-1 text-xs" name="status" defaultValue={t.status}>
+                    {['open', 'in_progress', 'resolved', 'closed'].map((st) => <option key={st} value={st}>{st.replace('_', ' ')}</option>)}
+                  </select>
+                </RowEdit>
+                <form action={deleteRecord}>
+                  <input type="hidden" name="table" value="support_tickets" />
+                  <input type="hidden" name="id" value={t.id} />
+                  <button className="text-xs font-semibold text-red-500 hover:underline" type="submit">Delete</button>
+                </form>
+              </div>
             </div>
             <p className="mt-2 whitespace-pre-wrap text-sm text-slate-600">{t.message}</p>
             <p className="mt-2 text-xs text-slate-400">Opened {new Date(t.created_at).toLocaleString()}</p>

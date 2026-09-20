@@ -162,7 +162,7 @@ export default async function BookingDetail({ params }: { params: { id: string }
             <div className="sm:col-span-4"><button className="btn-primary" type="submit">Save hotel</button></div>
           </form>
         </AddPanel>
-        <Table head={['City', 'Hotel', 'Check-in', 'Check-out', 'Rooms', 'Meal plan', 'Status']}>
+        <Table head={['City', 'Hotel', 'Check-in', 'Check-out', 'Rooms', 'Meal plan', 'Status', 'Actions']}>
           {hotels.data?.length ? hotels.data.map((h) => (
             <tr key={h.id}>
               <td className="px-4 py-2 capitalize">{h.city}</td>
@@ -172,6 +172,25 @@ export default async function BookingDetail({ params }: { params: { id: string }
               <td className="px-4 py-2">{h.rooms_count}</td>
               <td className="px-4 py-2">{h.meal_plan || '—'}</td>
               <td className="px-4 py-2"><StatusBadge status={h.status} /></td>
+            <td className="px-4 py-2">
+                <div className="flex items-center gap-3">
+                  <RowEdit table="hotels" id={h.id} title="Edit hotel">
+                    <label className="text-[10px] text-slate-400">City</label><input className="input px-2 py-1 text-xs" name="city" defaultValue={h.city || ''} />
+                    <label className="text-[10px] text-slate-400">Hotel name</label><input className="input px-2 py-1 text-xs" name="hotel_name" defaultValue={h.hotel_name || ''} />
+                    <label className="text-[10px] text-slate-400">Check-in</label><input className="input px-2 py-1 text-xs" type="date" name="check_in" defaultValue={h.check_in || ''} />
+                    <label className="text-[10px] text-slate-400">Check-out</label><input className="input px-2 py-1 text-xs" type="date" name="check_out" defaultValue={h.check_out || ''} />
+                    <label className="text-[10px] text-slate-400">Rooms</label><input className="input px-2 py-1 text-xs" name="rooms_count" type="number" defaultValue={h.rooms_count || ''} />
+                    <label className="text-[10px] text-slate-400">Room type</label><input className="input px-2 py-1 text-xs" name="room_type" defaultValue={h.room_type || ''} />
+                    <label className="text-[10px] text-slate-400">Meal plan</label><input className="input px-2 py-1 text-xs" name="meal_plan" defaultValue={h.meal_plan || ''} />
+                    <label className="text-[10px] text-slate-400">Confirmation code</label><input className="input px-2 py-1 text-xs" name="confirmation_code" defaultValue={h.confirmation_code || ''} />
+                    <label className="text-[10px] text-slate-400">Status</label>
+                    <select className="input px-2 py-1 text-xs" name="status" defaultValue={h.status}>
+                      {['pending', 'confirmed', 'cancelled', 'completed'].map((s) => <option key={s} value={s}>{s}</option>)}
+                    </select>
+                  </RowEdit>
+                  <form action={deleteRecord}><input type="hidden" name="table" value="hotels" /><input type="hidden" name="id" value={h.id} /><button className="text-xs font-semibold text-red-500 hover:underline" type="submit">Delete</button></form>
+                </div>
+              </td>
             </tr>
           )) : <Empty msg="No hotels yet." />}
         </Table>
@@ -189,7 +208,7 @@ export default async function BookingDetail({ params }: { params: { id: string }
             <div className="sm:col-span-4"><button className="btn-primary" type="submit">Save visa</button></div>
           </form>
         </AddPanel>
-        <Table head={['Type', 'Applied', 'Visa no.', 'Status', 'Notes']}>
+        <Table head={['Type', 'Applied', 'Visa no.', 'Status', 'Notes', 'Actions']}>
           {visas.data?.length ? visas.data.map((v) => (
             <tr key={v.id}>
               <td className="px-4 py-2 capitalize">{v.visa_type}</td>
@@ -197,6 +216,21 @@ export default async function BookingDetail({ params }: { params: { id: string }
               <td className="px-4 py-2">{v.visa_no || '—'}</td>
               <td className="px-4 py-2"><StatusBadge status={v.status} /></td>
               <td className="px-4 py-2 text-slate-500">{v.notes || '—'}</td>
+            <td className="px-4 py-2">
+                <div className="flex items-center gap-3">
+                  <RowEdit table="visas" id={v.id} title="Edit visa">
+                    <label className="text-[10px] text-slate-400">Visa type</label><input className="input px-2 py-1 text-xs" name="visa_type" defaultValue={v.visa_type || ''} />
+                    <label className="text-[10px] text-slate-400">Application date</label><input className="input px-2 py-1 text-xs" type="date" name="application_date" defaultValue={v.application_date || ''} />
+                    <label className="text-[10px] text-slate-400">Visa no.</label><input className="input px-2 py-1 text-xs" name="visa_no" defaultValue={v.visa_no || ''} />
+                    <label className="text-[10px] text-slate-400">Notes</label><input className="input px-2 py-1 text-xs" name="notes" defaultValue={v.notes || ''} />
+                    <label className="text-[10px] text-slate-400">Status</label>
+                    <select className="input px-2 py-1 text-xs" name="status" defaultValue={v.status}>
+                      {['pending', 'processing', 'issued', 'rejected', 'cancelled'].map((s) => <option key={s} value={s}>{s}</option>)}
+                    </select>
+                  </RowEdit>
+                  <form action={deleteRecord}><input type="hidden" name="table" value="visas" /><input type="hidden" name="id" value={v.id} /><button className="text-xs font-semibold text-red-500 hover:underline" type="submit">Delete</button></form>
+                </div>
+              </td>
             </tr>
           )) : <Empty msg="No visas yet." />}
         </Table>
