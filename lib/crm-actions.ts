@@ -69,7 +69,7 @@ export async function createBooking(fd: FormData) {
     total_amount: num(fd, 'total_amount'),
     currency: str(fd, 'currency') || 'USD',
     source: str(fd, 'source'),
-    notes: str(fd, 'notes'), created_by: ctx.profile.id,}).select('id').single();
+    notes: str(fd, 'notes'), created_by: await currentProfileId(),}).select('id').single();
 
   // AUTOMATION: auto-generate operations checklist for every new booking
   if (data) {
