@@ -202,27 +202,6 @@ export default async function DeparturePage({ params }: { params: { id: string }
                 <p className="mt-1 text-[11px] text-slate-600">{assigned.length ? assigned.map((p: any) => p.full_name).join(', ') : 'No passengers assigned'}</p>
               </div>
               <form action={deleteDeparturePickup}><input type="hidden" name="id" value={k.id} /><input type="hidden" name="departure_id" value={dep.id} /><button className="text-[10px] text-red-400" type="submit">Delete</button></form>
-              </div>
-              <AddPanel label="Edit booking">
-                <form action={updateTourBooking} className="grid gap-2 sm:grid-cols-3">
-                  <input type="hidden" name="id" value={b.id} />
-                  <input className="input" name="group_name" defaultValue={b.group_name || ''} placeholder="Group name" />
-                  <input className="input" name="contact_name" defaultValue={b.contact_name || ''} placeholder="Contact person" />
-                  <input className="input" name="contact_phone" defaultValue={b.contact_phone || ''} placeholder="Contact phone" />
-                  <input className="input" name="sale_price" type="number" step="0.01" defaultValue={Number(b.sale_price || 0)} placeholder="Sale price" />
-                  <input className="input" name="cost" type="number" step="0.01" defaultValue={Number(b.cost || 0)} placeholder="Our cost" />
-                  <input className="input" name="amount_paid" type="number" step="0.01" defaultValue={Number(b.amount_paid || 0)} placeholder="Amount paid" />
-                  <select className="input" name="payment_method" defaultValue={b.payment_method || ''}>
-                    <option value="">Payment method…</option><option value="cash">Cash</option><option value="card">Card</option><option value="bank">Bank transfer</option>
-                  </select>
-                  <input className="input" name="due_date" type="date" defaultValue={b.due_date || ''} />
-                  <select className="input" name="status" defaultValue={b.status || 'confirmed'}>
-                    <option value="confirmed">Confirmed</option><option value="pending">Pending</option><option value="cancelled">Cancelled</option>
-                  </select>
-                  <input className="input sm:col-span-2" name="notes" defaultValue={b.notes || ''} placeholder="Notes" />
-                  <button className="btn-primary" type="submit">Save booking</button>
-                </form>
-              </AddPanel>
             </div>
           );
         })}
@@ -307,7 +286,7 @@ export default async function DeparturePage({ params }: { params: { id: string }
               <span className="text-slate-500">Paid {money(Number(b.amount_paid || 0), cur)} / {money(Number(b.sale_price || 0), cur)}</span>
               <Link className="accent font-semibold hover:underline" href={`/dashboard/tour-sales/voucher/${b.id}`}>Voucher →</Link>
               <form action={deleteTourBooking} className="ml-auto"><input type="hidden" name="id" value={b.id} /><button className="text-[10px] text-red-400" type="submit">Delete</button></form>
-              </div>
+            </div>
               <AddPanel label="Edit booking">
                 <form action={updateTourBooking} className="grid gap-2 sm:grid-cols-3">
                   <input type="hidden" name="id" value={b.id} />
