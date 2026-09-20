@@ -313,3 +313,27 @@ export async function updateTourBooking(fd: FormData) {
   const { data: bk } = await db.from('tour_bookings').select('departure_id').eq('id', id).single();
   if (bk?.departure_id) revalidatePath(`/dashboard/tour-sales/departure/${bk.departure_id}`);
 }
+
+export async function movePassengerSeat(fd: FormData) {
+  const db = createAdminClient();
+  const ctx = await requireActiveAgency();
+  const aid = ctx.profile.agency_id!;
+  const paxId = String(fd.get('passenger_id'));
+  const vehId = String(fd.get('vehicle_id'));
+  const seatNo = N(fd, 'seat_no');
+  const { data: p } = await db.from('tour_passengers').select('id, booking_id, full_name').eq('id', paxId).eq('agency_id', aid).single();
+  if (!p) throw new Error('Passenger not found in your agency.');
+  const { data: v } = await db.from('tour_departure_vehicles').select('id, total_seats').eq('id', vehId).eq('agency_id', aid).single();
+  if (!v) throw new Error('Vehicle not found.');
+  if (seatNo < 1 || seatNo > Number(v.total_seats || 0)) throw new Error('Invalid seat number.');
+  const { data: bk } = await db.from('tour_bookings').select('departure_id').eq('id', p.booking_id).single();
+  if (!bk?.departure_id) throw new Error('Booking departure not found.');
+  const { pax } = await departurePax(db, aid, bk.departure_id);
+  const taken = pax.find((x: any) => x.seat_vehicle_id === vehId && Number(x.seat_no) === seatNo && x.id !== paxId);
+  if (taken) throw new Error(`Seat already taken by ${taken.full_name}.`);
+  const { data: blk } = await db.from('tour_seat_blocks').select('id, kind')
+    .eq('departure_id', bk.departure_id).eq('vehicle_id', vehId).eq('seat_no', seatNo).maybeSingle();
+  if (blk) throw new Error(`Seat is ${blk.kind}.`);
+  await db.from('tour_passengers').update({ seat_vehicle_id: vehId, seat_no: seatNo }).eq('id', paxId).eq('agency_id', aid);
+  revalidatePath(`/dashboard/tour-sales/departure/${bk.departure_id}`);
+}

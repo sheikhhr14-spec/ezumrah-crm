@@ -5,6 +5,7 @@ import { money } from '@/lib/format';
 import { autoAllocateSeats, autoAllocateRooms, toggleSeatBlock, createDepartureVehicle, deleteDepartureVehicle, createDepartureHotel, deleteDepartureHotel, createDeparturePickup, deleteDeparturePickup, deleteTourBooking, updateDepartureStatus, updateTourBooking } from '@/lib/tour-actions';
 import TourAddPassengerForm from '@/components/tour-add-passenger-form';
 import TourPassengerTable from '@/components/tour-passenger-table';
+import TourSeatMap from '@/components/tour-seat-map';
 import TourBookingForm from '@/components/tour-booking-form';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
@@ -47,28 +48,6 @@ export default async function DeparturePage({ params }: { params: { id: string }
   const noRoom = pax.filter((p: any) => !p.hotel_room).length;
   const noSeat = pax.filter((p: any) => !p.seat_vehicle_id || !p.seat_no).length;
   const cur = (ctx as any).agency?.currency;
-
-  const seatCell = (v: any, n: number) => {
-    const occupant = pax.find((p: any) => p.seat_vehicle_id === v.id && p.seat_no === n);
-    const blk = (blocks || []).find((b: any) => b.vehicle_id === v.id && b.seat_no === n);
-    if (occupant) return <div key={n} title={`${occupant.full_name} (${bkMap.get(occupant.booking_id)?.ref || ''})`} className="flex h-7 w-7 items-center justify-center rounded bg-slate-800 text-[10px] font-bold text-white">{n}</div>;
-    if (blk) return (
-      <form key={n} action={toggleSeatBlock} className="contents">
-        <input type="hidden" name="departure_id" value={dep.id} /><input type="hidden" name="vehicle_id" value={v.id} />
-        <input type="hidden" name="seat_no" value={n} /><input type="hidden" name="kind" value={blk.kind} />
-        <button title={`${blk.kind}${blk.reason ? ': ' + blk.reason : ''} — click to release`} type="submit"
-          className={`flex h-7 w-7 items-center justify-center rounded text-[10px] font-bold text-white ${blk.kind === 'blocked' ? 'bg-red-500' : 'bg-amber-500'}`}>{n}</button>
-      </form>
-    );
-    return (
-      <form key={n} action={toggleSeatBlock} className="contents">
-        <input type="hidden" name="departure_id" value={dep.id} /><input type="hidden" name="vehicle_id" value={v.id} />
-        <input type="hidden" name="seat_no" value={n} /><input type="hidden" name="kind" value="blocked" />
-        <button title={`Seat ${n} available — click to block`} type="submit"
-          className="flex h-7 w-7 items-center justify-center rounded border border-slate-300 text-[10px] text-slate-400 hover:border-slate-500">{n}</button>
-      </form>
-    );
-  };
 
   const rooms: { label: string; occupants: any[] }[] = [];
   for (const p of pax) {
@@ -115,19 +94,16 @@ export default async function DeparturePage({ params }: { params: { id: string }
           </form>
         </div>
         {(vehicles || []).length === 0 && <Empty msg="Add vehicles for this departure below — cars, SUVs, vans, coasters, minibuses and 40/45/50+ seat buses." />}
-        {(vehicles || []).map((v: any) => (
-          <div key={v.id} className="mb-4 rounded-lg border border-slate-200 p-3">
-            <div className="mb-2 flex items-center justify-between">
-              <p className="text-xs font-bold text-slate-800">{v.vehicle_label || v.vehicle_type} <span className="font-normal text-slate-400">{v.vehicle_type} · {v.plate_no || ''} · {v.total_seats} seats</span></p>
-              <form action={deleteDepartureVehicle}><input type="hidden" name="id" value={v.id} /><input type="hidden" name="departure_id" value={dep.id} /><button className="text-[10px] text-red-400" type="submit">Delete</button></form>
-            </div>
-            <div className="flex flex-wrap gap-1">
-              {[...Array(Number(v.total_seats || 0))].map((_, i) => seatCell(v, i + 1))}
-            </div>
-            <p className="mt-1 text-[10px] text-slate-400">Black = booked · red = blocked · amber = reserved · click an empty seat to block it, click a blocked seat to release</p>
-          </div>
-        ))}
-        <AddPanel label="Add vehicle">
+      {vehicles?.length > 0 && (
+        <TourSeatMap
+          departureId={dep.id}
+          vehicles={(vehicles || []).map((v: any) => ({ id: v.id, label: v.vehicle_label || v.vehicle_type, type: v.vehicle_type, total: Number(v.total_seats || 0) }))}
+          occupied={pax.filter((p: any) => p.seat_vehicle_id && p.seat_no).map((p: any) => ({ key: `${p.seat_vehicle_id}-${p.seat_no}`, id: p.id, name: p.full_name }))}
+          unassigned={pax.filter((p: any) => !p.seat_vehicle_id || !p.seat_no).map((p: any) => ({ id: p.id, name: p.full_name }))}
+          blocks={(blocks || []).map((b: any) => ({ key: `${b.vehicle_id}-${b.seat_no}`, kind: b.kind, reason: b.reason }))}
+        />
+      )}
+      <AddPanel label="Add vehicle">
           <form action={createDepartureVehicle} className="grid gap-2 sm:grid-cols-4">
             <input type="hidden" name="departure_id" value={dep.id} />
             <select className="input" name="vehicle_type">
@@ -147,6 +123,10 @@ export default async function DeparturePage({ params }: { params: { id: string }
       <div className="card mb-6 p-4">
         <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
           <h2 className="text-sm font-bold text-slate-900">🏨 Hotels, rooms & beds</h2>
+          {hotels?.length > 0 && <div className="flex gap-1">
+            <a className="btn-secondary text-xs" href={`/api/tour/rooming?departure=${dep.id}`}>⬇ Rooming list (Excel)</a>
+            <a className="btn-secondary text-xs" href={`/api/tour/rooming?departure=${dep.id}&format=html`} target="_blank" rel="noreferrer">🖨 Rooming list (PDF)</a>
+          </div>}
           <form action={autoAllocateRooms}>
             <input type="hidden" name="departure_id" value={dep.id} />
             <button className="btn-primary text-xs" type="submit" disabled={!hotels?.length || !noRoom}>🛏 Auto-allocate {noRoom} unassigned passenger(s)</button>
