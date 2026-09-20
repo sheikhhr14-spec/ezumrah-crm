@@ -822,20 +822,50 @@ export async function createServiceSale(fd: FormData) {
     salePrice = num(fd, 'rate_per_night') * Number(patch.nights) * Math.max(num(fd, 'rooms_count'), 1);
   }
   const cost = num(fd, 'cost');
+  // extra hotels (hotel_sales) / extra legs incl. ziyarat (transport_sales)
+  const extras: Record<string, unknown>[] = [];
+  let extrasPrice = 0, extrasCost = 0;
+  for (let i = 0; i < 10; i++) {
+    const price = num(fd, `extra_sale_price_${i}`);
+    const ecost = num(fd, `extra_cost_${i}`);
+    if (!price && !ecost) continue;
+    extrasPrice += price; extrasCost += ecost;
+    if (table === 'hotel_sales') {
+      const ci = str(fd, `extra_checkin_${i}`) || null;
+      const co = str(fd, `extra_checkout_${i}`) || null;
+      let en: number | null = null;
+      if (ci && co) { const d = Math.round((new Date(co).getTime() - new Date(ci).getTime()) / 86400000); if (d > 0) en = d; }
+      extras.push({ agency_id: aid, city: str(fd, `extra_city_${i}`) || null, hotel_name: str(fd, `extra_hotel_${i}`) || null,
+        check_in: ci, check_out: co, nights: en, room_type: str(fd, `extra_roomtype_${i}`) || null,
+        rooms_count: num(fd, `extra_rooms_${i}`), meal_plan: str(fd, `extra_meal_${i}`) || null, sale_price: price, cost: ecost });
+    } else if (table === 'transport_sales') {
+      extras.push({ agency_id: aid, leg_no: extras.length + 1,
+        from_location: str(fd, `extra_from_${i}`) || null, to_location: str(fd, `extra_to_${i}`) || null,
+        transport_date: str(fd, `extra_date_${i}`) || null, transport_time: str(fd, `extra_time_${i}`) || null,
+        vehicle_type: str(fd, `extra_vehicle_${i}`) || null, seats: num(fd, `extra_seats_${i}`),
+        driver_name: str(fd, `extra_driver_${i}`) || null, driver_phone: str(fd, `extra_phone_${i}`) || null,
+        sale_price: price, cost: ecost });
+    }
+  }
   const taxV = num(fd, 'tax');
-  const grand = salePrice + adminFee - discount + taxV;
+  const grand = salePrice + extrasPrice + adminFee - discount + taxV;
   const { count } = await db.from(table).select('id', { count: 'exact', head: true }).eq('agency_id', aid);
   const ref = `${cfg.prefix}-${new Date().getFullYear()}-${String((count || 0) + 1).padStart(4, '0')}`;
-  await db.from(table).insert({
+  const { data: rec2 } = await db.from(table).insert({
     ...patch, agency_id: aid, customer_id: customerId || null, ref,
-    sale_price: salePrice, cost: cost, admin_fee: adminFee, tax: taxV,
+    sale_price: salePrice + extrasPrice, cost: cost + extrasCost, admin_fee: adminFee, tax: taxV,
     discount: discount, commission: commission,
     sold_by: ctx.profile.full_name || null,
     amount_paid: amountPaid, payment_method: str(fd, 'payment_method'),
     payment_status: saleStatus(grand, amountPaid), notes: str(fd, 'notes'),
     status: str(fd, 'status') || 'confirmed',
-    balance: grand - amountPaid, profit: grand + commission - cost,
-  });
+    balance: grand - amountPaid, profit: grand + commission - (cost + extrasCost),
+  }).select('id').single();
+  if (extras.length && rec2?.id) {
+    const legTable = table === 'hotel_sales' ? 'hotel_sale_stays' : 'transport_sale_legs';
+    const fk = table === 'hotel_sales' ? 'hotel_sale_id' : 'transport_sale_id';
+    await db.from(legTable).insert(extras.map((e) => ({ ...e, [fk]: rec2.id })));
+  }
   revalidatePath(`/dashboard/${cfg.route}`);
 }
 
