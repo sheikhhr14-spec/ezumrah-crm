@@ -577,7 +577,6 @@ const EDITABLE: Record<string, string[]> = {
   support_tickets: ['subject', 'priority', 'status'],
   package_sales: ['package_category', 'package_name', 'departure_date', 'return_date', 'pax',
     'airline', 'flight_no', 'from_airport', 'to_airport', 'depart_at', 'return_flight_no', 'pnr',
-    'bus_company', 'bus_from', 'bus_to', 'bus_date', 'bus_seats',
     'makkah_hotel', 'makkah_nights', 'madinah_hotel', 'madinah_nights',
     'tour_destination', 'tour_hotel', 'tour_nights',
     'rooms_quint', 'rooms_quad', 'rooms_triple', 'rooms_double', 'rooms_single',
@@ -813,7 +812,11 @@ export async function createServiceSale(fd: FormData) {
   const discount = num(fd, 'discount');
   const commission = num(fd, 'commission');
   const amountPaid = num(fd, 'amount_paid');
-  const salePrice = num(fd, 'sale_price');
+  let salePrice = num(fd, 'sale_price');
+  // auto: hotel total price from rate/night x nights x rooms when not entered
+  if (table === 'hotel_sales' && !salePrice && num(fd, 'rate_per_night') && Number(patch.nights || 0) > 0) {
+    salePrice = num(fd, 'rate_per_night') * Number(patch.nights) * Math.max(num(fd, 'rooms_count'), 1);
+  }
   const cost = num(fd, 'cost');
   const grand = salePrice + adminFee - discount;
   const { count } = await db.from(table).select('id', { count: 'exact', head: true }).eq('agency_id', aid);
@@ -855,7 +858,13 @@ export async function updateServiceSale(fd: FormData) {
       if (n > 0) patch.nights = n;
     }
   }
-  const salePrice = fd.get('sale_price') !== null ? num(fd, 'sale_price') : Number(rec.sale_price);
+  let salePrice = fd.get('sale_price') !== null ? num(fd, 'sale_price') : Number(rec.sale_price);
+  if (table === 'hotel_sales' && !salePrice) {
+    const rate = fd.get('rate_per_night') !== null ? num(fd, 'rate_per_night') : Number(rec.rate_per_night || 0);
+    const nights = Number(patch.nights ?? rec.nights ?? 0);
+    const rooms = fd.get('rooms_count') !== null ? num(fd, 'rooms_count') : Number(rec.rooms_count || 1);
+    if (rate && nights) salePrice = rate * nights * Math.max(rooms, 1);
+  }
   const cost = fd.get('cost') !== null ? num(fd, 'cost') : Number(rec.cost);
   const adminFee = fd.get('admin_fee') !== null ? num(fd, 'admin_fee') : Number(rec.admin_fee);
   const discount = fd.get('discount') !== null ? num(fd, 'discount') : Number(rec.discount || 0);
@@ -965,8 +974,7 @@ export async function createPackageSale(fd: FormData) {
     from_airport: str(fd, 'from_airport'), to_airport: str(fd, 'to_airport'),
     depart_at: str(fd, 'depart_at') || null, return_flight_no: str(fd, 'return_flight_no'),
     pnr: str(fd, 'pnr'),
-    bus_company: str(fd, 'bus_company'), bus_from: str(fd, 'bus_from'), bus_to: str(fd, 'bus_to'),
-    bus_date: str(fd, 'bus_date') || null, bus_seats: str(fd, 'bus_seats'),
+
     ziyarat_scope: str(fd, 'ziyarat_scope') || 'none',
     ziyarat_date: str(fd, 'ziyarat_date') || null,
     ziyarat_guide: fd.get('ziyarat_guide') === 'on' || fd.get('ziyarat_guide') === 'true',
