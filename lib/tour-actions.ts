@@ -273,3 +273,43 @@ export async function toggleSeatBlock(fd: FormData) {
   else await db.from('tour_seat_blocks').insert({ agency_id: aid, departure_id: depId, vehicle_id: vehId, seat_no: seatNo, kind, reason: S(fd, 'reason') });
   revalidatePath(`/dashboard/tour-sales/departure/${depId}`);
 }
+
+export async function addTourPassengers(fd: FormData) {
+  const db = createAdminClient();
+  const ctx = await requireActiveAgency();
+  const aid = ctx.profile.agency_id!;
+  const bkId = String(fd.get('booking_id'));
+  const { data: bk } = await db.from('tour_bookings').select('id, departure_id').eq('id', bkId).eq('agency_id', aid).single();
+  if (!bk) throw new Error('Booking not found in your agency.');
+  let pax: any[] = [];
+  try { pax = JSON.parse(String(fd.get('passengers_json') || '[]')); } catch { pax = []; }
+  pax = pax.filter((p) => (p.full_name || '').trim()).slice(0, 80);
+  if (pax.length) {
+    await db.from('tour_passengers').insert(pax.map((p) => ({
+      agency_id: aid, booking_id: bkId, full_name: p.full_name.trim(),
+      gender: p.gender || null, age: Number(p.age) || null, passport_no: p.passport_no || null, phone: p.phone || null,
+      room_group: (p.room_group || '').trim() || null, room_preference: p.room_preference || 'shared',
+      room_type: p.room_type || null, pickup_id: p.pickup_id || null,
+    })));
+    if (fd.get('auto_seat') === 'on') await autoAllocateSeatsFor(db, aid, bk.departure_id);
+    if (fd.get('auto_room') === 'on') await autoAllocateRoomsFor(db, aid, bk.departure_id);
+  }
+  revalidatePath(`/dashboard/tour-sales/departure/${bk.departure_id}`);
+}
+
+export async function updateTourBooking(fd: FormData) {
+  const db = createAdminClient();
+  const ctx = await requireActiveAgency();
+  const aid = ctx.profile.agency_id!;
+  const id = String(fd.get('id'));
+  const sale = N(fd, 'sale_price');
+  const paid = N(fd, 'amount_paid');
+  await db.from('tour_bookings').update({
+    group_name: S(fd, 'group_name'), contact_name: S(fd, 'contact_name'), contact_phone: S(fd, 'contact_phone'),
+    sale_price: sale, cost: N(fd, 'cost'), amount_paid: paid, payment_method: S(fd, 'payment_method'),
+    payment_status: status(sale, paid), balance: sale - paid,
+    due_date: S(fd, 'due_date'), notes: S(fd, 'notes'), status: S(fd, 'status') || 'confirmed',
+  }).eq('id', id).eq('agency_id', aid);
+  const { data: bk } = await db.from('tour_bookings').select('departure_id').eq('id', id).single();
+  if (bk?.departure_id) revalidatePath(`/dashboard/tour-sales/departure/${bk.departure_id}`);
+}
