@@ -1214,7 +1214,7 @@ export async function updateEmployeeProfile(fd: FormData) {
   if (!emp || emp.agency_id !== aid) throw new Error('Employee not found in your agency.');
   const patch: Record<string, unknown> = { updated_at: new Date().toISOString() };
   for (const f of ['full_name', 'email', 'phone', 'designation', 'department', 'join_date',
-    'monthly_salary', 'status', 'notes', 'cnic', 'bank_name', 'account_title', 'account_no', 'iban']) {
+    'monthly_salary', 'status', 'notes', 'national_id', 'bank_name', 'account_title', 'account_no', 'bank_code']) {
     if (fd.get(f) !== null) patch[f] = f === 'monthly_salary' ? num(fd, f) : (str(fd, f) || null);
   }
   if (fd.get('remove_photo') === 'true') patch.photo_url = null;

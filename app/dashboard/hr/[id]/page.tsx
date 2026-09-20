@@ -75,12 +75,13 @@ export default async function EmployeeProfilePage({ params }: { params: { id: st
 
           {/* bank details */}
           <h3 className="mb-2 mt-6 text-sm font-bold uppercase tracking-wide text-slate-500">🏦 Bank account (for payroll)</h3>
+          <p className="mb-3 text-xs text-slate-400">Bank name, account title and number work in every country; bank code covers IBAN, IFSC, Swift or routing numbers.</p>
           <div className="space-y-1 text-sm">
             <p><span className="text-xs text-slate-400">Bank:</span> {e.bank_name || '—'}</p>
             <p><span className="text-xs text-slate-400">Account title:</span> {e.account_title || '—'}</p>
             <p><span className="text-xs text-slate-400">Account no.:</span> {e.account_no || '—'}</p>
-            <p><span className="text-xs text-slate-400">IBAN:</span> {e.iban || '—'}</p>
-            <p><span className="text-xs text-slate-400">National ID / CNIC:</span> {e.cnic || '—'}</p>
+            <p><span className="text-xs text-slate-400">Bank code:</span> {e.bank_code || '—'}</p>
+            <p><span className="text-xs text-slate-400">National ID:</span> {e.national_id || '—'}</p>
           </div>
         </div>
 
@@ -100,11 +101,11 @@ export default async function EmployeeProfilePage({ params }: { params: { id: st
               <select className="input" name="status" defaultValue={e.status || 'active'}>
                 <option value="active">Active</option><option value="on_leave">On leave</option><option value="ex_employee">Ex-employee</option>
               </select></label>
-            <L label="National ID / CNIC" name="cnic" def={e.cnic} />
+            <L label="National ID (optional)" name="national_id" def={e.national_id} ph="Passport / national ID no." />
             <L label="Bank name" name="bank_name" def={e.bank_name} />
             <L label="Account title" name="account_title" def={e.account_title} />
             <L label="Account no." name="account_no" def={e.account_no} />
-            <L label="IBAN" name="iban" def={e.iban} />
+            <L label="Bank code (IBAN / IFSC / Swift / routing)" name="bank_code" def={e.bank_code} />
             <label className="block sm:col-span-3"><span className="text-xs font-semibold text-slate-600">Notes</span>
               <input className="input" name="notes" defaultValue={e.notes || ''} /></label>
             <div className="sm:col-span-3"><SubmitButton pendingText="Saving…">Save employee</SubmitButton></div>
