@@ -72,7 +72,7 @@ export default async function InvoicesPage({ searchParams }: { searchParams: { s
       <Table head={['Invoice #', 'Agency', 'Plan', 'Amount', 'Status', 'Paid at', 'Actions']}>
         {list.length ? list.map((i: any) => (
           <tr key={i.id} className="hover:bg-slate-50">
-            <td className="px-4 py-2 font-semibold">{i.number}</td>
+            <td className="px-4 py-2 font-semibold"><Link className="hover:underline" href={`/admin/invoices/${i.id}`}>{i.number}</Link></td>
             <td className="px-4 py-2"><Link className="hover:underline" href={`/admin/agencies/${i.agency_id}`}>{i.agencies?.name || '—'}</Link></td>
             <td className="px-4 py-2 capitalize">{i.plan}</td>
             <td className="px-4 py-2">${Number(i.amount).toLocaleString()}</td>

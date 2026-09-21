@@ -35,6 +35,7 @@ export default async function DashboardLayout({ children }: { children: React.Re
         isAdmin={ctx.profile?.role === 'superadmin'}
         accentColor={agency.brand_color}
         label={agency.label}
+        logoUrl={agency.logo_url}
         profile={ctx.profile}
         notifications={notifications}
       />

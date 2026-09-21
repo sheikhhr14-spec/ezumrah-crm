@@ -1,5 +1,5 @@
 import ServiceSaleView from '@/components/service-sale-view';
 
-export default async function Page({ params }: { params: { id: string } }) {
-  return <ServiceSaleView table="transport_sales" id={params.id} />;
+export default async function Page({ params, searchParams }: { params: { id: string }; searchParams?: { emailed?: string } }) {
+  return <ServiceSaleView table="transport_sales" id={params.id} emailFlag={searchParams?.emailed} />;
 }

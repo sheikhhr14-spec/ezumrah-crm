@@ -2,7 +2,7 @@ import { createAdminClient } from '@/lib/supabase/admin';
 import { money } from '@/lib/format';
 import { requireModule } from '@/lib/data';
 import { Table, Empty, StatusBadge } from '@/components/ui';
-import { updateSale, updateSaleLeg, addSaleLeg, deleteSaleLeg, deleteRecord } from '@/lib/crm-actions';
+import { updateSale, updateSaleLeg, addSaleLeg, deleteSaleLeg, deleteRecord, sendSaleInvoiceEmail } from '@/lib/crm-actions';
 import Link from 'next/link';
 import SaleDocuments from '@/components/sale-documents';
 import SubmitButton from '@/components/submit-button';
@@ -14,7 +14,7 @@ const L = ({ label, name, def, type = 'text', ph = '' }: { label: string; name: 
   </label>
 );
 
-export default async function FlightSaleDetail({ params }: { params: { id: string } }) {
+export default async function FlightSaleDetail({ params, searchParams }: { params: { id: string }; searchParams?: { emailed?: string } }) {
   const ctx = await requireModule('flightsales');
   const cur = (ctx as any).agency?.currency;
   const aid = ctx.profile.agency_id;
@@ -40,6 +40,8 @@ export default async function FlightSaleDetail({ params }: { params: { id: strin
 
   return (
     <div>
+      {searchParams?.emailed === 'ok' && <p className="mb-3 rounded-lg bg-emerald-50 p-2 text-xs font-semibold text-emerald-700">✓ Invoice emailed to the customer.</p>}
+      {searchParams?.emailed?.startsWith('err:') && <p className="mb-3 rounded-lg bg-red-50 p-2 text-xs font-semibold text-red-600">Email failed: {decodeURIComponent(searchParams.emailed.slice(4))}</p>}
       <Link className="text-sm text-slate-400 hover:text-gold" href="/dashboard/flight-sales">← All flight sales</Link>
       <div className="mt-2 mb-6 flex flex-wrap items-center justify-between gap-3">
         <div>
@@ -51,6 +53,11 @@ export default async function FlightSaleDetail({ params }: { params: { id: strin
         </div>
         <div className="flex items-center gap-3">
           <a className="btn-primary" href={`/api/invoice-pdf?type=flightsale&id=${sale.id}`}>⬇ Download PDF invoice</a>
+          <form action={sendSaleInvoiceEmail}>
+            <input type="hidden" name="table" value="flight_sales" />
+            <input type="hidden" name="id" value={sale.id} />
+            <button className="btn-secondary text-xs" type="submit">📧 Send invoice by email</button>
+          </form>
           <form action={deleteRecord}>
             <input type="hidden" name="table" value="flight_sales" />
             <input type="hidden" name="id" value={sale.id} />

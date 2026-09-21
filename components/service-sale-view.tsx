@@ -2,7 +2,7 @@ import { createAdminClient } from '@/lib/supabase/admin';
 import { money } from '@/lib/format';
 import { requireModule } from '@/lib/data';
 import { StatusBadge } from '@/components/ui';
-import { updateServiceSale, deleteRecord } from '@/lib/crm-actions';
+import { updateServiceSale, deleteRecord, sendSaleInvoiceEmail } from '@/lib/crm-actions';
 import { SERVICE_SALES, SALE_PAYMENT_FIELDS } from '@/lib/service-sales';
 import Link from 'next/link';
 import SaleDocuments from '@/components/sale-documents';
@@ -21,7 +21,7 @@ const PDF_TYPE: Record<string, string> = {
   transport_sales: 'transport_sale',
 };
 
-export default async function ServiceSaleView({ table, id }: { table: string; id: string }) {
+export default async function ServiceSaleView({ table, id, emailFlag }: { table: string; id: string; emailFlag?: string }) {
   const cfg = SERVICE_SALES[table];
   const ctx = await requireModule(MODULE_KEY[table]);
   const cur = (ctx as any).agency?.currency;
@@ -53,6 +53,8 @@ export default async function ServiceSaleView({ table, id }: { table: string; id
 
   return (
     <div>
+      {emailFlag === 'ok' && <p className="mb-3 rounded-lg bg-emerald-50 p-2 text-xs font-semibold text-emerald-700">✓ Invoice emailed to the customer.</p>}
+      {emailFlag && emailFlag.startsWith('err:') && <p className="mb-3 rounded-lg bg-red-50 p-2 text-xs font-semibold text-red-600">Email failed: {decodeURIComponent(emailFlag.slice(4))}</p>}
       <Link className="text-sm text-slate-400 hover:text-gold" href={`/dashboard/${cfg.route}`}>← All {cfg.title.toLowerCase()}</Link>
       <div className="mt-2 mb-6 flex flex-wrap items-center justify-between gap-3">
         <div>
@@ -60,7 +62,12 @@ export default async function ServiceSaleView({ table, id }: { table: string; id
           <p className="text-sm text-slate-500">{cfg.desc(rec)}{rec.sold_by ? ` · sold by ${rec.sold_by}` : ''}</p>
         </div>
         <div className="flex items-center gap-3">
-          <a className="btn-primary" href={`/api/invoice-pdf?type=${PDF_TYPE[table]}&id=${rec.id}`}>⬇ Download PDF invoice</a>
+          <form action={sendSaleInvoiceEmail}>
+              <input type="hidden" name="table" value={table} />
+              <input type="hidden" name="id" value={rec.id} />
+              <button className="btn-secondary text-xs" type="submit">📧 Send invoice by email</button>
+            </form>
+            <a className="btn-primary" href={`/api/invoice-pdf?type=${PDF_TYPE[table]}&id=${rec.id}`}>⬇ Download PDF invoice</a>
           <form action={deleteRecord}>
             <input type="hidden" name="table" value={table} />
             <input type="hidden" name="id" value={rec.id} />

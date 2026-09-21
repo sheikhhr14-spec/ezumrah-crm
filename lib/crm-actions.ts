@@ -1453,3 +1453,68 @@ export async function deleteFleetVehicle(fd: FormData) {
   await db.from('transport_fleet').delete().eq('id', String(fd.get('id'))).eq('agency_id', aid);
   revalidatePath('/dashboard/availability');
 }
+
+// ============ EMAIL SALE INVOICES TO CUSTOMERS ============
+export async function sendSaleInvoiceEmail(fd: FormData) {
+  const db = createAdminClient();
+  const ctx = await requireActiveAgency();
+  const aid = ctx.profile.agency_id!;
+  const table = String(fd.get('table'));
+  const id = String(fd.get('id'));
+  const ROUTES: Record<string, string> = {
+    flight_sales: 'flight-sales', hotel_sales: 'hotel-sales', visa_sales: 'visa-sales',
+    transport_sales: 'transport-sales', package_sales: 'package-sales',
+  };
+  if (!ROUTES[table]) throw new Error('Unknown sale type.');
+  const back = `/dashboard/${ROUTES[table]}/${id}`;
+  const { data: r } = await db.from(table).select('*, customers(full_name, email)').eq('id', id).eq('agency_id', aid).single();
+  if (!r) throw new Error('Record not found in your agency.');
+  const cust = r.customers || {};
+  const { sendAgencyEmail, invoiceHtml } = await import('@/lib/email');
+  const money2 = (n: any) => `${(ctx as any).agency?.currency || 'USD'} ${Number(n || 0).toFixed(2)}`;
+  // detail lines per type
+  const lines: string[] = [];
+  if (table === 'flight_sales') {
+    const { data: legs } = await db.from('flight_sale_legs').select('*').eq('flight_sale_id', id).order('leg_no');
+    for (const l of legs || []) lines.push(`✈ Leg ${l.leg_no}: ${l.from_airport || ''} → ${l.to_airport || ''} — ${l.airline || ''} · ${String(l.depart_at || '').slice(0, 16).replace('T', ' ')}`);
+  } else if (table === 'hotel_sales') {
+    lines.push(`🏨 ${r.hotel_name || 'Hotel'}${r.city ? `, ${r.city}` : ''} — ${r.check_in || ''} → ${r.check_out || ''} · ${r.nights || 0} night(s) · ${r.rooms_count || 0} room(s)`);
+    const { data: stays } = await db.from('hotel_sale_stays').select('*').eq('hotel_sale_id', id).order('created_at');
+    for (const st of stays || []) lines.push(`🏨 Extra stay: ${st.hotel_name || 'Hotel'}${st.city ? `, ${st.city}` : ''} — ${st.check_in || ''} → ${st.check_out || ''} · ${st.nights || 0} night(s)`);
+  } else if (table === 'transport_sales') {
+    lines.push(`🚐 ${(r.transport_type || 'transport').replace(/_/g, ' ')}: ${r.from_location || ''} → ${r.to_location || ''} · ${r.transport_date || ''}${r.transport_time ? ` ${r.transport_time}` : ''}`);
+    const { data: legs } = await db.from('transport_sale_legs').select('*').eq('transport_sale_id', id).order('leg_no');
+    for (const l of legs || []) lines.push(`🚐 Extra leg ${l.leg_no}: ${l.from_location || ''} → ${l.to_location || ''} · ${l.transport_date || ''}`);
+  } else if (table === 'package_sales') {
+    lines.push(`🕋 ${r.package_name || 'Package'} — departs ${r.departure_date || ''}${r.return_date ? `, returns ${r.return_date}` : ''} · ${r.pax || 0} pax`);
+    const { data: tr } = await db.from('package_sale_transports').select('*').eq('package_sale_id', id);
+    for (const t of tr || []) lines.push(`🚐 Transport: ${t.route || t.from_location || ''} · ${t.transport_date || ''}`);
+  } else if (table === 'visa_sales') {
+    lines.push(`🛂 ${r.visa_type || 'Visa'} — applied ${r.application_date || ''}${r.issued_date ? `, issued ${r.issued_date}` : ''}`);
+  }
+  const rows: [string, string][] = [[ 'Customer', cust.full_name || '' ]];
+  if (r.due_date) rows.push(['Payment due', r.due_date]);
+  const totals: [string, string][] = [
+    ['Sale amount', money2(r.sale_price ?? r.amount ?? 0)],
+  ];
+  if (Number(r.tax)) totals.push(['Tax', money2(r.tax)]);
+  if (Number(r.admin_fee)) totals.push(['Admin fee', money2(r.admin_fee)]);
+  if (Number(r.discount)) totals.push(['Discount', '-' + money2(r.discount)]);
+  if (Number(r.amount_paid)) totals.push(['Amount received', money2(r.amount_paid)]);
+  totals.push(['Balance due', money2(r.balance ?? (Number(r.sale_price ?? r.amount ?? 0) + Number(r.tax || 0) + Number(r.admin_fee || 0) - Number(r.discount || 0) - Number(r.amount_paid || 0)))]);
+  try {
+    await sendAgencyEmail(aid, {
+      to: cust.email,
+      subject: `Invoice ${r.ref} from ${(ctx as any).agency?.name || 'us'}`,
+      html: invoiceHtml({
+        title: 'Booking Invoice', ref: r.ref, agencyName: (ctx as any).agency?.name || 'Travel Agency',
+        agencyLogo: (ctx as any).agency?.logo_url, meta: `Issued ${new Date().toLocaleDateString()}`,
+        lines, rows, totals,
+        note: 'Thank you for your booking! Please keep this invoice for your records.',
+      }),
+    });
+  } catch (e: any) {
+    redirect(back + '?emailed=err:' + encodeURIComponent(String(e?.message || e)));
+  }
+  redirect(back + '?emailed=ok');
+}

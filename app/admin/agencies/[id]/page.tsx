@@ -1,5 +1,5 @@
 import { createAdminClient } from '@/lib/supabase/admin';
-import { updateAgency, deleteAgency, setUserRole, deleteUser } from '@/lib/admin-actions';
+import { updateAgency, deleteAgency, setUserRole, deleteUser, setAgencyLogoAdmin } from '@/lib/admin-actions';
 import { PageHeader, StatusBadge, Table, Empty, Field } from '@/components/ui';
 import Link from 'next/link';
 import AccentPicker from '@/components/AccentPicker';
@@ -34,8 +34,24 @@ export default async function AgencyDetail({ params }: { params: { id: string } 
     { label: 'SaaS paid', value: `$${saasPaid.toLocaleString()}` },
   ];
 
+
   return (
     <div>
+      <div className="card mb-6 flex flex-wrap items-center gap-4 p-4">
+        {agency.logo_url ? <img src={agency.logo_url} alt="logo" className="h-14 w-14 rounded-xl object-cover" /> : <div className="flex h-14 w-14 items-center justify-center rounded-xl bg-slate-100 text-2xl">🏢</div>}
+        <form action={setAgencyLogoAdmin} className="flex flex-col gap-1">
+          <input type="hidden" name="id" value={agency.id} />
+          <input type="file" name="file" accept="image/png,image/jpeg" className="text-xs" />
+          <button className="btn-secondary px-3 py-1 text-xs" type="submit">Upload logo</button>
+        </form>
+        {agency.logo_url && (
+          <form action={setAgencyLogoAdmin}>
+            <input type="hidden" name="id" value={agency.id} /><input type="hidden" name="remove_logo" value="true" />
+            <button className="text-xs font-semibold text-red-500 hover:underline" type="submit">Remove logo</button>
+          </form>
+        )}
+        <p className="text-xs text-slate-400">Tenant logo — shows in the agency sidebar, invoices and emails.</p>
+      </div>
       <Link className="text-sm text-slate-400 hover:text-gold" href="/admin/agencies">← All agencies</Link>
 
       <div className="mt-2 mb-6 flex flex-wrap items-center justify-between gap-3">

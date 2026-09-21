@@ -141,10 +141,18 @@ export async function markInvoicePaid(fd: FormData) {
   await requireSuperadmin();
   const db = createAdminClient();
   const id = String(fd.get('id'));
+  const { data: inv } = await db.from('platform_invoices').select('agency_id, period_start').eq('id', id).single();
   await db.from('platform_invoices').update({
     status: 'paid', paid_at: new Date().toISOString(),
     stripe_payment_id: String(fd.get('stripe_payment_id') || '').trim() || null,
   }).eq('id', id);
+  if (inv?.agency_id) {
+    // sync the tenant-facing saas invoice and reactivate the agency
+    await db.from('saas_invoices').update({ status: 'paid' })
+      .eq('agency_id', inv.agency_id).eq('period', String(inv.period_start).slice(0, 7)).neq('status', 'paid');
+    await db.from('agencies').update({ subscription_status: 'active' }).eq('id', inv.agency_id);
+    revalidatePath('/dashboard/billing');
+  }
   revalidatePath('/admin/invoices');
   revalidatePath('/admin');
 }
@@ -226,4 +234,54 @@ export async function savePortalTheme(fd: FormData) {
   }).eq('id', ctx.profile!.id);
   revalidatePath('/admin', 'layout');
   revalidatePath('/admin/settings');
+}
+
+/* ============ AGENCY LOGO (super-admin) ============ */
+export async function setAgencyLogoAdmin(fd: FormData) {
+  await requireSuperadmin();
+  const db = createAdminClient();
+  const id = String(fd.get('id'));
+  const file = fd.get('file') as File | null;
+  const remove = fd.get('remove_logo') === 'true';
+  if (remove) {
+    await db.from('agencies').update({ logo_url: null }).eq('id', id);
+  } else {
+    if (!file || !file.size) return;
+    if (!['image/png', 'image/jpeg', 'image/jpg'].includes(file.type)) throw new Error('Only PNG or JPG.');
+    const body = Buffer.from(await file.arrayBuffer());
+    const path = `${id}/logo/${Date.now()}-${file.name.replace(/[^a-zA-Z0-9._-]/g, '_')}`;
+    const { error } = await db.storage.from('agency-assets').upload(path, body, { contentType: file.type });
+    if (error) throw new Error('Upload failed: ' + error.message);
+    const { data: pub } = db.storage.from('agency-assets').getPublicUrl(path);
+    await db.from('agencies').update({ logo_url: pub.publicUrl }).eq('id', id);
+  }
+  revalidatePath(`/admin/agencies/${id}`);
+}
+
+export async function emailPlatformInvoice(fd: FormData) {
+  await requireSuperadmin();
+  const db = createAdminClient();
+  const id = String(fd.get('id'));
+  const { data: inv } = await db.from('platform_invoices').select('*, agencies(name, email, logo_url, plan)').eq('id', id).single();
+  if (!inv) throw new Error('Invoice not found.');
+  if (!inv.agencies?.email) throw new Error('This agency has no email address set.');
+  const { sendAgencyEmail, invoiceHtml } = await import('@/lib/email');
+  const back = `/admin/invoices/${id}`;
+  try {
+    await sendAgencyEmail(inv.agency_id, {
+      to: inv.agencies.email,
+      subject: `EzUmrah CRM invoice ${inv.number} — ${inv.plan} plan`,
+      html: invoiceHtml({
+        title: 'SaaS Subscription Invoice', ref: inv.number, agencyName: inv.agencies.name, agencyLogo: inv.agencies.logo_url,
+        meta: `Billing period ${inv.period_start} → ${inv.period_end} · Status: ${inv.status.toUpperCase()}`,
+        lines: [`${inv.plan} plan subscription for EzUmrah CRM`],
+        rows: [['Plan', String(inv.plan)], ['Billing period', `${inv.period_start} → ${inv.period_end}`]],
+        totals: [['Amount due', `${inv.currency} ${Number(inv.amount).toFixed(2)}`]],
+        note: 'To activate or restore your subscription, complete the payment and the EzUmrah team will mark your invoice as paid.',
+      }),
+    });
+  } catch (e: any) {
+    redirect(back + '?emailed=err:' + encodeURIComponent(String(e?.message || e)));
+  }
+  redirect(back + '?emailed=ok');
 }

@@ -14,8 +14,8 @@ const ROUTE: Record<string, string> = {
   toursales: 'tour-sales',
 };
 
-export default function Sidebar({ agencyName, userName, isAdmin, role, accentColor, label, profile, notifications = [] }: {
-  agencyName: string; userName: string; isAdmin?: boolean; role?: string; accentColor?: string | null; label?: string | null;
+export default function Sidebar({ agencyName, userName, isAdmin, role, accentColor, label, profile, notifications = [], logoUrl }: {
+  agencyName: string; userName: string; isAdmin?: boolean; role?: string; accentColor?: string | null; label?: string | null; logoUrl?: string | null;
   profile?: any; notifications?: { id: string; title: string; body: string | null; href: string | null; read: boolean; created_at: string }[];
 }) {
   const allowed = allowedModules(profile, role || 'staff');
@@ -34,7 +34,9 @@ export default function Sidebar({ agencyName, userName, isAdmin, role, accentCol
     <aside className="flex w-60 shrink-0 flex-col border-r border-slate-200 bg-white"
       style={{ '--portal-accent': accentColor || '#b8923f' } as React.CSSProperties}>
       <div className="flex items-center gap-2 border-b border-slate-200 px-5 py-4">
-        <div className="flex h-9 w-9 items-center justify-center rounded-lg accent-bg font-bold text-white">E</div>
+        {logoUrl
+          ? <img src={logoUrl} alt="logo" className="h-9 w-9 rounded-lg object-cover" />
+          : <div className="flex h-9 w-9 items-center justify-center rounded-lg accent-bg font-bold text-white">E</div>}
         <div>
           <p className="text-sm font-bold text-slate-900">EzUmrah CRM</p>
           <p className="flex items-center gap-1 text-xs text-slate-400">

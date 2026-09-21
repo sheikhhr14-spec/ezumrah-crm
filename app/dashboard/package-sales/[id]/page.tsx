@@ -1,3 +1,4 @@
+import { sendSaleInvoiceEmail } from '@/lib/crm-actions';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { money } from '@/lib/format';
 import { requireModule } from '@/lib/data';
@@ -9,7 +10,7 @@ import { PageHeader, StatusBadge } from '@/components/ui';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 
-export default async function PackageSaleDetail({ params }: { params: { id: string } }) {
+export default async function PackageSaleDetail({ params, searchParams }: { params: { id: string }; searchParams?: { emailed?: string } }) {
   const db = createAdminClient();
   const mctx: any = await requireModule('umrahsales');
   const aid0 = mctx.profile.agency_id;
@@ -46,6 +47,14 @@ export default async function PackageSaleDetail({ params }: { params: { id: stri
       <div className="mb-2"><Link className="text-xs accent hover:underline" href={`/dashboard/${s.package_category === 'tour' ? 'tour' : s.package_category}-sales`}>← All {s.package_category} sales</Link></div>
       <PageHeader title={s.ref}
         subtitle={`${s.package_category} package — ${s.package_name || ''} · ${s.pax} pax${s.sold_by ? ` · sold by ${s.sold_by}` : ''}`} />
+      {searchParams?.emailed === 'ok' && <p className="mb-3 rounded-lg bg-emerald-50 p-2 text-xs font-semibold text-emerald-700">✓ Invoice emailed to the customer.</p>}
+      {searchParams?.emailed?.startsWith('err:') && <p className="mb-3 rounded-lg bg-red-50 p-2 text-xs font-semibold text-red-600">Email failed: {decodeURIComponent(searchParams.emailed.slice(4))}</p>}
+      <form action={sendSaleInvoiceEmail} className="mb-3">
+        <input type="hidden" name="table" value="package_sales" />
+        <input type="hidden" name="id" value={s.id} />
+        <button className="btn-secondary text-xs" type="submit">📧 Send invoice by email</button>
+      </form>
+
 
       <div className="mb-6 grid gap-4 sm:grid-cols-3 lg:grid-cols-6">
         {[

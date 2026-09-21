@@ -33,7 +33,14 @@ export async function requireActiveAgency() {
   const role = (ctx.profile?.role as Role) || 'staff';
   if (role === 'superadmin') redirect('/admin');
   if (!ctx.profile?.agency_id) redirect('/signup/agency');
-  const status = ctx.profile.agencies?.subscription_status;
+  const ag: any = ctx.profile.agencies || {};
+  const status = ag?.subscription_status;
+  // auto-suspend on expired trial — payment is then marked manually by the platform admin
+  if (status === 'trialing' && ag?.trial_ends_at && new Date(ag.trial_ends_at) < new Date()) {
+    const db = createAdminClient();
+    await db.from('agencies').update({ subscription_status: 'suspended' }).eq('id', ctx.profile.agency_id);
+    redirect('/billing');
+  }
   if (status !== 'active' && status !== 'trialing') redirect('/billing');
   return { ...ctx, role, agency: ctx.profile.agencies };
 }
@@ -49,6 +56,20 @@ export async function requireRole(min: 'owner' | 'manager' | 'staff') {
 }
 
 /* ============ Per-user module permissions ============ */
+// Module access by subscription plan (Starter / Professional / Enterprise)
+export const PLAN_MODULES: Record<string, string[]> = {
+  starter: ['calendar', 'leads', 'customers', 'bookings', 'flightsales', 'hotelsales', 'visasales', 'transportsales',
+    'umrahsales', 'hajjsales', 'toursales', 'packages', 'documents', 'tasks', 'support', 'invoices', 'settings', 'billing'],
+  professional: ['calendar', 'leads', 'customers', 'bookings', 'flightsales', 'hotelsales', 'visasales', 'transportsales',
+    'umrahsales', 'hajjsales', 'toursales', 'packages', 'documents', 'tasks', 'support', 'invoices', 'quotations', 'reports', 'accounts', 'settings', 'billing'],
+  enterprise: ['calendar', 'leads', 'customers', 'bookings', 'flightsales', 'hotelsales', 'visasales', 'transportsales',
+    'umrahsales', 'hajjsales', 'toursales', 'packages', 'documents', 'tasks', 'support', 'invoices', 'quotations', 'reports', 'accounts', 'hr', 'vault', 'settings', 'billing'],
+};
+export function planAllows(plan: any, key: string): boolean {
+  const p = PLAN_MODULES[String(plan || '').toLowerCase()] || PLAN_MODULES.starter;
+  return p.includes(key);
+}
+
 // All tenant modules. 'min' = minimum role that can ever be granted it.
 export const MODULES: { key: string; label: string; icon: string; min: 'staff' | 'manager' | 'owner' }[] = [
   { key: 'calendar', label: 'Bookings Calendar', icon: '📅', min: 'staff' },
@@ -84,10 +105,10 @@ export const MODULE_KEYS = MODULES.map((m) => m.key);
 
 // modules a user can access. Owner: everything. null modules: everything for their rank.
 export function allowedModules(profile: any, role: string): string[] {
-  if (role === 'owner') return MODULE_KEYS;
+  if (role === 'owner') return MODULE_KEYS.filter((k) => planAllows(profile?.agencies?.plan, k));
   const set = Array.isArray(profile?.modules) && profile.modules.length ? profile.modules : MODULE_KEYS;
   return set.filter((k: string) =>
-    MODULES.some((m) => m.key === k && RANK[role] >= RANK[m.min]));
+    MODULES.some((m) => m.key === k && RANK[role] >= RANK[m.min]) && planAllows(profile?.agencies?.plan, k));
 
 }
 
