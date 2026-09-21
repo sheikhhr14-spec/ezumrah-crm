@@ -23,7 +23,7 @@ export default function Sidebar({ agencyName, userName, isAdmin, role, accentCol
   const GROUPS: { label: string; keys: string[] }[] = [
     { label: 'Sales', keys: ['availability', 'leads', 'customers', 'flightsales', 'hotelsales', 'visasales', 'transportsales', 'umrahsales', 'hajjsales', 'toursales', 'quotations'] },
     { label: 'Bookings', keys: ['bookings', 'packages'] },
-    { label: 'Operations', keys: ['flights', 'hotels', 'visas', 'transports', 'documents', 'tasks'] },
+    { label: 'Documents & Tasks', keys: ['documents', 'tasks'] },
     { label: 'Finance', keys: ['invoices', 'accounts', 'reports'] },
     { label: 'People', keys: ['hr'] },
     { label: 'Support', keys: ['support'] },

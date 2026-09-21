@@ -58,14 +58,15 @@ export default function TourSeatMap({ departureId, vehicles, occupied, unassigne
             <a className="rounded border border-slate-200 px-2 py-0.5 text-[10px] font-semibold text-slate-500 hover:border-slate-400 hover:text-slate-800"
               href={`/api/tour/manifest?departure=${departureId}&vehicle=${v.id}`} target="_blank" rel="noreferrer">⬇ Driver sheet</a>
           </div>
-          <div className="inline-block space-y-1 rounded-xl border border-slate-200 bg-slate-50/50 p-3">
-            <p className="mb-1 text-center text-[9px] font-bold uppercase tracking-widest text-slate-400">Front · driver</p>
+          <div className="inline-block rounded-xl border border-slate-200 bg-slate-50/50 p-3">
             {(() => {
-              const perRow = v.total >= 15 ? 4 : 2;
-              const rows: number[][] = [];
-              for (let i = 0; i < v.total; i += perRow) {
-                rows.push(Array.from({ length: Math.min(perRow, v.total - i) }, (_, j) => i + j + 1));
+              const pairs: number[][] = [];
+              for (let i = 0; i < v.total; i += 2) {
+                pairs.push(Array.from({ length: Math.min(2, v.total - i) }, (_, j) => i + j + 1));
               }
+              const isBus = v.total >= 15;
+              const groups: number[][][] = [];
+              for (let i = 0; i < pairs.length; i += isBus ? 2 : 1) groups.push(pairs.slice(i, i + (isBus ? 2 : 1)));
               const cell = (n: number) => {
                 const key = `${v.id}-${n}`;
                 const o = occ.get(key);
@@ -94,18 +95,26 @@ export default function TourSeatMap({ departureId, vehicles, occupied, unassigne
                   </div>
                 );
               };
-              return rows.map((row, ri) => (
-                <div key={ri} className="flex items-center gap-1">
-                  {row.slice(0, 2).map((n) => cell(n))}
-                  {perRow === 4 && <div className="w-5 text-center text-[8px] text-slate-300">🚶</div>}
-                  {row.slice(2).map((n) => cell(n))}
+              return (
+                <div className="flex flex-wrap items-start gap-3">
+                  <div className="flex h-[52px] w-7 flex-col items-center justify-center rounded bg-slate-200 text-center text-[9px] font-bold text-slate-500">🚍<span>drv</span></div>
+                  {groups.map((g, gi) => (
+                    <div key={gi} className="flex items-start gap-1">
+                      {g.map((pair, pi) => (
+                        <div key={pi} className="flex items-start gap-1">
+                          {pair.map((n) => cell(n))}
+                          {isBus && pi === 0 && <div className="flex w-5 items-center justify-center text-[8px] text-slate-300">🚶</div>}
+                        </div>
+                      ))}
+                    </div>
+                  ))}
                 </div>
-              ));
+              );
             })()}
           </div>
         </div>
       ))}
-      <p className="mt-1 text-[10px] text-slate-400">Seats render in pairs — buses 2+2 with a centre aisle, cars/minivans/coasters as couples. Dark chips = seated (drag to move) · red = blocked · amber = reserved · dashed = free (drop target; click to block). Driver seat excluded.</p>
+      <p className="mt-1 text-[10px] text-slate-400">Layout runs front (driver) → back, left to right. Pairs sit together; buses show 2+2 with a centre aisle; driver seat excluded. Dark chips = seated (drag to move) · red = blocked · amber = reserved · dashed = free (drop target; click to block). Driver seat excluded.</p>
     </div>
   );
 }
