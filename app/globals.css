@@ -74,3 +74,18 @@ body {
 .dark .bg-sky-100 { background: rgba(14, 165, 233, 0.18); }
 .dark .accent-soft-bg { background: color-mix(in srgb, var(--portal-accent, #b8923f) 22%, transparent); }
 .dark .nav-active { background: color-mix(in srgb, var(--portal-accent, #b8923f) 26%, transparent); }
+/* dark theme additions: admin portal surfaces */
+.dark .bg-white\/80 { background: rgba(15, 23, 42, 0.92); border-color: #1e293b; }
+.dark .hover\:bg-slate-100:hover { background: #1e293b; }
+.dark .bg-emerald-50 { background: rgba(16, 185, 129, 0.12); }
+.dark .bg-red-50 { background: rgba(239, 68, 68, 0.12); }
+.dark .bg-blue-50 { background: rgba(59, 130, 246, 0.12); }
+.dark .bg-amber-50 { background: rgba(245, 158, 11, 0.12); }
+.dark .bg-sky-50 { background: rgba(14, 165, 233, 0.12); }
+.dark .bg-teal-50 { background: rgba(13, 148, 136, 0.12); }
+.dark .bg-violet-50 { background: rgba(139, 92, 246, 0.12); }
+.dark .bg-fuchsia-50 { background: rgba(217, 70, 239, 0.12); }
+.dark .bg-slate-50\/60 { background: #0b1428; }
+.dark .bg-slate-50\/50 { background: #0b1428; }
+.dark select.input { background: #1e293b; }
+.dark table { border-color: inherit; }

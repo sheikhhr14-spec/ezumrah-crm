@@ -2,6 +2,7 @@ import Link from 'next/link';
 import { requireSuperadmin } from '@/lib/data';
 import { logout } from '@/lib/auth-actions';
 import AdminHeader from '@/components/admin-header';
+import ActionSpinner from '@/components/action-spinner';
 import { getPlatformLogo } from '@/lib/admin-actions';
 
 const ADMIN_NAV = [
@@ -54,8 +55,9 @@ export default async function AdminLayout({ children }: { children: React.ReactN
         </div>
       </aside>
       <main className="flex-1 overflow-x-auto bg-slate-50">
-        <AdminHeader userName={name} logoUrl={logoUrl} />
+        <AdminHeader userName={name} />
         <div className="p-8">{children}</div>
+        <ActionSpinner />
       </main>
     </div>
   );

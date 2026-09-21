@@ -23,6 +23,21 @@ export async function createAgency(fd: FormData) {
   }).select('id').single();
   revalidatePath('/admin/agencies');
   revalidatePath('/admin');
+  // welcome email via platform SMTP (skipped if not configured)
+  if (data) {
+    try {
+      const { sendPlatformEmail, welcomeHtml } = await import('@/lib/email');
+      await sendPlatformEmail({
+        to: String(fd.get('email') || '').trim(),
+        subject: `Welcome to EzUmrah CRM, ${name}!`,
+        html: welcomeHtml({
+          agencyName: name, plan: String(fd.get('plan') || 'starter'),
+          trialEnds: String(fd.get('trial_ends_at') || '') || null,
+          loginUrl: 'https://ezumrah-crm.vercel.app',
+        }),
+      });
+    } catch {}
+  }
   if (data) redirect(`/admin/agencies/${data.id}`);
 }
 
@@ -211,6 +226,38 @@ export async function replyTicket(fd: FormData) {
     profile_id: ctx.profile?.id || null,
   });
   await db.from('support_tickets').update({ status: 'pending', updated_at: new Date().toISOString() }).eq('id', ticket_id);
+  // email the agency about the new reply (platform SMTP first, agency SMTP as fallback)
+  try {
+    const { data: t } = await db.from('support_tickets').select('subject, agencies(id, name, email)').eq('id', ticket_id).single();
+    const ag: any = (t as any)?.agencies;
+    if (ag?.email) {
+      const { sendPlatformEmail, invoiceHtml } = await import('@/lib/email');
+      try {
+        await sendPlatformEmail({
+          to: ag.email,
+          subject: `Support ticket update: ${t?.subject || 'your ticket'}`,
+          html: invoiceHtml({
+            title: 'Support Ticket Reply', ref: t?.subject || 'Ticket', agencyName: ag.name, agencyLogo: null,
+            meta: 'The EzUmrah support team replied to your ticket.',
+            lines: [message], rows: [['Status', 'Awaiting your response']],
+            totals: [], note: 'Open Support inside your dashboard to view the full conversation and reply.',
+          }),
+        });
+      } catch {
+        const { sendAgencyEmail } = await import('@/lib/email');
+        await sendAgencyEmail(ag.id, {
+          to: ag.email,
+          subject: `Support ticket update: ${t?.subject || 'your ticket'}`,
+          html: invoiceHtml({
+            title: 'Support Ticket Reply', ref: t?.subject || 'Ticket', agencyName: ag.name, agencyLogo: null,
+            meta: 'The EzUmrah support team replied to your ticket.',
+            lines: [message], rows: [['Status', 'Awaiting your response']],
+            totals: [], note: 'Open Support inside your dashboard to view the full conversation and reply.',
+          }),
+        });
+      }
+    }
+  } catch {}
   revalidatePath(`/admin/support/${ticket_id}`);
   revalidatePath('/admin/support');
 }
@@ -313,4 +360,55 @@ export async function getPlatformLogo(): Promise<string | null> {
   const { data: pub } = db.storage.from('agency-assets').getPublicUrl('platform/logo.png');
   const t = (data.find((f: any) => f.name === 'logo.png') as any)?.updated_at || Date.now();
   return `${pub.publicUrl}?t=${t}`;
+}
+
+/* ============ PLATFORM EMAIL SETTINGS ============ */
+export async function savePlatformEmailSettings(fd: FormData) {
+  await requireSuperadmin();
+  const { savePlatformSettings } = await import('@/lib/platform-settings');
+  await savePlatformSettings({
+    smtp_host: String(fd.get('smtp_host') || '').trim(),
+    smtp_port: Number(fd.get('smtp_port') || 587),
+    smtp_secure: fd.get('smtp_secure') === 'true',
+    smtp_user: String(fd.get('smtp_user') || '').trim(),
+    smtp_password: String(fd.get('smtp_password') || ''),
+    smtp_from_name: String(fd.get('smtp_from_name') || '').trim() || 'EzUmrah CRM',
+    smtp_from_email: String(fd.get('smtp_from_email') || '').trim(),
+  });
+  revalidatePath('/admin/settings');
+}
+
+export async function testPlatformEmail(fd: FormData) {
+  await requireSuperadmin();
+  const to = String(fd.get('to') || '').trim();
+  if (!to) redirect('/admin/settings?tested=err:' + encodeURIComponent('Enter a recipient email first.'));
+  try {
+    const { sendPlatformEmail, invoiceHtml } = await import('@/lib/email');
+    await sendPlatformEmail({ to, subject: 'EzUmrah CRM — test email', html: invoiceHtml({
+      title: 'Test Email', ref: 'SMTP OK', agencyName: 'EzUmrah CRM', agencyLogo: null,
+      meta: 'This is a test message from your platform SMTP configuration.',
+      lines: ['If you can read this, your email configuration works. 🎉'], rows: [], totals: [] }) });
+  } catch (e: any) {
+    redirect('/admin/settings?tested=err:' + encodeURIComponent(String(e?.message || e)));
+  }
+  redirect('/admin/settings?tested=ok');
+}
+
+/* ============ AGENCY SETTINGS (super-admin edits a tenant's full settings) ============ */
+export async function updateAgencySettingsAdmin(fd: FormData) {
+  await requireSuperadmin();
+  const db = createAdminClient();
+  const id = String(fd.get('id'));
+  const patch: Record<string, unknown> = { updated_at: new Date().toISOString() };
+  for (const f of ['name', 'label', 'brand_color', 'website', 'address', 'contact_email', 'contact_phone',
+    'country', 'currency', 'timezone', 'tax_no', 'smtp_host', 'smtp_user', 'smtp_password', 'smtp_from_name', 'smtp_from_email']) {
+    if (fd.get(f) !== null) patch[f] = String(fd.get(f) || '').trim() || null;
+  }
+  if (fd.get('smtp_port') !== null) patch.smtp_port = Number(fd.get('smtp_port')) || 587;
+  if (fd.get('smtp_secure') !== null) patch.smtp_secure = fd.get('smtp_secure') === 'true';
+  if (fd.get('tax_rate') !== null && String(fd.get('tax_rate')) !== '') patch.tax_rate = Number(fd.get('tax_rate'));
+  patch.staff_privacy = fd.get('staff_privacy') === 'on';
+  await db.from('agencies').update(patch).eq('id', id);
+  revalidatePath(`/admin/agencies/${id}`);
+  revalidatePath(`/admin/agencies/${id}/settings`);
 }

@@ -1,13 +1,16 @@
 import { createAdminClient } from '@/lib/supabase/admin';
-import { savePortalTheme, setPlatformLogoAdmin, getPlatformLogo } from '@/lib/admin-actions';
+import { savePortalTheme, setPlatformLogoAdmin, getPlatformLogo, savePlatformEmailSettings, testPlatformEmail } from '@/lib/admin-actions';
+import { getPlatformSettings } from '@/lib/platform-settings';
 import { PageHeader, Field } from '@/components/ui';
 import { requireSuperadmin } from '@/lib/data';
 import AccentPicker from '@/components/AccentPicker';
 
-export default async function SettingsPage() {
+export default async function SettingsPage({ searchParams }: { searchParams?: { tested?: string } }) {
   const ctx = await requireSuperadmin();
   const current = (ctx.profile as any)?.portal_accent || '#b8923f';
   const logoUrl = await getPlatformLogo();
+  const smtp = await getPlatformSettings();
+  const flag = searchParams?.tested || '';
   const db = createAdminClient();
   const [{ count: agencies }, { count: users }] = await Promise.all([
     db.from('agencies').select('id', { count: 'exact', head: true }),
@@ -35,6 +38,30 @@ export default async function SettingsPage() {
             </form>
           )}
         </div>
+      </div>
+
+      {/* Email configuration */}
+      <div className="card mb-6 p-6">
+        <h2 className="mb-1 text-sm font-bold text-slate-900">Email configuration (platform SMTP)</h2>
+        <p className="mb-4 text-xs text-slate-400">
+          Used for: welcome emails to new agencies, support-ticket reply notices, SaaS invoice emails, and customer invoice emails for agencies that haven't set their own SMTP. {smtp.smtp_host ? <span className="font-semibold text-emerald-600">● Configured.</span> : <span className="font-semibold text-red-500">○ Not configured yet.</span>}
+        </p>
+        {flag === 'ok' && <p className="mb-3 rounded-lg bg-emerald-50 p-2 text-xs font-semibold text-emerald-700">✓ Test email sent — check the inbox.</p>}
+        {flag.startsWith('err:') && <p className="mb-3 rounded-lg bg-red-50 p-2 text-xs font-semibold text-red-600">Email failed: {decodeURIComponent(flag.slice(4))}</p>}
+        <form action={savePlatformEmailSettings} className="grid gap-4 sm:grid-cols-3">
+          <Field label="SMTP host"><input className="input" name="smtp_host" defaultValue={smtp.smtp_host || ''} placeholder="smtp.hostinger.com" /></Field>
+          <Field label="Port"><input className="input" name="smtp_port" type="number" defaultValue={smtp.smtp_port || 587} /></Field>
+          <Field label="Secure (TLS)"><select className="input" name="smtp_secure" defaultValue={String(smtp.smtp_secure !== false)}><option value="true">true (465) / STARTTLS</option><option value="false">false</option></select></Field>
+          <Field label="SMTP username"><input className="input" name="smtp_user" defaultValue={smtp.smtp_user || ''} placeholder="no-reply@ezumrah.com" /></Field>
+          <Field label="SMTP password"><input className="input" name="smtp_password" type="password" defaultValue={smtp.smtp_password || ''} /></Field>
+          <Field label="From name"><input className="input" name="smtp_from_name" defaultValue={smtp.smtp_from_name || 'EzUmrah CRM'} /></Field>
+          <Field label="From email"><input className="input" name="smtp_from_email" defaultValue={smtp.smtp_from_email || ''} placeholder="no-reply@ezumrah.com" /></Field>
+          <div className="flex items-end"><button className="btn-primary" type="submit">Save email settings</button></div>
+        </form>
+        <form action={testPlatformEmail} className="mt-4 flex flex-wrap items-end gap-2 border-t border-slate-100 pt-4">
+          <Field label="Send a test email to"><input className="input" name="to" type="email" placeholder="you@ezumrah.com" /></Field>
+          <button className="btn-secondary" type="submit">Send test</button>
+        </form>
       </div>
 
       {/* Portal theme */}

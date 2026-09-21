@@ -66,6 +66,7 @@ export default async function AgencyDetail({ params }: { params: { id: string } 
           </p>
         </div>
         <div className="flex items-center gap-3">
+          <Link href={`/admin/agencies/${agency.id}/settings`} className="btn-secondary text-xs">⚙ Settings</Link>
           <Link href={`/admin/invoices?agency=${agency.id}`} className="btn-secondary text-xs">SaaS invoices</Link>
           <form action={deleteAgency}>
             <input type="hidden" name="id" value={agency.id} />
