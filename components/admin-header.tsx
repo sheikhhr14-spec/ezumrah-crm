@@ -6,10 +6,6 @@ export default function AdminHeader({ userName }: { userName: string }) {
   const initials = (userName || 'A').split(' ').map((w) => w[0]).slice(0, 2).join('').toUpperCase();
   return (
     <header className="sticky top-0 z-40 flex h-16 items-center gap-4 border-b border-slate-200 bg-white/80 px-6 backdrop-blur">
-      <Link href="/admin" className="flex items-center gap-2">
-        <span className="flex h-9 w-9 items-center justify-center rounded-lg accent-bg font-bold text-white">E</span>
-        <span className="hidden text-sm font-bold text-slate-900 sm:block">EzUmrah Platform</span>
-      </Link>
       <form action="/admin/agencies" className="ml-auto hidden max-w-sm flex-1 items-center gap-2 md:flex">
         <input className="input h-9" name="q" placeholder="Search agencies by name or email…" />
         <button className="btn-secondary h-9 px-3 text-xs" type="submit">Search</button>
