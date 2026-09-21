@@ -1,6 +1,8 @@
 import Link from 'next/link';
 import { requireSuperadmin } from '@/lib/data';
 import { logout } from '@/lib/auth-actions';
+import AdminHeader from '@/components/admin-header';
+import { getPlatformLogo } from '@/lib/admin-actions';
 
 const ADMIN_NAV = [
   { href: '/admin', label: 'Dashboard', icon: '📈' },
@@ -17,12 +19,16 @@ const ADMIN_NAV = [
 export default async function AdminLayout({ children }: { children: React.ReactNode }) {
   const ctx = await requireSuperadmin();
   const accent = (ctx.profile as any)?.portal_accent || '#b8923f';
+  const logoUrl = await getPlatformLogo();
+  const name = ctx.profile?.full_name || ctx.user.email || 'Admin';
 
   return (
     <div className="flex min-h-screen" style={{ '--portal-accent': accent } as React.CSSProperties}>
       <aside className="flex w-60 shrink-0 flex-col border-r border-slate-200 bg-white">
         <div className="flex items-center gap-2 border-b border-slate-200 px-5 py-4">
-          <div className="flex h-9 w-9 items-center justify-center rounded-lg accent-bg font-bold text-white">E</div>
+          {logoUrl
+            ? <img src={logoUrl} alt="logo" className="h-9 w-9 rounded-lg object-cover" />
+            : <div className="flex h-9 w-9 items-center justify-center rounded-lg accent-bg font-bold text-white">E</div>}
           <div>
             <p className="text-sm font-bold text-slate-900">EzUmrah Platform</p>
             <p className="accent text-xs font-semibold">Super Admin</p>
@@ -47,7 +53,10 @@ export default async function AdminLayout({ children }: { children: React.ReactN
           </form>
         </div>
       </aside>
-      <main className="flex-1 overflow-x-auto bg-slate-50 p-8">{children}</main>
+      <main className="flex-1 overflow-x-auto bg-slate-50">
+        <AdminHeader userName={name} logoUrl={logoUrl} />
+        <div className="p-8">{children}</div>
+      </main>
     </div>
   );
 }

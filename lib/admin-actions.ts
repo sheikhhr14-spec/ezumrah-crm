@@ -285,3 +285,32 @@ export async function emailPlatformInvoice(fd: FormData) {
   }
   redirect(back + '?emailed=ok');
 }
+
+/* ============ PLATFORM LOGO (SaaS portal branding) ============ */
+export async function setPlatformLogoAdmin(fd: FormData) {
+  await requireSuperadmin();
+  const db = createAdminClient();
+  const remove = fd.get('remove_logo') === 'true';
+  const path = 'platform/logo.png';
+  if (remove) {
+    await db.storage.from('agency-assets').remove([path]);
+    revalidatePath('/admin', 'layout');
+    return;
+  }
+  const file = fd.get('file') as File | null;
+  if (!file || !file.size) return;
+  if (!['image/png', 'image/jpeg', 'image/jpg'].includes(file.type)) throw new Error('Only PNG or JPG.');
+  const body = Buffer.from(await file.arrayBuffer());
+  const { error } = await db.storage.from('agency-assets').upload(path, body, { contentType: file.type, upsert: true });
+  if (error) throw new Error('Upload failed: ' + error.message);
+  revalidatePath('/admin', 'layout');
+}
+
+export async function getPlatformLogo(): Promise<string | null> {
+  const db = createAdminClient();
+  const { data } = await db.storage.from('agency-assets').list('platform');
+  if (!data || !data.length) return null;
+  const { data: pub } = db.storage.from('agency-assets').getPublicUrl('platform/logo.png');
+  const t = (data.find((f: any) => f.name === 'logo.png') as any)?.updated_at || Date.now();
+  return `${pub.publicUrl}?t=${t}`;
+}
