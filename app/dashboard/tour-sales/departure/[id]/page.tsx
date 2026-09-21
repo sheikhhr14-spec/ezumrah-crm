@@ -2,10 +2,11 @@ import { requireModule } from '@/lib/data';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { PageHeader, AddPanel, Empty, StatusBadge } from '@/components/ui';
 import { money } from '@/lib/format';
-import { autoAllocateSeats, autoAllocateRooms, toggleSeatBlock, createDepartureVehicle, deleteDepartureVehicle, createDepartureHotel, deleteDepartureHotel, createDeparturePickup, deleteDeparturePickup, deleteTourBooking, updateDepartureStatus, updateTourBooking } from '@/lib/tour-actions';
+import { autoAllocateSeats, autoAllocateRooms, toggleSeatBlock, deleteDepartureVehicle, createDepartureHotel, deleteDepartureHotel, createDeparturePickup, deleteDeparturePickup, deleteTourBooking, updateDepartureStatus, updateTourBooking } from '@/lib/tour-actions';
 import TourAddPassengerForm from '@/components/tour-add-passenger-form';
 import TourPassengerTable from '@/components/tour-passenger-table';
 import TourSeatMap from '@/components/tour-seat-map';
+import TourVehicleForm from '@/components/tour-vehicle-form';
 import TourBookingForm from '@/components/tour-booking-form';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
@@ -84,6 +85,51 @@ export default async function DeparturePage({ params }: { params: { id: string }
         <div className="card p-3"><p className="text-[11px] text-slate-400">Checked-in / picked up</p><p className="text-lg font-bold text-slate-900">{checkedIn} / {pickedUp}</p></div>
       </div>
 
+      {/* ===== PAYMENTS & PROFIT ===== */}
+      <div className="card mb-6 p-4">
+        <h2 className="mb-3 text-sm font-bold text-slate-900">💰 Payments &amp; profit</h2>
+        {(() => {
+          const act = (bookings || []).filter((b: any) => b.status !== 'cancelled');
+          const sale = act.reduce((sm: number, b: any) => sm + Number(b.sale_price || 0), 0);
+          const paid = act.reduce((sm: number, b: any) => sm + Number(b.amount_paid || 0), 0);
+          const cost = act.reduce((sm: number, b: any) => sm + Number(b.cost || 0), 0);
+          return (
+            <>
+              <div className="mb-3 grid grid-cols-2 gap-2 sm:grid-cols-5">
+                <div className="rounded-lg bg-slate-50 p-3"><p className="text-[11px] text-slate-400">Total value</p><p className="text-lg font-bold text-slate-900">{money(sale, cur)}</p></div>
+                <div className="rounded-lg bg-emerald-50 p-3"><p className="text-[11px] text-slate-400">Received</p><p className="text-lg font-bold text-emerald-600">{money(paid, cur)}</p></div>
+                <div className="rounded-lg bg-red-50 p-3"><p className="text-[11px] text-slate-400">Outstanding</p><p className="text-lg font-bold text-red-500">{money(sale - paid, cur)}</p></div>
+                <div className="rounded-lg bg-slate-50 p-3"><p className="text-[11px] text-slate-400">Total cost</p><p className="text-lg font-bold text-slate-900">{money(cost, cur)}</p></div>
+                <div className="rounded-lg bg-emerald-50 p-3"><p className="text-[11px] text-slate-400">Net profit</p><p className="text-lg font-bold text-emerald-700">{money(sale - cost, cur)}</p></div>
+              </div>
+              {act.length > 0 && (
+                <table className="w-full text-xs">
+                  <thead><tr className="border-b border-slate-200 text-left text-slate-400">
+                    <th className="p-1">Booking</th><th className="p-1">Group</th><th className="p-1 text-right">Value</th>
+                    <th className="p-1 text-right">Received</th><th className="p-1 text-right">Balance</th>
+                    <th className="p-1 text-right">Cost</th><th className="p-1 text-right">Profit</th><th className="p-1">Status</th>
+                  </tr></thead>
+                  <tbody>
+                    {act.map((b: any) => (
+                      <tr key={b.id} className="border-b border-slate-100">
+                        <td className="p-1 font-semibold">{b.ref}</td>
+                        <td className="p-1">{b.group_name || b.contact_name}</td>
+                        <td className="p-1 text-right">{money(Number(b.sale_price || 0), cur)}</td>
+                        <td className="p-1 text-right text-emerald-600">{money(Number(b.amount_paid || 0), cur)}</td>
+                        <td className="p-1 text-right text-red-500">{money(Number(b.sale_price || 0) - Number(b.amount_paid || 0), cur)}</td>
+                        <td className="p-1 text-right">{money(Number(b.cost || 0), cur)}</td>
+                        <td className="p-1 text-right font-bold">{money(Number(b.sale_price || 0) - Number(b.cost || 0), cur)}</td>
+                        <td className="p-1"><StatusBadge status={b.payment_status} /></td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              )}
+            </>
+          );
+        })()}
+      </div>
+
       {/* ===== VEHICLES & SEAT MAP ===== */}
       <div className="card mb-6 p-4">
         <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
@@ -104,18 +150,7 @@ export default async function DeparturePage({ params }: { params: { id: string }
         />
       )}
       <AddPanel label="Add vehicle">
-          <form action={createDepartureVehicle} className="grid gap-2 sm:grid-cols-4">
-            <input type="hidden" name="departure_id" value={dep.id} />
-            <select className="input" name="vehicle_type">
-              <option value="car">Car</option><option value="suv">SUV</option><option value="van">Van</option>
-              <option value="coaster">Coaster</option><option value="minibus">Minibus</option>
-              <option value="bus40">Bus (40 seats)</option><option value="bus45">Bus (45 seats)</option><option value="bus50">Bus (50+ seats)</option>
-            </select>
-            <input className="input" name="vehicle_label" placeholder="Label (e.g. BUS-1)" />
-            <input className="input" name="plate_no" placeholder="Plate no." />
-            <input className="input" name="total_seats" type="number" placeholder="Total seats *" required />
-            <button className="btn-primary" type="submit">Add vehicle</button>
-          </form>
+          <TourVehicleForm departureId={dep.id} />
         </AddPanel>
       </div>
 
@@ -234,6 +269,7 @@ export default async function DeparturePage({ params }: { params: { id: string }
               <StatusBadge status={b.payment_status} />
               <span className="text-slate-500">Paid {money(Number(b.amount_paid || 0), cur)} / {money(Number(b.sale_price || 0), cur)}</span>
               <Link className="accent font-semibold hover:underline" href={`/dashboard/tour-sales/voucher/${b.id}`}>Voucher →</Link>
+              <Link className="accent font-semibold hover:underline" href={`/dashboard/tour-sales/invoice/${b.id}`}>Invoice →</Link>
               <form action={deleteTourBooking} className="ml-auto"><input type="hidden" name="id" value={b.id} /><button className="text-[10px] text-red-400" type="submit">Delete</button></form>
             </div>
               <AddPanel label="Edit booking">

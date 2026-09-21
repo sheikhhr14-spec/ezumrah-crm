@@ -58,41 +58,54 @@ export default function TourSeatMap({ departureId, vehicles, occupied, unassigne
             <a className="rounded border border-slate-200 px-2 py-0.5 text-[10px] font-semibold text-slate-500 hover:border-slate-400 hover:text-slate-800"
               href={`/api/tour/manifest?departure=${departureId}&vehicle=${v.id}`} target="_blank" rel="noreferrer">⬇ Driver sheet</a>
           </div>
-          <div className="flex flex-wrap gap-1">
-            {[...Array(v.total)].map((_, i) => {
-              const n = i + 1;
-              const key = `${v.id}-${n}`;
-              const o = occ.get(key);
-              const b = blk.get(key);
-              if (o) return (
-                <div key={n} draggable onDragStart={() => setDrag({ id: o.id, name: o.name })} onDragEnd={() => setDrag(null)}
-                  title={`${o.name} — drag to move to another seat`} style={{ height: 52, width: 46 }}
-                  className="flex cursor-grab flex-col items-center justify-center rounded bg-slate-800 px-0.5 text-center text-white">
-                  <span className="text-[10px] font-bold">{n}</span>
-                  <span className="w-full truncate text-[8px] font-normal opacity-80">{o.name.split(' ')[0]}</span>
+          <div className="inline-block space-y-1 rounded-xl border border-slate-200 bg-slate-50/50 p-3">
+            <p className="mb-1 text-center text-[9px] font-bold uppercase tracking-widest text-slate-400">Front · driver</p>
+            {(() => {
+              const perRow = v.total >= 15 ? 4 : 2;
+              const rows: number[][] = [];
+              for (let i = 0; i < v.total; i += perRow) {
+                rows.push(Array.from({ length: Math.min(perRow, v.total - i) }, (_, j) => i + j + 1));
+              }
+              const cell = (n: number) => {
+                const key = `${v.id}-${n}`;
+                const o = occ.get(key);
+                const b = blk.get(key);
+                if (o) return (
+                  <div key={n} draggable onDragStart={() => setDrag({ id: o.id, name: o.name })} onDragEnd={() => setDrag(null)}
+                    title={`${o.name} — drag to move to another seat`} style={{ height: 52, width: 46 }}
+                    className="flex cursor-grab flex-col items-center justify-center rounded bg-slate-800 px-0.5 text-center text-white">
+                    <span className="text-[10px] font-bold">{n}</span>
+                    <span className="w-full truncate text-[8px] font-normal opacity-80">{o.name.split(' ')[0]}</span>
+                  </div>
+                );
+                if (b) return (
+                  <button key={n} type="button" title={`${b.kind}${b.reason ? ': ' + b.reason : ''} — click to release`}
+                    onClick={() => block(v.id, n, b.kind)} style={{ height: 52, width: 46 }}
+                    className={`flex flex-col items-center justify-center rounded text-[9px] font-bold text-white ${b.kind === 'blocked' ? 'bg-red-500' : 'bg-amber-500'}`}>
+                    <span className="text-[10px]">{n}</span>{b.kind === 'blocked' ? 'blocked' : 'held'}
+                  </button>
+                );
+                return (
+                  <div key={n} onDragOver={(e) => e.preventDefault()} onDrop={() => drop(v.id, n)}
+                    title={`Seat ${n} — drag a passenger here, or click to block`} onClick={() => { if (!drag) block(v.id, n, 'blocked'); }}
+                    style={{ height: 52, width: 46 }}
+                    className="flex flex-col items-center justify-center rounded border border-dashed border-slate-300 bg-white text-slate-400 hover:border-slate-500 hover:bg-slate-50">
+                    <span className="text-[10px] font-bold">{n}</span><span className="text-[8px]">free</span>
+                  </div>
+                );
+              };
+              return rows.map((row, ri) => (
+                <div key={ri} className="flex items-center gap-1">
+                  {row.slice(0, 2).map((n) => cell(n))}
+                  {perRow === 4 && <div className="w-5 text-center text-[8px] text-slate-300">🚶</div>}
+                  {row.slice(2).map((n) => cell(n))}
                 </div>
-              );
-              if (b) return (
-                <button key={n} type="button" title={`${b.kind}${b.reason ? ': ' + b.reason : ''} — click to release`}
-                  onClick={() => block(v.id, n, b.kind)}
-                  style={{ height: 52, width: 46 }}
-                  className={`flex flex-col items-center justify-center rounded text-[9px] font-bold text-white ${b.kind === 'blocked' ? 'bg-red-500' : 'bg-amber-500'}`}>
-                  <span className="text-[10px]">{n}</span>{b.kind === 'blocked' ? 'blocked' : 'held'}
-                </button>
-              );
-              return (
-                <div key={n} onDragOver={(e) => e.preventDefault()} onDrop={() => drop(v.id, n)}
-                  title={`Seat ${n} — drag a passenger here, or click to block`} onClick={() => { if (!drag) block(v.id, n, 'blocked'); }}
-                  style={{ height: 52, width: 46 }}
-                  className="flex flex-col items-center justify-center rounded border border-dashed border-slate-300 text-slate-400 hover:border-slate-500 hover:bg-slate-50">
-                  <span className="text-[10px] font-bold">{n}</span><span className="text-[8px]">free</span>
-                </div>
-              );
-            })}
+              ));
+            })()}
           </div>
         </div>
       ))}
-      <p className="mt-1 text-[10px] text-slate-400">Dark chips = seated passengers (drag to move) · red = blocked · amber = reserved · dashed = free (drop target; click to block).</p>
+      <p className="mt-1 text-[10px] text-slate-400">Seats render in pairs — buses 2+2 with a centre aisle, cars/minivans/coasters as couples. Dark chips = seated (drag to move) · red = blocked · amber = reserved · dashed = free (drop target; click to block). Driver seat excluded.</p>
     </div>
   );
 }
