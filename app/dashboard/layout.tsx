@@ -4,6 +4,7 @@ import ChatWidget from '@/components/chat-widget';
 import { requireActiveAgency } from '@/lib/data';
 import { syncNotifications } from '@/lib/crm-actions';
 import { createClient } from '@/lib/supabase/server';
+import ActionSpinner from '@/components/action-spinner';
 
 export default async function DashboardLayout({ children }: { children: React.ReactNode }) {
   const ctx = await requireActiveAgency();
@@ -54,6 +55,7 @@ export default async function DashboardLayout({ children }: { children: React.Re
           </div>
         )}
         {children}
+        <ActionSpinner />
       </main>
     </div>
   );
