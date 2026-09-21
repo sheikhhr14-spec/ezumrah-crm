@@ -152,6 +152,18 @@ export async function updateTourPassenger(fd: FormData) {
   const db = createAdminClient(); const aid = (await requireActiveAgency()).profile.agency_id!;
   const seatV = S(fd, 'seat_vehicle_id');
   const seatNo = N(fd, 'seat_no');
+  const paxId = String(fd.get('id'));
+  const depId = String(fd.get('departure_id'));
+  if (seatV && seatNo > 0) {
+    const { pax } = await departurePax(db, aid, depId);
+    const taken = pax.find((x: any) => x.seat_vehicle_id === seatV && Number(x.seat_no) === seatNo && x.id !== paxId);
+    if (taken) throw new Error(`Seat ${seatNo} is already taken by ${taken.full_name}.`);
+    const { data: blk } = await db.from('tour_seat_blocks').select('kind')
+      .eq('agency_id', aid).eq('departure_id', depId).eq('vehicle_id', seatV).eq('seat_no', seatNo).maybeSingle();
+    if (blk) throw new Error(`Seat is ${blk.kind}. Release it first.`);
+    const { data: veh } = await db.from('tour_departure_vehicles').select('total_seats').eq('id', seatV).eq('agency_id', aid).single();
+    if (!veh || seatNo > Number(veh.total_seats || 0)) throw new Error('Invalid vehicle or seat number.');
+  }
   await db.from('tour_passengers').update({
     full_name: S(fd, 'full_name') || 'Passenger', gender: S(fd, 'gender'), age: N(fd, 'age') || null,
     passport_no: S(fd, 'passport_no'), phone: S(fd, 'phone'),

@@ -1,5 +1,5 @@
 'use client';
-import { useState } from 'react';
+import { useTransition, useState } from 'react';
 import { updateTourPassenger, deleteTourPassenger, setPassengerCheckin } from '@/lib/tour-actions';
 
 type P = {
@@ -21,6 +21,8 @@ export default function TourPassengerTable({ departureId, passengers, vehicles, 
   departureId: string; passengers: P[]; vehicles: V[]; pickups: K[];
 }) {
   const [edit, setEdit] = useState<P | null>(null);
+  const [err, setErr] = useState('');
+  const [pending, start] = useTransition();
   const [q, setQ] = useState('');
   const list = passengers.filter((p) =>
     !q || `${p.full_name} ${p.passport_no || ''} ${p.room_group || ''} ${p.booking_ref}`.toLowerCase().includes(q.toLowerCase()));
@@ -77,9 +79,14 @@ export default function TourPassengerTable({ departureId, passengers, vehicles, 
               <h3 className="text-base font-bold text-slate-900 dark:text-white">Edit passenger — {edit.full_name}</h3>
               <button onClick={() => setEdit(null)} className="text-slate-400 hover:text-slate-700 dark:hover:text-white" type="button">✕</button>
             </div>
-            <form action={async (fd) => { setEdit(null); await updateTourPassenger(fd); }} className="grid gap-2 sm:grid-cols-3">
+            <form action={(fd) => start(async () => {
+              try { setErr(''); await updateTourPassenger(fd); setEdit(null); }
+              catch (e: any) { setErr(String(e?.message || e)); }
+            })} className="grid gap-2 sm:grid-cols-3">
               <input type="hidden" name="id" value={edit.id} />
               <input type="hidden" name="departure_id" value={departureId} />
+              {err && <p className="sm:col-span-3 rounded-lg bg-red-50 p-2 text-xs font-semibold text-red-600">{err}</p>}
+              {pending && <p className="sm:col-span-3 flex items-center gap-2 rounded-lg bg-slate-100 p-2 text-xs font-semibold text-slate-600"><span className="inline-block h-3.5 w-3.5 animate-spin rounded-full border-2 border-slate-300 border-t-slate-700" /> Saving…</p>}
               <label className="block sm:col-span-3"><span className="text-[11px] font-semibold text-slate-500">Full name</span>
                 <input className="input" name="full_name" defaultValue={edit.full_name} required /></label>
               <label className="block"><span className="text-[11px] font-semibold text-slate-500">Gender</span>

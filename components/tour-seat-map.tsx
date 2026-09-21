@@ -11,14 +11,14 @@ export default function TourSeatMap({ departureId, vehicles, occupied, unassigne
   unassigned: Chip[];
   blocks: { key: string; kind: string; reason: string }[];
 }) {
-  const [drag, setDrag] = useState<Chip | null>(null);
+  const [sel, setSel] = useState<Chip | null>(null);
   const [err, setErr] = useState('');
   const [pending, start] = useTransition();
   const occ = new Map(occupied.map((o) => [o.key, o]));
   const blk = new Map(blocks.map((b) => [b.key, b]));
 
   const call = (fd: FormData) => start(async () => {
-    try { setErr(''); await movePassengerSeat(fd); setDrag(null); }
+    try { setErr(''); await movePassengerSeat(fd); setSel(null); }
     catch (e: any) { setErr(String(e?.message || e)); }
   });
   const block = (vehId: string, n: number, kind: string) => {
@@ -27,11 +27,11 @@ export default function TourSeatMap({ departureId, vehicles, occupied, unassigne
     fd.set('seat_no', String(n)); fd.set('kind', kind);
     start(async () => { try { setErr(''); await toggleSeatBlock(fd); } catch (e: any) { setErr(String(e?.message || e)); } });
   };
-  const drop = (vehId: string, n: number) => {
-    if (!drag) return;
+  const assign = (vehId: string, n: number) => {
+    if (!sel) return;
     if (occ.has(`${vehId}-${n}`) || blk.has(`${vehId}-${n}`)) { setErr('That seat is not available.'); return; }
     const fd = new FormData();
-    fd.set('passenger_id', drag.id); fd.set('vehicle_id', vehId); fd.set('seat_no', String(n));
+    fd.set('passenger_id', sel.id); fd.set('vehicle_id', vehId); fd.set('seat_no', String(n));
     call(fd);
   };
 
@@ -46,11 +46,11 @@ export default function TourSeatMap({ departureId, vehicles, occupied, unassigne
       )}
       {unassigned.length > 0 && (
         <div className="mb-3 rounded-lg border border-dashed border-slate-300 p-2">
-          <p className="mb-1 text-[11px] font-semibold text-slate-500">Unassigned passengers ({unassigned.length}) — drag onto a free seat</p>
+          <p className="mb-1 text-[11px] font-semibold text-slate-500">Unassigned passengers ({unassigned.length}) — <b>tap one to select, then tap a free seat</b> (or drag it onto a seat)</p>
           <div className="flex flex-wrap gap-1">
             {unassigned.map((p) => (
-              <span key={p.id} draggable onDragStart={() => setDrag(p)} onDragEnd={() => setDrag(null)}
-                className={`cursor-grab rounded-full px-2 py-0.5 text-[11px] font-semibold text-white ${drag?.id === p.id ? 'bg-slate-800 opacity-50' : 'bg-slate-500 hover:bg-slate-700'}`}>
+              <span key={p.id} draggable onDragStart={() => setSel(p)} onDragEnd={() => setSel(null)} onClick={() => setSel(sel?.id === p.id ? null : p)}
+                className={`cursor-grab rounded-full px-2 py-0.5 text-[11px] font-semibold text-white ${sel?.id === p.id ? 'bg-slate-800 ring-2 ring-gold ring-offset-1' : 'bg-slate-500 hover:bg-slate-700'}`}>
                 👤 {p.name}
               </span>
             ))}
@@ -78,8 +78,8 @@ export default function TourSeatMap({ departureId, vehicles, occupied, unassigne
                 const o = occ.get(key);
                 const b = blk.get(key);
                 if (o) return (
-                  <div key={n} draggable onDragStart={() => setDrag({ id: o.id, name: o.name })} onDragEnd={() => setDrag(null)}
-                    title={`${o.name} — drag to move to another seat`} style={{ height: 52, width: 46 }}
+                  <div key={n} draggable onDragStart={() => setSel({ id: o.id, name: o.name })} onDragEnd={() => setSel(null)} onClick={() => setSel(sel?.id === o.id ? null : { id: o.id, name: o.name })}
+                    title={`${o.name} — tap to select or drag to move to another seat`} style={{ height: 52, width: 46 }}
                     className="flex cursor-grab flex-col items-center justify-center rounded bg-slate-800 px-0.5 text-center text-white">
                     <span className="text-[10px] font-bold">{n}</span>
                     <span className="w-full truncate text-[8px] font-normal opacity-80">{o.name.split(' ')[0]}</span>
@@ -93,8 +93,8 @@ export default function TourSeatMap({ departureId, vehicles, occupied, unassigne
                   </button>
                 );
                 return (
-                  <div key={n} onDragOver={(e) => e.preventDefault()} onDrop={() => drop(v.id, n)}
-                    title={`Seat ${n} — drag a passenger here, or click to block`} onClick={() => { if (!drag) block(v.id, n, 'blocked'); }}
+                  <div key={n} onDragOver={(e) => e.preventDefault()} onDrop={() => assign(v.id, n)}
+                    title={`Seat ${n} — select a passenger, then tap/drop here (tap with nothing selected to block)`} onClick={() => { if (sel) assign(v.id, n); else block(v.id, n, 'blocked'); }}
                     style={{ height: 52, width: 46 }}
                     className="flex flex-col items-center justify-center rounded border border-dashed border-slate-300 bg-white text-slate-400 hover:border-slate-500 hover:bg-slate-50">
                     <span className="text-[10px] font-bold">{n}</span><span className="text-[8px]">free</span>
