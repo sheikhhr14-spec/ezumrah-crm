@@ -226,6 +226,9 @@ export default function PackageSaleForm({ category, customers, currency, taxRate
             <option value="bank">Bank transfer</option><option value="card">Card</option><option value="online">Online</option>
           </select></label>
         <L label="Payment due date" name="due_date" type="date" />
+        <L label="Source / referral" name="source" />
+        <L label="Tags" name="tags" />
+        <L label="Follow-up date" name="follow_up_date" type="date" />
         <label className="block"><span className="text-xs font-semibold text-slate-600">Status</span>
           <select className="input" name="status" defaultValue="confirmed">
             <option value="confirmed">Confirmed</option><option value="pending">Pending</option>

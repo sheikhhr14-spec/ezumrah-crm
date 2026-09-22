@@ -34,7 +34,9 @@ export async function createCustomer(fd: FormData) {
     whatsapp: str(fd, 'whatsapp'),
     country: str(fd, 'country'),
     passport_no: str(fd, 'passport_no'),
-    notes: str(fd, 'notes'), created_by: await currentProfileId(),});
+    notes: str(fd, 'notes'),
+    nationality: str(fd, 'nationality'), next_of_kin_name: str(fd, 'next_of_kin_name'), next_of_kin_phone: str(fd, 'next_of_kin_phone'),
+    created_by: await currentProfileId(),});
   revalidatePath('/dashboard/customers');
 }
 
@@ -701,7 +703,8 @@ export async function createFlightSale(fd: FormData) {
     sale_total: saleTotal, cost_total: costTotal, admin_fee: adminFee, tax: taxV,
     discount: discount, commission: commission,
     amount_paid: amountPaid, payment_method: str(fd, 'payment_method'),
-    payment_status: paymentStatus, notes: str(fd, 'notes'),
+    payment_status: paymentStatus,     baggage: str(fd, 'baggage'), fare_basis: str(fd, 'fare_basis'), source: str(fd, 'source'), tags: str(fd, 'tags'), follow_up_date: str(fd, 'follow_up_date') || null,
+  notes: str(fd, 'notes'),
     status: str(fd, 'status') || 'confirmed',
     balance: grand - amountPaid, profit: grand + commission - costTotal,
   }).select('id').single();
@@ -724,6 +727,8 @@ export async function updateSale(fd: FormData) {
     admin_fee: adminFee, tax: taxV, amount_paid: amountPaid,
     discount: num(fd, 'discount'), commission: num(fd, 'commission'),
     due_date: str(fd, 'due_date') || null,
+    baggage: str(fd, 'baggage'), fare_basis: str(fd, 'fare_basis'),
+    source: str(fd, 'source'), tags: str(fd, 'tags'), follow_up_date: str(fd, 'follow_up_date') || null,
     payment_method: str(fd, 'payment_method'), notes: str(fd, 'notes'),
     status: str(fd, 'status') || 'confirmed',
     customer_id: String(fd.get('customer_id')) || null,
@@ -1040,7 +1045,8 @@ export async function createPackageSale(fd: FormData) {
     amount_paid: num(fd, 'amount_paid'), payment_method: str(fd, 'payment_method'),
     due_date: str(fd, 'due_date') || null,
     sold_by: ctx.profile.full_name || null,
-    notes: str(fd, 'notes'), status: str(fd, 'status') || 'confirmed',
+        baggage: str(fd, 'baggage'), fare_basis: str(fd, 'fare_basis'), source: str(fd, 'source'), tags: str(fd, 'tags'), follow_up_date: str(fd, 'follow_up_date') || null,
+  notes: str(fd, 'notes'), status: str(fd, 'status') || 'confirmed',
   };
   let legs: any[] = [];
   try { legs = JSON.parse(String(fd.get('transports_json') || '[]')); } catch { legs = []; }
@@ -1146,7 +1152,8 @@ export async function addPassenger(fd: FormData) {
     agency_id: aid, package_sale_id: saleId, full_name: name,
     relationship: str(fd, 'relationship'), gender: str(fd, 'gender'),
     age: num(fd, 'age'), passport_no: str(fd, 'passport_no'),
-    room_type: str(fd, 'room_type'), seat_no: str(fd, 'seat_no'), notes: str(fd, 'notes'),
+    room_type: str(fd, 'room_type'), seat_no: str(fd, 'seat_no'),     baggage: str(fd, 'baggage'), fare_basis: str(fd, 'fare_basis'), source: str(fd, 'source'), tags: str(fd, 'tags'), follow_up_date: str(fd, 'follow_up_date') || null,
+  notes: str(fd, 'notes'),
   });
   const { count } = await db.from('package_sale_passengers').select('id', { count: 'exact', head: true }).eq('package_sale_id', saleId);
   await db.from('package_sales').update({ pax: Math.max(count || 1, 1) }).eq('id', saleId);

@@ -20,6 +20,9 @@ export default async function CustomersPage() {
         <form action={createCustomer} className="grid gap-4 sm:grid-cols-3">
           <Field label="Full name *"><input className="input" name="full_name" required /></Field>
           <Field label="Country"><input className="input" name="country" placeholder="Pakistan" /></Field>
+          <Field label="Nationality"><input className="input" name="nationality" placeholder="e.g. Pakistani" /></Field>
+          <Field label="Next of kin"><input className="input" name="next_of_kin_name" placeholder="name" /></Field>
+          <Field label="Next of kin phone"><input className="input" name="next_of_kin_phone" /></Field>
           <Field label="Passport no."><input className="input" name="passport_no" /></Field>
           <Field label="Phone"><input className="input" name="phone" /></Field>
           <Field label="WhatsApp"><input className="input" name="whatsapp" /></Field>

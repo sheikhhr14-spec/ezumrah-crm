@@ -80,6 +80,11 @@ export default function FlightSaleForm({ customers, currency, taxRate }: { custo
             <option value="partially refundable">Partially refundable</option>
           </select>
         </label>
+<label className="block"><span className="text-xs font-semibold text-slate-600">Baggage</span><input className="input" name="baggage" placeholder="2×23kg" /></label>
+<label className="block"><span className="text-xs font-semibold text-slate-600">Fare basis</span><input className="input" name="fare_basis" placeholder="Y class / LXR7" /></label>
+<label className="block"><span className="text-xs font-semibold text-slate-600">Source / referral</span><input className="input" name="source" placeholder="website / referral" /></label>
+<label className="block"><span className="text-xs font-semibold text-slate-600">Tags</span><input className="input" name="tags" placeholder="vip, group" /></label>
+<label className="block"><span className="text-xs font-semibold text-slate-600">Follow-up date</span><input className="input" name="follow_up_date" type="date" /></label>
         <L label="Payment due date" name="due_date" type="date" />
       </div>
 
