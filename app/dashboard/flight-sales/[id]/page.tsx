@@ -72,14 +72,14 @@ export default async function FlightSaleDetail({ params, searchParams }: { param
       {/* money summary */}
       <div className="mb-8 grid gap-4 sm:grid-cols-3 lg:grid-cols-6">
         {[
-          { l: 'Legs sale total', v: `${money(Number(sale.sale_total), cur)}` },
+          { l: 'Sale total (passengers)', v: `${money(Number(sale.sale_total), cur)}` },
           { l: 'Admin fee', v: `${money(Number(sale.admin_fee), cur)}` },
           { l: 'Discount', v: `-${money(discount, cur)}`, red: true, hide: discount <= 0 },
           { l: 'Supplier commission', v: `+${money(commission, cur)}`, green: true, hide: commission <= 0 },
           { l: 'Grand total', v: `${money(grand, cur)}` },
           { l: 'Paid', v: `${money(paid, cur)}` },
           { l: 'Balance', v: `${money(balance, cur)}`, red: balance > 0 },
-          { l: 'Profit (cost $' + Number(sale.cost_total).toFixed(2) + ')', v: `${money(profit, cur)}`, gold: true },
+          { l: 'Profit (cost ' + money(Number(sale.cost_total), cur) + ')', v: `${money(profit, cur)}`, gold: true },
         ].filter((k) => !k.hide).map((k) => (
           <div key={k.l} className={`card p-4 ${k.gold ? 'accent-soft-bg' : ''}`}>
             <p className="text-xs text-slate-400">{k.l}</p>
@@ -116,9 +116,6 @@ export default async function FlightSaleDetail({ params, searchParams }: { param
               <L label="Departure" name="depart_at" def={dt(l.depart_at)} type="datetime-local" />
               <L label="Arrival" name="arrive_at" def={dt(l.arrive_at)} type="datetime-local" />
               <L label="Cabin" name="cabin" def={l.cabin} />
-              <L label="Fare (sale)" name="fare" def={l.fare} type="number" />
-              <L label="Tax" name="tax" def={l.tax} type="number" />
-              <L label="Cost (our price)" name="cost" def={l.cost} type="number" />
               <div className="flex items-end gap-3">
                 <SubmitButton className="btn-primary px-4 py-2 text-xs">Save leg</SubmitButton>
               </div>
@@ -145,9 +142,6 @@ export default async function FlightSaleDetail({ params, searchParams }: { param
           <L label="Departure" name="depart_at" type="datetime-local" />
           <L label="Arrival" name="arrive_at" type="datetime-local" />
           <L label="Cabin" name="cabin" />
-          <L label="Fare (sale)" name="fare" type="number" />
-          <L label="Tax" name="tax" type="number" />
-          <L label="Cost" name="cost" type="number" />
           <div className="flex items-end"><SubmitButton className="btn-primary px-4 py-2 text-xs">Add leg</SubmitButton></div>
         </form>
       </details>
@@ -190,6 +184,10 @@ export default async function FlightSaleDetail({ params, searchParams }: { param
           </select>
         </label>
         <L label="Notes" name="notes" def={sale.notes} />
+            <L label="Fare basis" name="fare_basis" def={sale.fare_basis} />
+            <L label="Source / referral" name="source" def={sale.source} />
+            <L label="Tags" name="tags" def={sale.tags} />
+            <L label="Follow-up date" name="follow_up_date" def={sale.follow_up_date} type="date" />
         <div className="flex items-end"><SubmitButton className="btn-primary px-4 py-2 text-xs">Save payment</SubmitButton></div>
         <div className="flex items-end"><span className="text-xs"><StatusBadge status={sale.payment_status} /> · Profit <b className="accent">{money(profit, cur)}</b></span></div>
       </form>

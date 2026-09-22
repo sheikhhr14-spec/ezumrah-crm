@@ -1,6 +1,7 @@
 import 'server-only';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { createClient } from '@/lib/supabase/server';
+import { COUNTRIES } from '@/lib/format';
 import { cache } from 'react';
 import { redirect } from 'next/navigation';
 
@@ -33,7 +34,8 @@ export async function requireActiveAgency() {
   const role = (ctx.profile?.role as Role) || 'staff';
   if (role === 'superadmin') redirect('/admin');
   if (!ctx.profile?.agency_id) redirect('/signup/agency');
-  const ag: any = ctx.profile.agencies || {};
+  const agRaw: any = ctx.profile.agencies || {};
+  const ag: any = agRaw ? { ...agRaw, currency: agRaw.currency || COUNTRIES.find((c: any) => c.code === agRaw.country || c.name === agRaw.country)?.currency || null } : agRaw;
   const status = ag?.subscription_status;
   // auto-suspend on expired trial — payment is then marked manually by the platform admin
   if (status === 'trialing' && ag?.trial_ends_at && new Date(ag.trial_ends_at) < new Date()) {
@@ -42,7 +44,7 @@ export async function requireActiveAgency() {
     redirect('/billing');
   }
   if (status !== 'active' && status !== 'trialing') redirect('/billing');
-  return { ...ctx, role, agency: ctx.profile.agencies };
+  return { ...ctx, role, agency: ag };
 }
 
 // Role-based access: 'owner' > 'manager' > 'staff'

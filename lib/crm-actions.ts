@@ -640,11 +640,11 @@ await logActivity(aid, table, id, 'updated', 'Edited: ' + allowed.filter((f: str
 
 // ================= FLIGHT SALES (standalone, multi-leg) =================
 async function recomputeSale(db: any, aid: string, saleId: string) {
-  const { data: legs } = await db.from('flight_sale_legs').select('fare, tax, cost').eq('agency_id', aid).eq('flight_sale_id', saleId);
+  const { data: pax } = await db.from('flight_sale_passengers').select('fare, tax, ticket_amount, sale_amount').eq('agency_id', aid).eq('flight_sale_id', saleId);
   const { data: sale } = await db.from('flight_sales').select('admin_fee, amount_paid, discount, commission, tax').eq('agency_id', aid).eq('id', saleId).single();
   if (!sale) return;
-  const saleTotal = (legs || []).reduce((s: number, l: any) => s + Number(l.fare) + Number(l.tax), 0);
-  const costTotal = (legs || []).reduce((s: number, l: any) => s + Number(l.cost), 0);
+  const saleTotal = (pax || []).reduce((s: number, p: any) => s + (Number(p.sale_amount) || (Number(p.fare) || 0) + (Number(p.tax) || 0)), 0);
+  const costTotal = (pax || []).reduce((s: number, p: any) => s + (Number(p.ticket_amount) || (Number(p.fare) || 0) + (Number(p.tax) || 0)), 0);
   const grand = saleTotal + Number(sale.admin_fee) - Number(sale.discount || 0) + Number(sale.tax || 0);
   const paid = Number(sale.amount_paid);
   const paymentStatus = paid <= 0 ? 'unpaid' : paid >= grand ? 'full' : 'partial';
@@ -683,9 +683,7 @@ export async function createFlightSale(fd: FormData) {
       airline: str(fd, `leg_airline_${i}`), flight_no: str(fd, `leg_flight_${i}`),
       from_airport: str(fd, `leg_from_${i}`), to_airport: str(fd, `leg_to_${i}`),
       depart_at: str(fd, `leg_depart_${i}`) || null, arrive_at: str(fd, `leg_arrive_${i}`) || null,
-      cabin: str(fd, `leg_cabin_${i}`), fare: num(fd, `leg_fare_${i}`),
-      tax: 0, cost: 0,
-      ticket_no: str(fd, `leg_ticket_${i}`), baggage: str(fd, `leg_baggage_${i}`),
+      cabin: str(fd, `leg_cabin_${i}`), baggage: str(fd, `leg_baggage_${i}`),
     });
   }
   const paxList: Record<string, unknown>[] = [];
@@ -726,7 +724,7 @@ export async function createFlightSale(fd: FormData) {
     sale_total: saleTotal, cost_total: costTotal, admin_fee: adminFee, tax: taxV,
     discount: discount, commission: commission,
     amount_paid: amountPaid, payment_method: str(fd, 'payment_method'),
-    payment_status: paymentStatus,     baggage: str(fd, 'baggage'), fare_basis: str(fd, 'fare_basis'), source: str(fd, 'source'), tags: str(fd, 'tags'), follow_up_date: str(fd, 'follow_up_date') || null,
+    payment_status: paymentStatus,     fare_basis: str(fd, 'fare_basis'), source: str(fd, 'source'), tags: str(fd, 'tags'), follow_up_date: str(fd, 'follow_up_date') || null,
   notes: str(fd, 'notes'),
     status: str(fd, 'status') || 'confirmed',
     balance: grand - amountPaid, profit: grand + commission - costTotal,
@@ -760,7 +758,7 @@ export async function updateSale(fd: FormData) {
     admin_fee: adminFee, tax: taxV, amount_paid: amountPaid,
     discount: num(fd, 'discount'), commission: num(fd, 'commission'),
     due_date: str(fd, 'due_date') || null,
-    baggage: str(fd, 'baggage'), fare_basis: str(fd, 'fare_basis'),
+    fare_basis: str(fd, 'fare_basis'),
     source: str(fd, 'source'), tags: str(fd, 'tags'), follow_up_date: str(fd, 'follow_up_date') || null,
     payment_method: str(fd, 'payment_method'), notes: str(fd, 'notes'),
     status: str(fd, 'status') || 'confirmed',
@@ -785,8 +783,7 @@ export async function updateSaleLeg(fd: FormData) {
     airline: str(fd, 'airline'), flight_no: str(fd, 'flight_no'),
     from_airport: str(fd, 'from_airport'), to_airport: str(fd, 'to_airport'),
     depart_at: str(fd, 'depart_at') || null, arrive_at: str(fd, 'arrive_at') || null,
-    cabin: str(fd, 'cabin'), fare: num(fd, 'fare'), tax: num(fd, 'tax'), cost: num(fd, 'cost'),
-    ticket_no: str(fd, 'ticket_no'), baggage: str(fd, 'baggage'),
+    cabin: str(fd, 'cabin'), baggage: str(fd, 'baggage'),
   }).eq('id', id);
   await recomputeSale(db, aid, saleId);
   revalidatePath(`/dashboard/flight-sales/${saleId}`);
@@ -804,8 +801,7 @@ export async function addSaleLeg(fd: FormData) {
     airline: str(fd, 'airline'), flight_no: str(fd, 'flight_no'),
     from_airport: str(fd, 'from_airport'), to_airport: str(fd, 'to_airport'),
     depart_at: str(fd, 'depart_at') || null, arrive_at: str(fd, 'arrive_at') || null,
-    cabin: str(fd, 'cabin'), fare: num(fd, 'fare'), tax: num(fd, 'tax'), cost: num(fd, 'cost'),
-    ticket_no: str(fd, 'ticket_no'), baggage: str(fd, 'baggage'),
+    cabin: str(fd, 'cabin'), baggage: str(fd, 'baggage'),
   });
   await recomputeSale(db, aid, saleId);
   revalidatePath(`/dashboard/flight-sales/${saleId}`);
@@ -1078,7 +1074,7 @@ export async function createPackageSale(fd: FormData) {
     amount_paid: num(fd, 'amount_paid'), payment_method: str(fd, 'payment_method'),
     due_date: str(fd, 'due_date') || null,
     sold_by: ctx.profile.full_name || null,
-        baggage: str(fd, 'baggage'), fare_basis: str(fd, 'fare_basis'), source: str(fd, 'source'), tags: str(fd, 'tags'), follow_up_date: str(fd, 'follow_up_date') || null,
+        fare_basis: str(fd, 'fare_basis'), source: str(fd, 'source'), tags: str(fd, 'tags'), follow_up_date: str(fd, 'follow_up_date') || null,
   notes: str(fd, 'notes'), status: str(fd, 'status') || 'confirmed',
   };
   let legs: any[] = [];
@@ -1185,7 +1181,7 @@ export async function addPassenger(fd: FormData) {
     agency_id: aid, package_sale_id: saleId, full_name: name,
     relationship: str(fd, 'relationship'), gender: str(fd, 'gender'),
     age: num(fd, 'age'), passport_no: str(fd, 'passport_no'),
-    room_type: str(fd, 'room_type'), seat_no: str(fd, 'seat_no'),     baggage: str(fd, 'baggage'), fare_basis: str(fd, 'fare_basis'), source: str(fd, 'source'), tags: str(fd, 'tags'), follow_up_date: str(fd, 'follow_up_date') || null,
+    room_type: str(fd, 'room_type'), seat_no: str(fd, 'seat_no'),     fare_basis: str(fd, 'fare_basis'), source: str(fd, 'source'), tags: str(fd, 'tags'), follow_up_date: str(fd, 'follow_up_date') || null,
   notes: str(fd, 'notes'),
   });
   const { count } = await db.from('package_sale_passengers').select('id', { count: 'exact', head: true }).eq('package_sale_id', saleId);
@@ -1605,6 +1601,7 @@ export async function addFlightPassenger(fd: FormData) {
     age: num(fd, 'age') || null, nationality: str(fd, 'nationality'), ticket_no: str(fd, 'ticket_no'), is_lead: false,
     pax_type: str(fd, 'pax_type'), gender: str(fd, 'gender'), dob: str(fd, 'dob') || null, pnr: str(fd, 'pnr'),
   });
+  await recomputeSale(db, aid, saleId);
   revalidatePath(`/dashboard/flight-sales/${saleId}`);
 }
 export async function deleteFlightPassenger(fd: FormData) {
@@ -1614,5 +1611,6 @@ export async function deleteFlightPassenger(fd: FormData) {
   if (!p) throw new Error('Passenger not found.');
   if (p.is_lead) throw new Error('The lead passenger cannot be removed — they are the booked customer.');
   await db.from('flight_sale_passengers').delete().eq('id', p.id);
+  await recomputeSale(db, aid, p.flight_sale_id);
   revalidatePath(`/dashboard/flight-sales/${p.flight_sale_id}`);
 }
