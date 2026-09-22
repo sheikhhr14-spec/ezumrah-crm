@@ -6,8 +6,9 @@ import { money } from '@/lib/format';
 import CustomerPicker from '@/components/customer-picker';
 
 type Leg = { fare: string; tax: string; cost: string };
-type Pax = { title: string; name: string; passport: string; age: string; nat: string; ticket: string; type: string; gender: string; dob: string; pnr: string; fare: string; ptax: string; samt: string; pft: string };
-const emptyPax = () => ({ title: 'Mr', name: '', passport: '', age: '', nat: '', ticket: '', type: 'ADT', gender: '', dob: '', pnr: '', fare: '', ptax: '', samt: '', pft: '' });
+type Pax = { title: string; first: string; last: string; passport: string; nat: string; ticket: string; type: string; gender: string; dob: string; pnr: string; fare: string; ptax: string; tamt: string; samt: string; pft: string };
+const ageFrom = (d: string) => { if (!d) return ''; return Math.max(0, Math.floor((Date.now() - new Date(d).getTime()) / (365.25 * 86400000))); };
+const emptyPax = () => ({ title: 'Mr', first: '', last: '', passport: '', nat: '', ticket: '', type: 'ADT', gender: '', dob: '', pnr: '', fare: '', ptax: '', tamt: '', samt: '', pft: '' });
 const TITLES = ['Mr', 'Mrs', 'Miss', 'Ms', 'Master', 'Mstr', 'Dr'];
 const emptyLeg = () => ({ fare: '', tax: '', cost: '' });
 
@@ -50,7 +51,7 @@ export default function FlightSaleForm({ customers, currency, taxRate }: { custo
       {/* customer */}
       <div className="grid gap-4 sm:grid-cols-3">
         <div className="sm:col-span-1">
-          <CustomerPicker customers={customers} onPick={(id) => { setUseExisting(!!id); const c = customers.find((x) => x.id === id); if (c) setPaxRows((rs) => rs.map((r, i) => i === 0 ? { ...r, name: c.full_name } : r)); }} />
+          <CustomerPicker customers={customers} onPick={(id) => { setUseExisting(!!id); const c = customers.find((x) => x.id === id); if (c) { const parts = c.full_name.split(' '); setPaxRows((rs) => rs.map((r, i) => i === 0 ? { ...r, first: parts[0] || '', last: parts.slice(1).join(' ') } : r)); } }} />
           <p className="mt-1 text-[10px] text-slate-400">Booked under this customer (lead passenger)</p>
         </div>
         {!useExisting && (
@@ -77,22 +78,29 @@ export default function FlightSaleForm({ customers, currency, taxRate }: { custo
               <select className="input" name={`pax_title_${i}`} value={p.title} onChange={(e) => setPaxRows(paxRows.map((r, j) => j === i ? { ...r, title: e.target.value } : r))}>
                 {TITLES.map((t) => <option key={t} value={t}>{t}</option>)}
               </select>
-              <input className="input" name={`pax_name_${i}`} placeholder="Full name *" value={p.name} onChange={(e) => setPaxRows(paxRows.map((r, j) => j === i ? { ...r, name: e.target.value } : r))} />
-              <input className="input" name={`pax_passport_${i}`} placeholder="Passport no." value={p.passport} onChange={(e) => setPaxRows(paxRows.map((r, j) => j === i ? { ...r, passport: e.target.value } : r))} />
-              <input className="input" name={`pax_nat_${i}`} placeholder="Nationality" value={p.nat} onChange={(e) => setPaxRows(paxRows.map((r, j) => j === i ? { ...r, nat: e.target.value } : r))} />
-              <div className="flex gap-1">
-                <input className="input" name={`pax_ticket_${i}`} placeholder="Ticket no." value={p.ticket} onChange={(e) => setPaxRows(paxRows.map((r, j) => j === i ? { ...r, ticket: e.target.value } : r))} />
-                {i > 0 && <button type="button" className="rounded border border-red-200 px-2 text-red-400 hover:bg-red-50" onClick={() => setPaxRows(paxRows.filter((_, j) => j !== i))}>✕</button>}
-              </div>
-              <select className="input" name={`pax_type_${i}`} value={p.type} onChange={(e) => setPaxRows(paxRows.map((r, j) => j === i ? { ...r, type: e.target.value } : r))}>
-                {[['ADT', 'Adult'], ['CHD', 'Child'], ['YTH', 'Youth'], ['INF', 'Infant']].map(([v, l]) => <option key={v} value={v}>{l} ({v})</option>)}
-              </select>
               <select className="input" name={`pax_gender_${i}`} value={p.gender} onChange={(e) => setPaxRows(paxRows.map((r, j) => j === i ? { ...r, gender: e.target.value } : r))}>
                 <option value="">Gender</option><option value="Male">Male</option><option value="Female">Female</option>
               </select>
+              <select className="input" name={`pax_type_${i}`} value={p.type} onChange={(e) => setPaxRows(paxRows.map((r, j) => j === i ? { ...r, type: e.target.value } : r))}>
+                {[['ADT', 'Adult'], ['CHD', 'Child'], ['YTH', 'Youth'], ['INF', 'Infant']].map(([v, l]) => <option key={v} value={v}>{l} ({v})</option>)}
+              </select>
+              <input className="input" name={`pax_first_${i}`} placeholder="First name *" value={p.first} onChange={(e) => setPaxRows(paxRows.map((r, j) => j === i ? { ...r, first: e.target.value } : r))} />
+              <input className="input" name={`pax_last_${i}`} placeholder="Last name" value={p.last} onChange={(e) => setPaxRows(paxRows.map((r, j) => j === i ? { ...r, last: e.target.value } : r))} />
+              <div className="flex gap-1">
+                <input className="input" name={`pax_passport_${i}`} placeholder="Passport no." value={p.passport} onChange={(e) => setPaxRows(paxRows.map((r, j) => j === i ? { ...r, passport: e.target.value } : r))} />
+              </div>
+              <input className="input" name={`pax_nat_${i}`} placeholder="Nationality" value={p.nat} onChange={(e) => setPaxRows(paxRows.map((r, j) => j === i ? { ...r, nat: e.target.value } : r))} />
               <input className="input" name={`pax_dob_${i}`} type="date" value={p.dob} onChange={(e) => setPaxRows(paxRows.map((r, j) => j === i ? { ...r, dob: e.target.value } : r))} />
-              <input className="input" name={`pax_fare_${i}`} type="number" placeholder="Fare" value={p.fare} onChange={(e) => setPaxRows(paxRows.map((r, j) => j === i ? { ...r, fare: e.target.value } : r))} />
+              <input className="input" readOnly placeholder="Age (auto)" value={ageFrom(p.dob) !== '' ? String(ageFrom(p.dob)) : ''} title="Auto-calculated from DOB" />
+              <input type="hidden" name={`pax_age_${i}`} value={ageFrom(p.dob)} />
+              <input className="input" name={`pax_pnr_${i}`} placeholder="PNR#" value={p.pnr} onChange={(e) => setPaxRows(paxRows.map((r, j) => j === i ? { ...r, pnr: e.target.value } : r))} />
+              <div className="flex gap-1">
+                <input className="input" name={`pax_ticket_${i}`} placeholder="Ticket #" value={p.ticket} onChange={(e) => setPaxRows(paxRows.map((r, j) => j === i ? { ...r, ticket: e.target.value } : r))} />
+                {i > 0 && <button type="button" className="rounded border border-red-200 px-2 text-red-400 hover:bg-red-50" onClick={() => setPaxRows(paxRows.filter((_, j) => j !== i))}>✕</button>}
+              </div>
+              <input className="input" name={`pax_fare_${i}`} type="number" placeholder="Fares" value={p.fare} onChange={(e) => setPaxRows(paxRows.map((r, j) => j === i ? { ...r, fare: e.target.value } : r))} />
               <input className="input" name={`pax_ptax_${i}`} type="number" placeholder="Tax" value={p.ptax} onChange={(e) => setPaxRows(paxRows.map((r, j) => j === i ? { ...r, ptax: e.target.value } : r))} />
+              <input className="input" name={`pax_tamt_${i}`} type="number" placeholder="Ticket amount" value={p.tamt} onChange={(e) => setPaxRows(paxRows.map((r, j) => j === i ? { ...r, tamt: e.target.value } : r))} />
               <input className="input" name={`pax_samt_${i}`} type="number" placeholder="Sale amount" value={p.samt} onChange={(e) => setPaxRows(paxRows.map((r, j) => j === i ? { ...r, samt: e.target.value } : r))} />
               <input className="input" name={`pax_pft_${i}`} type="number" placeholder="Profit" value={p.pft} onChange={(e) => setPaxRows(paxRows.map((r, j) => j === i ? { ...r, pft: e.target.value } : r))} />
             </div>

@@ -202,7 +202,7 @@ export default async function FlightSaleDetail({ params, searchParams }: { param
           {(passengers || []).length ? (passengers || []).map((p: any) => (
             <tr key={p.id} className="hover:bg-slate-50">
               <td className="p-2 font-semibold">{p.title || '—'}</td>
-              <td className="p-2 font-semibold">{p.full_name}{p.is_lead && <span className="ml-1 rounded accent-soft-bg px-1.5 py-0.5 text-[10px] font-bold accent">LEAD</span>}</td>
+              <td className="p-2 font-semibold">{[p.first_name, p.last_name].filter(Boolean).join(' ') || p.full_name}{p.is_lead && <span className="ml-1 rounded accent-soft-bg px-1.5 py-0.5 text-[10px] font-bold accent">LEAD</span>}</td>
               <td className="p-2 text-xs">{p.passport_no || '—'}</td>
               <td className="p-2 text-xs">{p.pax_type || '—'}</td>
               <td className="p-2 text-xs">{p.dob || '—'}</td>
@@ -217,7 +217,9 @@ export default async function FlightSaleDetail({ params, searchParams }: { param
                   <RowEdit table="flight_sale_passengers" id={p.id} title={`Edit passenger — ${p.full_name}`}>
                     <label className="text-[10px] text-slate-400">Title</label>
                     <select className="input px-2 py-1 text-xs" name="title" defaultValue={p.title || 'Mr'}>{['Mr','Mrs','Miss','Ms','Master','Mstr','Dr'].map((t) => <option key={t} value={t}>{t}</option>)}</select>
-                    <label className="text-[10px] text-slate-400">Full name</label><input className="input px-2 py-1 text-xs" name="full_name" defaultValue={p.full_name} />
+                    <label className="text-[10px] text-slate-400">First name</label><input className="input px-2 py-1 text-xs" name="first_name" defaultValue={p.first_name || p.full_name?.split(' ')[0] || ''} />
+                    <label className="text-[10px] text-slate-400">Last name</label><input className="input px-2 py-1 text-xs" name="last_name" defaultValue={p.last_name || (p.full_name || '').split(' ').slice(1).join(' ')} />
+                    <label className="text-[10px] text-slate-400">Ticket amount</label><input className="input px-2 py-1 text-xs" name="ticket_amount" type="number" defaultValue={p.ticket_amount ?? ''} />
                     <label className="text-[10px] text-slate-400">Passport no.</label><input className="input px-2 py-1 text-xs" name="passport_no" defaultValue={p.passport_no || ''} />
                     <label className="text-[10px] text-slate-400">Age</label><input className="input px-2 py-1 text-xs" name="age" type="number" defaultValue={p.age || ''} />
                     <label className="text-[10px] text-slate-400">Nationality</label><input className="input px-2 py-1 text-xs" name="nationality" defaultValue={p.nationality || ''} />

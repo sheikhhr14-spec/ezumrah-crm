@@ -579,7 +579,7 @@ const EDITABLE: Record<string, string[]> = {
   documents: ['title', 'doc_type', 'expiry_date', 'file_url', 'notes'],
   tasks: ['title', 'due_date', 'priority', 'status', 'assigned_to'],
   leads: ['full_name', 'phone', 'whatsapp', 'email', 'country', 'source', 'interest', 'budget', 'assigned_to', 'notes'],
-  flight_sale_passengers: ['title', 'full_name', 'passport_no', 'age', 'nationality', 'ticket_no', 'pax_type', 'gender', 'dob', 'pnr', 'fare', 'tax', 'sale_amount', 'profit'],
+  flight_sale_passengers: ['title', 'first_name', 'last_name', 'full_name', 'passport_no', 'age', 'nationality', 'ticket_no', 'pax_type', 'gender', 'dob', 'pnr', 'fare', 'tax', 'ticket_amount', 'sale_amount', 'profit'],
   employees: ['full_name', 'email', 'phone', 'designation', 'department', 'join_date', 'monthly_salary'],
   expenses: ['category', 'description', 'amount', 'expense_date', 'payment_method', 'reference'],
   payments: ['amount', 'payment_date', 'method', 'reference', 'notes'],
@@ -690,15 +690,20 @@ export async function createFlightSale(fd: FormData) {
   }
   const paxList: Record<string, unknown>[] = [];
   for (let i = 0; i < 20; i++) {
-    const nm = str(fd, `pax_name_${i}`);
-    if (!nm) continue;
+    const first = str(fd, `pax_first_${i}`); const last = str(fd, `pax_last_${i}`);
+    if (!first && !last) continue;
+    const nm = `${first} ${last}`.trim();
+    const dobV = str(fd, `pax_dob_${i}`);
+    const ageV = dobV ? Math.max(0, Math.floor((Date.now() - new Date(dobV).getTime()) / (365.25 * 86400000))) : null;
     paxList.push({
       agency_id: aid, flight_sale_id: '', title: str(fd, `pax_title_${i}`), full_name: nm,
-      passport_no: str(fd, `pax_passport_${i}`), age: num(fd, `pax_age_${i}`) || null,
+      first_name: first, last_name: last,
+      passport_no: str(fd, `pax_passport_${i}`), age: ageV,
       nationality: str(fd, `pax_nat_${i}`), ticket_no: str(fd, `pax_ticket_${i}`), is_lead: i === 0,
       pax_type: str(fd, `pax_type_${i}`), gender: str(fd, `pax_gender_${i}`),
       dob: str(fd, `pax_dob_${i}`) || null, pnr: str(fd, `pax_pnr_${i}`),
       fare: num(fd, `pax_fare_${i}`) || null, tax: num(fd, `pax_ptax_${i}`) || null,
+      ticket_amount: num(fd, `pax_tamt_${i}`) || null,
       sale_amount: num(fd, `pax_samt_${i}`) || null, profit: num(fd, `pax_pft_${i}`) || null,
     });
   }
@@ -1590,11 +1595,12 @@ export async function addFlightPassenger(fd: FormData) {
   const saleId = String(fd.get('flight_sale_id'));
   const { data: sale } = await db.from('flight_sales').select('id, agency_id').eq('id', saleId).single();
   if (!sale || sale.agency_id !== aid) throw new Error('Sale not found in your agency.');
-  const name = str(fd, 'full_name');
+  const first = str(fd, 'first_name'); const last = str(fd, 'last_name');
+  const name = str(fd, 'full_name') || `${first} ${last}`.trim();
   if (!name) throw new Error('Passenger name is required.');
   await db.from('flight_sale_passengers').insert({
     agency_id: aid, flight_sale_id: saleId,
-    title: str(fd, 'title'), full_name: name, passport_no: str(fd, 'passport_no'),
+    title: str(fd, 'title'), full_name: name, first_name: first, last_name: last, ticket_amount: num(fd, 'ticket_amount') || null, passport_no: str(fd, 'passport_no'),
     age: num(fd, 'age') || null, nationality: str(fd, 'nationality'), ticket_no: str(fd, 'ticket_no'), is_lead: false,
     pax_type: str(fd, 'pax_type'), gender: str(fd, 'gender'), dob: str(fd, 'dob') || null, pnr: str(fd, 'pnr'),
   });
