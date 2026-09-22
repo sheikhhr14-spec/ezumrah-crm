@@ -79,7 +79,6 @@ export default function FlightSaleForm({ customers, currency, taxRate }: { custo
               </select>
               <input className="input" name={`pax_name_${i}`} placeholder="Full name *" value={p.name} onChange={(e) => setPaxRows(paxRows.map((r, j) => j === i ? { ...r, name: e.target.value } : r))} />
               <input className="input" name={`pax_passport_${i}`} placeholder="Passport no." value={p.passport} onChange={(e) => setPaxRows(paxRows.map((r, j) => j === i ? { ...r, passport: e.target.value } : r))} />
-              <input className="input" name={`pax_age_${i}`} type="number" placeholder="Age" value={p.age} onChange={(e) => setPaxRows(paxRows.map((r, j) => j === i ? { ...r, age: e.target.value } : r))} />
               <input className="input" name={`pax_nat_${i}`} placeholder="Nationality" value={p.nat} onChange={(e) => setPaxRows(paxRows.map((r, j) => j === i ? { ...r, nat: e.target.value } : r))} />
               <div className="flex gap-1">
                 <input className="input" name={`pax_ticket_${i}`} placeholder="Ticket no." value={p.ticket} onChange={(e) => setPaxRows(paxRows.map((r, j) => j === i ? { ...r, ticket: e.target.value } : r))} />
@@ -92,7 +91,6 @@ export default function FlightSaleForm({ customers, currency, taxRate }: { custo
                 <option value="">Gender</option><option value="Male">Male</option><option value="Female">Female</option>
               </select>
               <input className="input" name={`pax_dob_${i}`} type="date" value={p.dob} onChange={(e) => setPaxRows(paxRows.map((r, j) => j === i ? { ...r, dob: e.target.value } : r))} />
-              <input className="input" name={`pax_pnr_${i}`} placeholder="PNR" value={p.pnr} onChange={(e) => setPaxRows(paxRows.map((r, j) => j === i ? { ...r, pnr: e.target.value } : r))} />
               <input className="input" name={`pax_fare_${i}`} type="number" placeholder="Fare" value={p.fare} onChange={(e) => setPaxRows(paxRows.map((r, j) => j === i ? { ...r, fare: e.target.value } : r))} />
               <input className="input" name={`pax_ptax_${i}`} type="number" placeholder="Tax" value={p.ptax} onChange={(e) => setPaxRows(paxRows.map((r, j) => j === i ? { ...r, ptax: e.target.value } : r))} />
               <input className="input" name={`pax_samt_${i}`} type="number" placeholder="Sale amount" value={p.samt} onChange={(e) => setPaxRows(paxRows.map((r, j) => j === i ? { ...r, samt: e.target.value } : r))} />
@@ -113,7 +111,6 @@ export default function FlightSaleForm({ customers, currency, taxRate }: { custo
         </label>
         <input type="hidden" name="pax" value={paxRows.length} />
         <L label="PNR / airline booking ref" name="pnr" ph="XYZ123" />
-        <L label="Ticket numbers" name="ticket_numbers" ph="comma separated" />
         <L label="Supplier / consolidator" name="supplier" ph="GDS / consolidator name" />
         <L label="Ticket issue date" name="issue_date" type="date" />
         <label className="block"><span className="text-xs font-semibold text-slate-600">Refundable?</span>
@@ -123,7 +120,6 @@ export default function FlightSaleForm({ customers, currency, taxRate }: { custo
             <option value="partially refundable">Partially refundable</option>
           </select>
         </label>
-<label className="block"><span className="text-xs font-semibold text-slate-600">Baggage</span><input className="input" name="baggage" placeholder="2×23kg" /></label>
 <label className="block"><span className="text-xs font-semibold text-slate-600">Fare basis</span><input className="input" name="fare_basis" placeholder="Y class / LXR7" /></label>
 <label className="block"><span className="text-xs font-semibold text-slate-600">Source / referral</span><input className="input" name="source" placeholder="website / referral" /></label>
 <label className="block"><span className="text-xs font-semibold text-slate-600">Tags</span><input className="input" name="tags" placeholder="vip, group" /></label>
@@ -149,8 +145,7 @@ export default function FlightSaleForm({ customers, currency, taxRate }: { custo
             <L label="Departure" name={`leg_depart_${i}`} type="datetime-local" />
             <L label="Arrival" name={`leg_arrive_${i}`} type="datetime-local" />
             <L label="Cabin" name={`leg_cabin_${i}`} ph="economy" />
-            <L label="Ticket no." name={`leg_ticket_${i}`} />
-            <L label="Baggage" name={`leg_baggage_${i}`} ph="2 x 23kg" />
+                        <L label="Baggage" name={`leg_baggage_${i}`} ph="2 x 23kg" />
             <label className="block"><span className="text-xs font-semibold text-slate-600">Fare (sale)</span>
               <input className="input" name={`leg_fare_${i}`} type="number" step="0.01" value={l.fare}
                 onChange={(e) => setLegs(legs.map((x, j) => j === i ? { ...x, fare: e.target.value } : x))} />

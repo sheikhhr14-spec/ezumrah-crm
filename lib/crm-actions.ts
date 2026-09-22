@@ -702,6 +702,7 @@ export async function createFlightSale(fd: FormData) {
       sale_amount: num(fd, `pax_samt_${i}`) || null, profit: num(fd, `pax_pft_${i}`) || null,
     });
   }
+  const paxTicketJoin = paxList.map((p) => p.ticket_no).filter(Boolean).join(', ');
   const saleTotal = legs.reduce((s, l) => s + Number(l.fare) + Number(l.tax), 0);
   const costTotal = legs.reduce((s, l) => s + Number(l.cost), 0);
   const taxV = num(fd, 'tax');
@@ -712,7 +713,7 @@ export async function createFlightSale(fd: FormData) {
   const { data: sale } = await db.from('flight_sales').insert({
     agency_id: aid, customer_id: customerId || null, ref,
     trip_kind: str(fd, 'trip_kind') || 'oneway', pax: paxList.length || num(fd, 'pax', 1),
-    pnr: str(fd, 'pnr'), ticket_numbers: str(fd, 'ticket_numbers'),
+    pnr: str(fd, 'pnr'), ticket_numbers: str(fd, 'ticket_numbers') || paxTicketJoin,
     supplier: str(fd, 'supplier'), issue_date: str(fd, 'issue_date') || null,
     refundable: str(fd, 'refundable'), due_date: str(fd, 'due_date') || null,
     sold_by: ctx.profile.full_name || null,
