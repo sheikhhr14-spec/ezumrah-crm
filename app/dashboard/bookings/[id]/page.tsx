@@ -1,3 +1,4 @@
+import RecordActivity from '@/components/record-activity';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { money } from '@/lib/format';
 import { requireModule } from '@/lib/data';
@@ -299,6 +300,7 @@ export default async function BookingDetail({ params }: { params: { id: string }
         </Table>
         <p className="mt-2 text-sm text-slate-400">Upload documents from the Documents page.</p>
       </Section>
+      <RecordActivity table="bookings" id={params.id} record={booking} />
     </div>
   );
 }

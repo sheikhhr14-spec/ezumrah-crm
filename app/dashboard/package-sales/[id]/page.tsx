@@ -1,3 +1,4 @@
+import RecordActivity from '@/components/record-activity';
 import { sendSaleInvoiceEmail } from '@/lib/crm-actions';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { money } from '@/lib/format';
@@ -330,6 +331,7 @@ export default async function PackageSaleDetail({ params, searchParams }: { para
       </div>
 
       <SaleDocuments table="package_sales" saleId={s.id} docs={docs || []} />
+      <RecordActivity table="package_sales" id={s.id} record={s} />
     </div>
   );
 }

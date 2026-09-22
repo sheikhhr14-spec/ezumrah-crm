@@ -1,3 +1,4 @@
+import RecordActivity from '@/components/record-activity';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { money } from '@/lib/format';
 import { requireModule } from '@/lib/data';
@@ -107,6 +108,7 @@ export default async function CustomerDetail({ params }: { params: { id: string 
           <p className="mt-1 text-slate-700">{c.notes}</p>
         </div>
       )}
+      <RecordActivity table="customers" id={params.id} record={c} />
     </div>
   );
 }

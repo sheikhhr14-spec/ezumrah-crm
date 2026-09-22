@@ -1,5 +1,7 @@
 'use server';
 
+import { logActivity, actor } from '@/lib/activity';
+
 import { createAdminClient } from '@/lib/supabase/admin';
 import { requireActiveAgency } from '@/lib/data';
 import { revalidatePath } from 'next/cache';
@@ -95,7 +97,8 @@ export async function createBooking(fd: FormData) {
 export async function updateBookingStatus(fd: FormData) {
   const db = createAdminClient();
   await db.from('bookings').update({ status: String(fd.get('status')) }).eq('id', String(fd.get('id')));
-  revalidatePath(`/dashboard/bookings/${fd.get('id')}`);
+await logActivity(await agencyId(), 'bookings', String(fd.get('id')), 'status', 'Booking status → ' + String(fd.get('status') || ''), await actor());
+      revalidatePath(`/dashboard/bookings/${fd.get('id')}`);
   revalidatePath('/dashboard/bookings');
 }
 
@@ -274,7 +277,8 @@ export async function setRecordStatus(fd: FormData) {
   const { data: rec } = await db.from(table).select('id, agency_id').eq('id', id).single();
   if (!rec || rec.agency_id !== aid) throw new Error('Record not found in your agency.');
   await db.from(table).update({ status: String(fd.get('status')), updated_at: new Date().toISOString() }).eq('id', id);
-  revalidatePath(`/dashboard/${table}`);
+await logActivity(await agencyId(), String(fd.get('table')), String(fd.get('id')), 'status', 'Status → ' + String(fd.get('status') || ''), await actor());
+      revalidatePath(`/dashboard/${table}`);
 }
 
 export async function deleteRecord(fd: FormData) {
@@ -287,7 +291,8 @@ export async function deleteRecord(fd: FormData) {
   if (!rec || rec.agency_id !== aid) throw new Error('Record not found in your agency.');
   await cleanupChildren(db, table, id);
   await db.from(table).delete().eq('id', id);
-  revalidatePath(pathFor(table));
+await logActivity(aid, table, id, 'deleted', 'Record deleted', await actor());
+      revalidatePath(pathFor(table));
 }
 
 // removes child rows / storage files that belong to a record being deleted
@@ -347,14 +352,16 @@ export async function setLeadStatus(fd: FormData) {
   const { data: lead } = await db.from('leads').select('id, agency_id').eq('id', String(fd.get('id'))).single();
   if (!lead || lead.agency_id !== aid) throw new Error('Lead not found.');
   await db.from('leads').update({ status: String(fd.get('status')) }).eq('id', lead.id);
-  revalidatePath('/dashboard/leads');
+await logActivity(await agencyId(), 'leads', String(fd.get('id')), 'stage', 'Stage → ' + String(fd.get('status') || ''), await actor());
+      revalidatePath('/dashboard/leads');
 }
 
 export async function deleteLead(fd: FormData) {
   const db = createAdminClient();
   const aid = await agencyId();
   await db.from('leads').delete().eq('id', String(fd.get('id'))).eq('agency_id', aid);
-  revalidatePath('/dashboard/leads');
+await logActivity(await agencyId(), 'leads', String(fd.get('id')), 'deleted', 'Lead deleted', await actor());
+      revalidatePath('/dashboard/leads');
 }
 
 // AUTOMATION: convert lead -> customer, mark converted
@@ -373,7 +380,8 @@ export async function convertLead(fd: FormData) {
     notes: `Converted from lead (${lead.interest}). ${lead.notes || ''}`.trim(),
   });
   await db.from('leads').update({ status: 'converted' }).eq('id', lead.id);
-  revalidatePath('/dashboard/leads');
+await logActivity(await agencyId(), 'leads', String(fd.get('id')), 'converted', 'Converted to customer', await actor());
+      revalidatePath('/dashboard/leads');
   revalidatePath('/dashboard/customers');
 }
 
@@ -621,7 +629,8 @@ export async function updateRecord(fd: FormData) {
     if (v !== null && String(v) !== '') patch[f] = String(v);
   }
   await db.from(table).update(patch).eq('id', id);
-  revalidatePath(pathFor(table));
+await logActivity(aid, table, id, 'updated', 'Edited: ' + allowed.filter((f: string) => fd.get(f) !== null).join(', '), await actor());
+      revalidatePath(pathFor(table));
 }
 
 
@@ -722,7 +731,8 @@ export async function updateSale(fd: FormData) {
   };
   await db.from('flight_sales').update(patch).eq('id', id);
   await recomputeSale(db, aid, id);
-  revalidatePath(`/dashboard/flight-sales`);
+await logActivity(await agencyId(), 'flight_sales', String(fd.get('id')), 'updated', 'Flight sale edited', await actor());
+      revalidatePath(`/dashboard/flight-sales`);
   revalidatePath(`/dashboard/flight-sales/${id}`);
 }
 
@@ -917,7 +927,8 @@ export async function updateServiceSale(fd: FormData) {
   patch.balance = grand - amountPaid;
   patch.profit = grand + commission - cost;
   await db.from(table).update(patch).eq('id', id);
-  revalidatePath(`/dashboard/${cfg.route}`);
+await logActivity(await agencyId(), String(fd.get('table')), String(fd.get('id')), 'updated', 'Sale record edited', await actor());
+      revalidatePath(`/dashboard/${cfg.route}`);
   revalidatePath(`/dashboard/${cfg.route}/${id}`);
 }
 
@@ -1115,7 +1126,8 @@ export async function updatePackageSale(fd: FormData) {
   patch.balance = grand - paid;
   patch.profit = grand + Number(merged.commission || 0) - Number(merged.cost || 0);
   await db.from('package_sales').update(patch).eq('id', id);
-  revalidatePath('/dashboard/package-sales');
+await logActivity(await agencyId(), 'package_sales', String(fd.get('id')), 'updated', 'Package sale edited', await actor());
+      revalidatePath('/dashboard/package-sales');
   revalidatePath(`/dashboard/package-sales/${id}`);
   const cat = String((patch.package_category as string) || rec.package_category || 'umrah');
   revalidatePath(`/dashboard/${cat === 'tour' ? 'tour' : cat}-sales`);

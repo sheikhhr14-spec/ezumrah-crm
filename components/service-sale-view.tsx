@@ -1,3 +1,4 @@
+import RecordActivity from '@/components/record-activity';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { money } from '@/lib/format';
 import { requireModule } from '@/lib/data';
@@ -184,6 +185,7 @@ export default async function ServiceSaleView({ table, id, emailFlag }: { table:
           </div>
         </div>
       )}
+      <RecordActivity table={table} id={rec.id} record={rec} />
     </div>
   );
 }

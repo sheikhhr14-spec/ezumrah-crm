@@ -1,4 +1,6 @@
 'use server';
+
+import { logActivity, actor } from '@/lib/activity';
 import { revalidatePath } from 'next/cache';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { requireActiveAgency } from '@/lib/data';
@@ -146,7 +148,8 @@ export async function deleteTourBooking(fd: FormData) {
 export async function deleteTourPassenger(fd: FormData) {
   const db = createAdminClient(); const aid = (await requireActiveAgency()).profile.agency_id!;
   await db.from('tour_passengers').delete().eq('id', String(fd.get('id'))).eq('agency_id', aid);
-  revalidatePath(`/dashboard/tour-sales/departure/${String(fd.get('departure_id'))}`);
+await logActivity(aid, 'tour_passengers', String(fd.get('id')), 'deleted', 'Passenger removed', await actor());
+      revalidatePath(`/dashboard/tour-sales/departure/${String(fd.get('departure_id'))}`);
 }
 export async function updateTourPassenger(fd: FormData) {
   const db = createAdminClient(); const aid = (await requireActiveAgency()).profile.agency_id!;
@@ -172,7 +175,8 @@ export async function updateTourPassenger(fd: FormData) {
     seat_vehicle_id: seatV, seat_no: seatNo || null,
     pickup_id: S(fd, 'pickup_id'), checkin_status: S(fd, 'checkin_status') || 'booked', notes: S(fd, 'notes'),
   }).eq('id', String(fd.get('id'))).eq('agency_id', aid);
-  revalidatePath(`/dashboard/tour-sales/departure/${String(fd.get('departure_id'))}`);
+await logActivity(aid, 'tour_passengers', String(fd.get('id')), 'updated', 'Passenger details edited', await actor());
+      revalidatePath(`/dashboard/tour-sales/departure/${String(fd.get('departure_id'))}`);
 }
 export async function setPassengerCheckin(fd: FormData) {
   const db = createAdminClient(); const aid = (await requireActiveAgency()).profile.agency_id!;
@@ -306,7 +310,8 @@ export async function addTourPassengers(fd: FormData) {
     if (fd.get('auto_seat') === 'on') await autoAllocateSeatsFor(db, aid, bk.departure_id);
     if (fd.get('auto_room') === 'on') await autoAllocateRoomsFor(db, aid, bk.departure_id);
   }
-  revalidatePath(`/dashboard/tour-sales/departure/${bk.departure_id}`);
+await logActivity(aid, 'tour_bookings', String(fd.get('booking_id')), 'created', 'Passengers added to booking', await actor());
+      revalidatePath(`/dashboard/tour-sales/departure/${bk.departure_id}`);
 }
 
 export async function updateTourBooking(fd: FormData) {
@@ -347,5 +352,6 @@ export async function movePassengerSeat(fd: FormData) {
     .eq('departure_id', bk.departure_id).eq('vehicle_id', vehId).eq('seat_no', seatNo).maybeSingle();
   if (blk) throw new Error(`Seat is ${blk.kind}.`);
   await db.from('tour_passengers').update({ seat_vehicle_id: vehId, seat_no: seatNo }).eq('id', paxId).eq('agency_id', aid);
-  revalidatePath(`/dashboard/tour-sales/departure/${bk.departure_id}`);
+await logActivity(aid, 'tour_passengers', paxId, 'seat', `Seat ${seatNo} assigned`, await actor());
+      revalidatePath(`/dashboard/tour-sales/departure/${bk.departure_id}`);
 }

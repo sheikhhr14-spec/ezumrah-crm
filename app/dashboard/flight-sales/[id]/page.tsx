@@ -1,3 +1,4 @@
+import RecordActivity from '@/components/record-activity';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { money } from '@/lib/format';
 import { requireModule } from '@/lib/data';
@@ -193,6 +194,7 @@ export default async function FlightSaleDetail({ params, searchParams }: { param
       </form>
 
       <SaleDocuments table="flight_sales" saleId={sale.id} docs={docs || []} />
+      <RecordActivity table="flight_sales" id={sale.id} record={sale} />
     </div>
   );
 }
