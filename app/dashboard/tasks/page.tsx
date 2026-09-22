@@ -22,13 +22,14 @@ export default async function TasksPage({ searchParams }: { searchParams: { view
     db.from('profiles').select('id, full_name, role').eq('agency_id', aid),
   ]);
   const view = searchParams.view === 'list' ? 'list' : 'kanban';
+  const staffMap = new Map((staff || []).map((m: any) => [m.id, m.full_name]));
   const list = tasks || [];
 
   // assign-to dropdown reused in add form + edit popups
   const AssignSelect = ({ def }: { def?: string }) => (
     <select className="input px-2 py-1 text-xs" name="assigned_to" defaultValue={def || ''}>
       <option value="">— unassigned —</option>
-      {(staff || []).map((m: any) => <option key={m.id} value={m.full_name}>{m.full_name} ({m.role})</option>)}
+      {(staff || []).map((m: any) => <option key={m.id} value={m.id}>{m.full_name} ({m.role})</option>)}
     </select>
   );
 
@@ -85,7 +86,7 @@ export default async function TasksPage({ searchParams }: { searchParams: { view
                       <p className="mt-1 flex flex-wrap items-center gap-1 text-[10px]">
                         <StatusBadge status={t.priority} />
                         {t.due_date && <span className="badge bg-slate-100 text-slate-500">📅 {t.due_date}</span>}
-                        {t.assigned_to && <span className="badge accent-soft-bg accent">👤 {t.assigned_to}</span>}
+                        {t.assigned_to && <span className="badge accent-soft-bg accent">👤 {staffMap.get(t.assigned_to) || t.assigned_to}</span>}
                         {(t.bookings as any)?.booking_ref && <span className="badge bg-slate-100 text-slate-500">{(t.bookings as any).booking_ref}</span>}
                       </p>
                       <div className="mt-2 flex items-center justify-between">
@@ -131,7 +132,7 @@ export default async function TasksPage({ searchParams }: { searchParams: { view
                 <td className="px-4 py-2">{(t.bookings as any)?.booking_ref || '—'}</td>
                 <td className="px-4 py-2">{t.due_date || '—'}</td>
                 <td className="px-4 py-2"><StatusBadge status={t.priority} /></td>
-                <td className="px-4 py-2">{t.assigned_to || '—'}</td>
+                <td className="px-4 py-2">{t.assigned_to ? (staffMap.get(t.assigned_to) || t.assigned_to) : '—'}</td>
                 <td className="px-4 py-2"><StatusBadge status={t.status || 'todo'} /></td>
                 <td className="px-4 py-2">
                   <div className="flex items-center gap-3">
