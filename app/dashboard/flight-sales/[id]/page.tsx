@@ -3,7 +3,8 @@ import { createAdminClient } from '@/lib/supabase/admin';
 import { money } from '@/lib/format';
 import { requireModule } from '@/lib/data';
 import { Table, Empty, StatusBadge } from '@/components/ui';
-import { updateSale, updateSaleLeg, addSaleLeg, deleteSaleLeg, deleteRecord, sendSaleInvoiceEmail } from '@/lib/crm-actions';
+import { updateSale, updateSaleLeg, addSaleLeg, deleteSaleLeg, deleteRecord, sendSaleInvoiceEmail, addFlightPassenger, deleteFlightPassenger } from '@/lib/crm-actions';
+import RowEdit from '@/components/row-edit';
 import Link from 'next/link';
 import SaleDocuments from '@/components/sale-documents';
 import SubmitButton from '@/components/submit-button';
@@ -25,8 +26,9 @@ export default async function FlightSaleDetail({ params, searchParams }: { param
     .eq('id', params.id).eq('agency_id', aid).single();
   if (!sale) notFound();
 
-  const [{ data: legs }, { data: customers }, { data: docs }] = await Promise.all([
+  const [{ data: legs }, { data: passengers }, { data: customers }, { data: docs }] = await Promise.all([
     db.from('flight_sale_legs').select('*').eq('flight_sale_id', sale.id).order('leg_no'),
+    db.from('flight_sale_passengers').select('*').eq('flight_sale_id', sale.id).order('is_lead', { ascending: false }).order('created_at'),
     db.from('customers').select('id, full_name').eq('agency_id', aid).order('full_name').limit(500),
     db.from('sale_documents').select('*').eq('sale_table', 'flight_sales').eq('sale_id', sale.id).order('created_at'),
   ]);
@@ -194,6 +196,51 @@ export default async function FlightSaleDetail({ params, searchParams }: { param
       </form>
 
       <SaleDocuments table="flight_sales" saleId={sale.id} docs={docs || []} />
+      <div className="card mt-6 p-5">
+        <h3 className="mb-3 text-sm font-bold text-slate-900">👥 Passengers ({(passengers || []).length})</h3>
+        <Table head={['Title', 'Name', 'Passport', 'Age', 'Nationality', 'Ticket no.', '']}>
+          {(passengers || []).length ? (passengers || []).map((p: any) => (
+            <tr key={p.id} className="hover:bg-slate-50">
+              <td className="p-2 font-semibold">{p.title || '—'}</td>
+              <td className="p-2 font-semibold">{p.full_name}{p.is_lead && <span className="ml-1 rounded accent-soft-bg px-1.5 py-0.5 text-[10px] font-bold accent">LEAD</span>}</td>
+              <td className="p-2 text-xs">{p.passport_no || '—'}</td>
+              <td className="p-2 text-xs">{p.age || '—'}</td>
+              <td className="p-2 text-xs">{p.nationality || '—'}</td>
+              <td className="p-2 text-xs">{p.ticket_no || '—'}</td>
+              <td className="p-2">
+                <div className="flex items-center gap-2">
+                  <RowEdit table="flight_sale_passengers" id={p.id} title={`Edit passenger — ${p.full_name}`}>
+                    <label className="text-[10px] text-slate-400">Title</label>
+                    <select className="input px-2 py-1 text-xs" name="title" defaultValue={p.title || 'Mr'}>{['Mr','Mrs','Miss','Ms','Master','Mstr','Dr'].map((t) => <option key={t} value={t}>{t}</option>)}</select>
+                    <label className="text-[10px] text-slate-400">Full name</label><input className="input px-2 py-1 text-xs" name="full_name" defaultValue={p.full_name} />
+                    <label className="text-[10px] text-slate-400">Passport no.</label><input className="input px-2 py-1 text-xs" name="passport_no" defaultValue={p.passport_no || ''} />
+                    <label className="text-[10px] text-slate-400">Age</label><input className="input px-2 py-1 text-xs" name="age" type="number" defaultValue={p.age || ''} />
+                    <label className="text-[10px] text-slate-400">Nationality</label><input className="input px-2 py-1 text-xs" name="nationality" defaultValue={p.nationality || ''} />
+                    <label className="text-[10px] text-slate-400">Ticket no.</label><input className="input px-2 py-1 text-xs" name="ticket_no" defaultValue={p.ticket_no || ''} />
+                  </RowEdit>
+                  {!p.is_lead && (
+                    <form action={deleteFlightPassenger}>
+                      <input type="hidden" name="id" value={p.id} />
+                      <button className="rounded border border-red-200 px-2 py-0.5 text-xs text-red-400 hover:bg-red-50" type="submit">✕</button>
+                    </form>
+                  )}
+                </div>
+              </td>
+            </tr>
+          )) : <tr><td colSpan={7}><Empty msg="No passengers recorded." /></td></tr>}
+        </Table>
+        <form action={addFlightPassenger} className="mt-3 grid gap-2 sm:grid-cols-6">
+          <input type="hidden" name="flight_sale_id" value={sale.id} />
+          <select className="input" name="title" defaultValue="Mr">{['Mr','Mrs','Miss','Ms','Master','Mstr','Dr'].map((t) => <option key={t} value={t}>{t}</option>)}</select>
+          <input className="input" name="full_name" placeholder="Passenger name *" required />
+          <input className="input" name="passport_no" placeholder="Passport no." />
+          <input className="input" name="age" type="number" placeholder="Age" />
+          <input className="input" name="nationality" placeholder="Nationality" />
+          <input className="input" name="ticket_no" placeholder="Ticket no." />
+          <div className="sm:col-span-6"><SubmitButton className="btn-secondary text-xs">+ Add passenger</SubmitButton></div>
+        </form>
+      </div>
+
       <RecordActivity table="flight_sales" id={sale.id} record={sale} />
     </div>
   );

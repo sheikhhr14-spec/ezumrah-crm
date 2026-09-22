@@ -6,6 +6,9 @@ import { money } from '@/lib/format';
 import CustomerPicker from '@/components/customer-picker';
 
 type Leg = { fare: string; tax: string; cost: string };
+type Pax = { title: string; name: string; passport: string; age: string; nat: string; ticket: string };
+const emptyPax = () => ({ title: 'Mr', name: '', passport: '', age: '', nat: '', ticket: '' });
+const TITLES = ['Mr', 'Mrs', 'Miss', 'Ms', 'Master', 'Mstr', 'Dr'];
 const emptyLeg = () => ({ fare: '', tax: '', cost: '' });
 
 export default function FlightSaleForm({ customers, currency, taxRate }: { customers: { id: string; full_name: string }[]; currency?: string | null; taxRate?: number }) {
@@ -18,6 +21,7 @@ export default function FlightSaleForm({ customers, currency, taxRate }: { custo
   const [commission, setCommission] = useState('');
   const [paid, setPaid] = useState('');
   const [useExisting, setUseExisting] = useState(false);
+  const [paxRows, setPaxRows] = useState<Pax[]>([emptyPax()]);
 
   const setLegCount = (k: string) => {
     setKind(k);
@@ -46,7 +50,8 @@ export default function FlightSaleForm({ customers, currency, taxRate }: { custo
       {/* customer */}
       <div className="grid gap-4 sm:grid-cols-3">
         <div className="sm:col-span-1">
-          <CustomerPicker customers={customers} onPick={(id) => setUseExisting(!!id)} />
+          <CustomerPicker customers={customers} onPick={(id) => { setUseExisting(!!id); const c = customers.find((x) => x.id === id); if (c) setPaxRows((rs) => rs.map((r, i) => i === 0 ? { ...r, name: c.full_name } : r)); }} />
+          <p className="mt-1 text-[10px] text-slate-400">Booked under this customer (lead passenger)</p>
         </div>
         {!useExisting && (
           <>
@@ -54,9 +59,35 @@ export default function FlightSaleForm({ customers, currency, taxRate }: { custo
             <L label="Phone" name="phone" />
             <L label="WhatsApp" name="whatsapp" />
             <L label="Country" name="country" />
-            <L label="Passport no." name="passport_no" />
+
           </>
         )}
+      </div>
+
+      {/* passengers */}
+      <div className="rounded-xl border border-slate-200 p-4">
+        <div className="mb-2 flex items-center justify-between">
+          <p className="text-xs font-bold uppercase tracking-wide text-slate-500">Passengers ({paxRows.length}) — first row is the lead passenger</p>
+          <button type="button" className="btn-secondary text-xs" onClick={() => setPaxRows([...paxRows, emptyPax()])}>+ Add passenger</button>
+        </div>
+        <div className="space-y-2">
+          {paxRows.map((p, i) => (
+            <div key={i} className={`grid gap-2 rounded-lg p-2 sm:grid-cols-6 ${i === 0 ? 'accent-soft-bg border border-gold/30' : 'bg-slate-50'}`}>
+              {i === 0 && <p className="text-[10px] font-bold uppercase tracking-wide accent sm:col-span-6">⭐ Lead passenger (booked under customer)</p>}
+              <select className="input" name={`pax_title_${i}`} value={p.title} onChange={(e) => setPaxRows(paxRows.map((r, j) => j === i ? { ...r, title: e.target.value } : r))}>
+                {TITLES.map((t) => <option key={t} value={t}>{t}</option>)}
+              </select>
+              <input className="input" name={`pax_name_${i}`} placeholder="Full name *" value={p.name} onChange={(e) => setPaxRows(paxRows.map((r, j) => j === i ? { ...r, name: e.target.value } : r))} />
+              <input className="input" name={`pax_passport_${i}`} placeholder="Passport no." value={p.passport} onChange={(e) => setPaxRows(paxRows.map((r, j) => j === i ? { ...r, passport: e.target.value } : r))} />
+              <input className="input" name={`pax_age_${i}`} type="number" placeholder="Age" value={p.age} onChange={(e) => setPaxRows(paxRows.map((r, j) => j === i ? { ...r, age: e.target.value } : r))} />
+              <input className="input" name={`pax_nat_${i}`} placeholder="Nationality" value={p.nat} onChange={(e) => setPaxRows(paxRows.map((r, j) => j === i ? { ...r, nat: e.target.value } : r))} />
+              <div className="flex gap-1">
+                <input className="input" name={`pax_ticket_${i}`} placeholder="Ticket no." value={p.ticket} onChange={(e) => setPaxRows(paxRows.map((r, j) => j === i ? { ...r, ticket: e.target.value } : r))} />
+                {i > 0 && <button type="button" className="rounded border border-red-200 px-2 text-red-400 hover:bg-red-50" onClick={() => setPaxRows(paxRows.filter((_, j) => j !== i))}>✕</button>}
+              </div>
+            </div>
+          ))}
+        </div>
       </div>
 
       {/* trip */}
@@ -68,7 +99,7 @@ export default function FlightSaleForm({ customers, currency, taxRate }: { custo
             <option value="multicity">Multi-city</option>
           </select>
         </label>
-        <L label="Passengers" name="pax" type="number" />
+        <input type="hidden" name="pax" value={paxRows.length} />
         <L label="PNR / airline booking ref" name="pnr" ph="XYZ123" />
         <L label="Ticket numbers" name="ticket_numbers" ph="comma separated" />
         <L label="Supplier / consolidator" name="supplier" ph="GDS / consolidator name" />

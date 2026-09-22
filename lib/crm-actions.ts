@@ -578,6 +578,7 @@ const EDITABLE: Record<string, string[]> = {
   documents: ['title', 'doc_type', 'expiry_date', 'file_url', 'notes'],
   tasks: ['title', 'due_date', 'priority', 'status', 'assigned_to'],
   leads: ['full_name', 'phone', 'whatsapp', 'email', 'country', 'source', 'interest', 'budget', 'assigned_to', 'notes'],
+  flight_sale_passengers: ['title', 'full_name', 'passport_no', 'age', 'nationality', 'ticket_no'],
   employees: ['full_name', 'email', 'phone', 'designation', 'department', 'join_date', 'monthly_salary'],
   expenses: ['category', 'description', 'amount', 'expense_date', 'payment_method', 'reference'],
   payments: ['amount', 'payment_date', 'method', 'reference', 'notes'],
@@ -663,7 +664,7 @@ export async function createFlightSale(fd: FormData) {
     if (name) {
       const { data: c } = await db.from('customers').insert({
         agency_id: aid, full_name: name, phone: str(fd, 'phone'), whatsapp: str(fd, 'whatsapp'),
-        country: str(fd, 'country'), passport_no: str(fd, 'passport_no'),
+        country: str(fd, 'country'), passport_no: str(fd, 'pax_passport_0') || str(fd, 'passport_no'),
       }).select('id').single();
       customerId = c?.id || '';
     }
@@ -686,6 +687,16 @@ export async function createFlightSale(fd: FormData) {
       ticket_no: str(fd, `leg_ticket_${i}`), baggage: str(fd, `leg_baggage_${i}`),
     });
   }
+  const paxList: Record<string, unknown>[] = [];
+  for (let i = 0; i < 20; i++) {
+    const nm = str(fd, `pax_name_${i}`);
+    if (!nm) continue;
+    paxList.push({
+      agency_id: aid, flight_sale_id: '', title: str(fd, `pax_title_${i}`), full_name: nm,
+      passport_no: str(fd, `pax_passport_${i}`), age: num(fd, `pax_age_${i}`) || null,
+      nationality: str(fd, `pax_nat_${i}`), ticket_no: str(fd, `pax_ticket_${i}`), is_lead: i === 0,
+    });
+  }
   const saleTotal = legs.reduce((s, l) => s + Number(l.fare) + Number(l.tax), 0);
   const costTotal = legs.reduce((s, l) => s + Number(l.cost), 0);
   const taxV = num(fd, 'tax');
@@ -695,7 +706,7 @@ export async function createFlightSale(fd: FormData) {
   const ref = `FS-${new Date().getFullYear()}-${String((count || 0) + 1).padStart(4, '0')}`;
   const { data: sale } = await db.from('flight_sales').insert({
     agency_id: aid, customer_id: customerId || null, ref,
-    trip_kind: str(fd, 'trip_kind') || 'oneway', pax: num(fd, 'pax', 1),
+    trip_kind: str(fd, 'trip_kind') || 'oneway', pax: paxList.length || num(fd 'pax', 1),
     pnr: str(fd, 'pnr'), ticket_numbers: str(fd, 'ticket_numbers'),
     supplier: str(fd, 'supplier'), issue_date: str(fd, 'issue_date') || null,
     refundable: str(fd, 'refundable'), due_date: str(fd, 'due_date') || null,
@@ -708,6 +719,16 @@ export async function createFlightSale(fd: FormData) {
     status: str(fd, 'status') || 'confirmed',
     balance: grand - amountPaid, profit: grand + commission - costTotal,
   }).select('id').single();
+  if (paxList.length) {
+    await db.from('flight_sale_passengers').insert(paxList.map((p) => ({ ...p, flight_sale_id: sale!.id })));
+  } else {
+    let leadName = str(fd, 'customer_name');
+    if (!leadName && customerId) {
+      const { data: c } = await db.from('customers').select('full_name').eq('id', customerId).maybeSingle();
+      leadName = (c as any)?.full_name || 'Lead passenger';
+    }
+    await db.from('flight_sale_passengers').insert({ agency_id: aid, flight_sale_id: sale!.id, title: str(fd, 'pax_title_0'), full_name: leadName, is_lead: true });
+  }
   if (sale && legs.length) {
     await db.from('flight_sale_legs').insert(legs.map((l) => ({ ...l, agency_id: aid, flight_sale_id: sale.id })));
   }
@@ -799,7 +820,7 @@ async function saleCustomer(db: any, aid: string, fd: FormData): Promise<string>
     if (name) {
       const { data: c } = await db.from('customers').insert({
         agency_id: aid, full_name: name, phone: str(fd, 'phone'), whatsapp: str(fd, 'whatsapp'),
-        country: str(fd, 'country'), passport_no: str(fd, 'passport_no'),
+        country: str(fd, 'country'), passport_no: str(fd, 'pax_passport_0') || str(fd, 'passport_no'),
       }).select('id').single();
       customerId = c?.id || '';
     }
@@ -1553,4 +1574,31 @@ export async function sendSaleInvoiceEmail(fd: FormData) {
     redirect(back + '?emailed=err:' + encodeURIComponent(String(e?.message || e)));
   }
   redirect(back + '?emailed=ok');
+}
+
+
+// ---------- FLIGHT PASSENGERS ----------
+export async function addFlightPassenger(fd: FormData) {
+  const db = createAdminClient();
+  const aid = await agencyId();
+  const saleId = String(fd.get('flight_sale_id'));
+  const { data: sale } = await db.from('flight_sales').select('id, agency_id').eq('id', saleId).single();
+  if (!sale || sale.agency_id !== aid) throw new Error('Sale not found in your agency.');
+  const name = str(fd, 'full_name');
+  if (!name) throw new Error('Passenger name is required.');
+  await db.from('flight_sale_passengers').insert({
+    agency_id: aid, flight_sale_id: saleId,
+    title: str(fd, 'title'), full_name: name, passport_no: str(fd, 'passport_no'),
+    age: num(fd, 'age') || null, nationality: str(fd, 'nationality'), ticket_no: str(fd, 'ticket_no'), is_lead: false,
+  });
+  revalidatePath(`/dashboard/flight-sales/${saleId}`);
+}
+export async function deleteFlightPassenger(fd: FormData) {
+  const db = createAdminClient();
+  const aid = await agencyId();
+  const { data: p } = await db.from('flight_sale_passengers').select('id, is_lead, flight_sale_id').eq('id', String(fd.get('id'))).eq('agency_id', aid).single();
+  if (!p) throw new Error('Passenger not found.');
+  if (p.is_lead) throw new Error('The lead passenger cannot be removed — they are the booked customer.');
+  await db.from('flight_sale_passengers').delete().eq('id', p.id);
+  revalidatePath(`/dashboard/flight-sales/${p.flight_sale_id}`);
 }
