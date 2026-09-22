@@ -43,6 +43,7 @@ export default async function DashboardLayout({ children }: { children: React.Re
         <ChatWidget />
         <DashboardHeader
           userName={ctx.profile?.full_name || ctx.user.email || ''}
+          userRole={ctx.profile?.role}
           notifications={notifications}
         />
         {latest && (
