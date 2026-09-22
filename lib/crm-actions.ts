@@ -684,7 +684,7 @@ export async function createFlightSale(fd: FormData) {
       from_airport: str(fd, `leg_from_${i}`), to_airport: str(fd, `leg_to_${i}`),
       depart_at: str(fd, `leg_depart_${i}`) || null, arrive_at: str(fd, `leg_arrive_${i}`) || null,
       cabin: str(fd, `leg_cabin_${i}`), fare: num(fd, `leg_fare_${i}`),
-      tax: num(fd, `leg_tax_${i}`), cost: num(fd, `leg_cost_${i}`) || (num(fd, `leg_fare_${i}`) + num(fd, `leg_tax_${i}`)),
+      tax: 0, cost: 0,
       ticket_no: str(fd, `leg_ticket_${i}`), baggage: str(fd, `leg_baggage_${i}`),
     });
   }
@@ -703,13 +703,14 @@ export async function createFlightSale(fd: FormData) {
       pax_type: str(fd, `pax_type_${i}`), gender: str(fd, `pax_gender_${i}`),
       dob: str(fd, `pax_dob_${i}`) || null, pnr: str(fd, `pax_pnr_${i}`),
       fare: num(fd, `pax_fare_${i}`) || null, tax: num(fd, `pax_ptax_${i}`) || null,
-      ticket_amount: num(fd, `pax_tamt_${i}`) || null,
-      sale_amount: num(fd, `pax_samt_${i}`) || null, profit: num(fd, `pax_pft_${i}`) || null,
+      ticket_amount: (num(fd, `pax_tamt_${i}`) || num(fd, `pax_fare_${i}`) + num(fd, `pax_ptax_${i}`)) || null,
+      sale_amount: (num(fd, `pax_samt_${i}`) || num(fd, `pax_fare_${i}`) + num(fd, `pax_ptax_${i}`)) || null,
+      profit: ((num(fd, `pax_samt_${i}`) || num(fd, `pax_fare_${i}`) + num(fd, `pax_ptax_${i}`)) - (num(fd, `pax_tamt_${i}`) || num(fd, `pax_fare_${i}`) + num(fd, `pax_ptax_${i}`))) || null,
     });
   }
   const paxTicketJoin = paxList.map((p) => p.ticket_no).filter(Boolean).join(', ');
-  const saleTotal = legs.reduce((s, l) => s + Number(l.fare) + Number(l.tax), 0);
-  const costTotal = legs.reduce((s, l) => s + Number(l.cost), 0);
+  const saleTotal = paxList.reduce((s, p) => s + Number(p.sale_amount || 0), 0);
+  const costTotal = paxList.reduce((s, p) => s + Number(p.ticket_amount || 0), 0);
   const taxV = num(fd, 'tax');
   const grand = saleTotal + adminFee - discount + taxV;
   const paymentStatus = amountPaid <= 0 ? 'unpaid' : amountPaid >= grand ? 'full' : 'partial';

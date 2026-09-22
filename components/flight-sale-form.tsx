@@ -5,12 +5,12 @@ import SubmitButton from '@/components/submit-button';
 import { money } from '@/lib/format';
 import CustomerPicker from '@/components/customer-picker';
 
-type Leg = { fare: string; tax: string; cost: string };
+type Leg = {};
 type Pax = { title: string; first: string; last: string; passport: string; nat: string; ticket: string; type: string; gender: string; dob: string; pnr: string; fare: string; ptax: string; tamt: string; samt: string; pft: string };
 const ageFrom = (d: string) => { if (!d) return ''; return Math.max(0, Math.floor((Date.now() - new Date(d).getTime()) / (365.25 * 86400000))); };
 const emptyPax = () => ({ title: 'Mr', first: '', last: '', passport: '', nat: '', ticket: '', type: 'ADT', gender: '', dob: '', pnr: '', fare: '', ptax: '', tamt: '', samt: '', pft: '' });
 const TITLES = ['Mr', 'Mrs', 'Miss', 'Ms', 'Master', 'Mstr', 'Dr'];
-const emptyLeg = () => ({ fare: '', tax: '', cost: '' });
+const emptyLeg = () => ({});
 
 export default function FlightSaleForm({ customers, currency, taxRate }: { customers: { id: string; full_name: string }[]; currency?: string | null; taxRate?: number }) {
   const cur = currency;
@@ -32,8 +32,9 @@ export default function FlightSaleForm({ customers, currency, taxRate }: { custo
   };
 
   const n = (v: string) => Number(v) || 0;
-  const saleTotal = legs.reduce((s, l) => s + n(l.fare) + n(l.tax), 0);
-  const costTotal = legs.reduce((s, l) => s + n(l.cost), 0);
+  const paxTicket = (p: Pax) => n(p.fare) + n(p.ptax);
+  const saleTotal = paxRows.reduce((s, p) => s + (n(p.samt) || paxTicket(p)), 0);
+  const costTotal = paxRows.reduce((s, p) => s + paxTicket(p), 0);
   const taxAuto = (saleTotal + n(adminFee) - n(discount)) * (taxRate || 0) / 100;
   const grand = saleTotal + n(adminFee) - n(discount) + n(tax);
   const profit = grand + n(commission) - costTotal;
@@ -100,9 +101,9 @@ export default function FlightSaleForm({ customers, currency, taxRate }: { custo
               </div>
               <input className="input" name={`pax_fare_${i}`} type="number" placeholder="Fares" value={p.fare} onChange={(e) => setPaxRows(paxRows.map((r, j) => j === i ? { ...r, fare: e.target.value } : r))} />
               <input className="input" name={`pax_ptax_${i}`} type="number" placeholder="Tax" value={p.ptax} onChange={(e) => setPaxRows(paxRows.map((r, j) => j === i ? { ...r, ptax: e.target.value } : r))} />
-              <input className="input" name={`pax_tamt_${i}`} type="number" placeholder="Ticket amount" value={p.tamt} onChange={(e) => setPaxRows(paxRows.map((r, j) => j === i ? { ...r, tamt: e.target.value } : r))} />
+              <input className="input accent-soft-bg font-semibold" name={`pax_tamt_${i}`} type="number" readOnly placeholder="auto" value={n(p.fare) + n(p.ptax) || ""} title="Auto = fares + tax" />
               <input className="input" name={`pax_samt_${i}`} type="number" placeholder="Sale amount" value={p.samt} onChange={(e) => setPaxRows(paxRows.map((r, j) => j === i ? { ...r, samt: e.target.value } : r))} />
-              <input className="input" name={`pax_pft_${i}`} type="number" placeholder="Profit" value={p.pft} onChange={(e) => setPaxRows(paxRows.map((r, j) => j === i ? { ...r, pft: e.target.value } : r))} />
+              <input className="input accent-soft-bg font-semibold" name={`pax_pft_${i}`} type="number" readOnly placeholder="auto" value={n(p.samt) ? n(p.samt) - (n(p.fare) + n(p.ptax)) : ""} title="Auto = sale amount - ticket amount" />
             </div>
           ))}
         </div>
@@ -154,25 +155,7 @@ export default function FlightSaleForm({ customers, currency, taxRate }: { custo
             <L label="Arrival" name={`leg_arrive_${i}`} type="datetime-local" />
             <L label="Cabin" name={`leg_cabin_${i}`} ph="economy" />
                         <L label="Baggage" name={`leg_baggage_${i}`} ph="2 x 23kg" />
-            <label className="block"><span className="text-xs font-semibold text-slate-600">Fare (sale)</span>
-              <input className="input" name={`leg_fare_${i}`} type="number" step="0.01" value={l.fare}
-                onChange={(e) => setLegs(legs.map((x, j) => j === i ? { ...x, fare: e.target.value } : x))} />
-            </label>
-            <label className="block"><span className="text-xs font-semibold text-slate-600">Tax</span>
-              <input className="input" name={`leg_tax_${i}`} type="number" step="0.01" value={l.tax}
-                onChange={(e) => setLegs(legs.map((x, j) => j === i ? { ...x, tax: e.target.value } : x))} />
-            </label>
-            <label className="block"><span className="text-xs font-semibold text-slate-600">Total amount (auto = fare + tax)</span>
-              <input className="input accent-soft-bg font-semibold" readOnly value={n(l.fare) + n(l.tax) || ''} placeholder="0.00" />
-            </label>
-            <label className="block"><span className="text-xs font-semibold text-slate-600">Cost (our price — defaults to total)</span>
-              <input className="input" name={`leg_cost_${i}`} type="number" step="0.01" value={l.cost}
-                onChange={(e) => setLegs(legs.map((x, j) => j === i ? { ...x, cost: e.target.value } : x))}
-                placeholder={String(n(l.fare) + n(l.tax) || '')} />
-            </label>
-            <div className="flex items-end text-xs font-semibold accent">
-              Leg: ${n(l.fare) + n(l.tax)} · profit ${(n(l.fare) + n(l.tax)) - n(l.cost)}
-            </div>
+            
           </div>
         </div>
       ))}
