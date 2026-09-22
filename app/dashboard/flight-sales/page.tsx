@@ -12,7 +12,7 @@ export default async function FlightSalesPage({ searchParams }: { searchParams?:
   const cur = ag.currency;
   const db = createAdminClient();
   const [{ data: sales }, { data: customers }] = await Promise.all([
-    db.from('flight_sales').select('*, customers(full_name, phone), flight_sale_legs(from_airport, to_airport, fare, tax, cost)')
+    db.from('flight_sales').select('*, customers(full_name, phone), flight_sale_legs(from_airport, to_airport)')
       .eq('agency_id', ctx.profile.agency_id).order('created_at', { ascending: false }).limit(200),
     db.from('customers').select('id, full_name, phone').eq('agency_id', ctx.profile.agency_id).order('full_name').limit(500),
   ]);
