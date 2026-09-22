@@ -706,7 +706,7 @@ export async function createFlightSale(fd: FormData) {
   const ref = `FS-${new Date().getFullYear()}-${String((count || 0) + 1).padStart(4, '0')}`;
   const { data: sale } = await db.from('flight_sales').insert({
     agency_id: aid, customer_id: customerId || null, ref,
-    trip_kind: str(fd, 'trip_kind') || 'oneway', pax: paxList.length || num(fd 'pax', 1),
+    trip_kind: str(fd, 'trip_kind') || 'oneway', pax: paxList.length || num(fd, 'pax', 1),
     pnr: str(fd, 'pnr'), ticket_numbers: str(fd, 'ticket_numbers'),
     supplier: str(fd, 'supplier'), issue_date: str(fd, 'issue_date') || null,
     refundable: str(fd, 'refundable'), due_date: str(fd, 'due_date') || null,
