@@ -35,6 +35,7 @@ export async function createCustomer(fd: FormData) {
     country: str(fd, 'country'),
     passport_no: str(fd, 'passport_no'),
     notes: str(fd, 'notes'),
+    title: str(fd, 'title'), source: str(fd, 'source'), city: str(fd, 'city'), postal_code: str(fd, 'postal_code'),
     nationality: str(fd, 'nationality'), next_of_kin_name: str(fd, 'next_of_kin_name'), next_of_kin_phone: str(fd, 'next_of_kin_phone'),
     created_by: await currentProfileId(),});
   revalidatePath('/dashboard/customers');
@@ -578,7 +579,7 @@ const EDITABLE: Record<string, string[]> = {
   documents: ['title', 'doc_type', 'expiry_date', 'file_url', 'notes'],
   tasks: ['title', 'due_date', 'priority', 'status', 'assigned_to'],
   leads: ['full_name', 'phone', 'whatsapp', 'email', 'country', 'source', 'interest', 'budget', 'assigned_to', 'notes'],
-  flight_sale_passengers: ['title', 'full_name', 'passport_no', 'age', 'nationality', 'ticket_no'],
+  flight_sale_passengers: ['title', 'full_name', 'passport_no', 'age', 'nationality', 'ticket_no', 'pax_type', 'gender', 'dob', 'pnr', 'fare', 'tax', 'sale_amount', 'profit'],
   employees: ['full_name', 'email', 'phone', 'designation', 'department', 'join_date', 'monthly_salary'],
   expenses: ['category', 'description', 'amount', 'expense_date', 'payment_method', 'reference'],
   payments: ['amount', 'payment_date', 'method', 'reference', 'notes'],
@@ -695,6 +696,10 @@ export async function createFlightSale(fd: FormData) {
       agency_id: aid, flight_sale_id: '', title: str(fd, `pax_title_${i}`), full_name: nm,
       passport_no: str(fd, `pax_passport_${i}`), age: num(fd, `pax_age_${i}`) || null,
       nationality: str(fd, `pax_nat_${i}`), ticket_no: str(fd, `pax_ticket_${i}`), is_lead: i === 0,
+      pax_type: str(fd, `pax_type_${i}`), gender: str(fd, `pax_gender_${i}`),
+      dob: str(fd, `pax_dob_${i}`) || null, pnr: str(fd, `pax_pnr_${i}`),
+      fare: num(fd, `pax_fare_${i}`) || null, tax: num(fd, `pax_ptax_${i}`) || null,
+      sale_amount: num(fd, `pax_samt_${i}`) || null, profit: num(fd, `pax_pft_${i}`) || null,
     });
   }
   const saleTotal = legs.reduce((s, l) => s + Number(l.fare) + Number(l.tax), 0);
@@ -1590,6 +1595,7 @@ export async function addFlightPassenger(fd: FormData) {
     agency_id: aid, flight_sale_id: saleId,
     title: str(fd, 'title'), full_name: name, passport_no: str(fd, 'passport_no'),
     age: num(fd, 'age') || null, nationality: str(fd, 'nationality'), ticket_no: str(fd, 'ticket_no'), is_lead: false,
+    pax_type: str(fd, 'pax_type'), gender: str(fd, 'gender'), dob: str(fd, 'dob') || null, pnr: str(fd, 'pnr'),
   });
   revalidatePath(`/dashboard/flight-sales/${saleId}`);
 }

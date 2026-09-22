@@ -6,8 +6,8 @@ import { money } from '@/lib/format';
 import CustomerPicker from '@/components/customer-picker';
 
 type Leg = { fare: string; tax: string; cost: string };
-type Pax = { title: string; name: string; passport: string; age: string; nat: string; ticket: string };
-const emptyPax = () => ({ title: 'Mr', name: '', passport: '', age: '', nat: '', ticket: '' });
+type Pax = { title: string; name: string; passport: string; age: string; nat: string; ticket: string; type: string; gender: string; dob: string; pnr: string; fare: string; ptax: string; samt: string; pft: string };
+const emptyPax = () => ({ title: 'Mr', name: '', passport: '', age: '', nat: '', ticket: '', type: 'ADT', gender: '', dob: '', pnr: '', fare: '', ptax: '', samt: '', pft: '' });
 const TITLES = ['Mr', 'Mrs', 'Miss', 'Ms', 'Master', 'Mstr', 'Dr'];
 const emptyLeg = () => ({ fare: '', tax: '', cost: '' });
 
@@ -85,6 +85,18 @@ export default function FlightSaleForm({ customers, currency, taxRate }: { custo
                 <input className="input" name={`pax_ticket_${i}`} placeholder="Ticket no." value={p.ticket} onChange={(e) => setPaxRows(paxRows.map((r, j) => j === i ? { ...r, ticket: e.target.value } : r))} />
                 {i > 0 && <button type="button" className="rounded border border-red-200 px-2 text-red-400 hover:bg-red-50" onClick={() => setPaxRows(paxRows.filter((_, j) => j !== i))}>✕</button>}
               </div>
+              <select className="input" name={`pax_type_${i}`} value={p.type} onChange={(e) => setPaxRows(paxRows.map((r, j) => j === i ? { ...r, type: e.target.value } : r))}>
+                {[['ADT', 'Adult'], ['CHD', 'Child'], ['YTH', 'Youth'], ['INF', 'Infant']].map(([v, l]) => <option key={v} value={v}>{l} ({v})</option>)}
+              </select>
+              <select className="input" name={`pax_gender_${i}`} value={p.gender} onChange={(e) => setPaxRows(paxRows.map((r, j) => j === i ? { ...r, gender: e.target.value } : r))}>
+                <option value="">Gender</option><option value="Male">Male</option><option value="Female">Female</option>
+              </select>
+              <input className="input" name={`pax_dob_${i}`} type="date" value={p.dob} onChange={(e) => setPaxRows(paxRows.map((r, j) => j === i ? { ...r, dob: e.target.value } : r))} />
+              <input className="input" name={`pax_pnr_${i}`} placeholder="PNR" value={p.pnr} onChange={(e) => setPaxRows(paxRows.map((r, j) => j === i ? { ...r, pnr: e.target.value } : r))} />
+              <input className="input" name={`pax_fare_${i}`} type="number" placeholder="Fare" value={p.fare} onChange={(e) => setPaxRows(paxRows.map((r, j) => j === i ? { ...r, fare: e.target.value } : r))} />
+              <input className="input" name={`pax_ptax_${i}`} type="number" placeholder="Tax" value={p.ptax} onChange={(e) => setPaxRows(paxRows.map((r, j) => j === i ? { ...r, ptax: e.target.value } : r))} />
+              <input className="input" name={`pax_samt_${i}`} type="number" placeholder="Sale amount" value={p.samt} onChange={(e) => setPaxRows(paxRows.map((r, j) => j === i ? { ...r, samt: e.target.value } : r))} />
+              <input className="input" name={`pax_pft_${i}`} type="number" placeholder="Profit" value={p.pft} onChange={(e) => setPaxRows(paxRows.map((r, j) => j === i ? { ...r, pft: e.target.value } : r))} />
             </div>
           ))}
         </div>

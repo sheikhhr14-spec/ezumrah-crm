@@ -19,6 +19,10 @@ export default async function CustomersPage() {
       <AddPanel label="Add customer">
         <form action={createCustomer} className="grid gap-4 sm:grid-cols-3">
           <Field label="Full name *"><input className="input" name="full_name" required /></Field>
+          <Field label="Title"><select className="input" name="title"><option value="">—</option><option>Mr</option><option>Mrs</option><option>Miss</option><option>Ms</option><option>Dr</option></select></Field>
+          <Field label="Customer type"><select className="input" name="source"><option value="">—</option><option value="walkin">Walk-in</option><option value="web">Web</option><option value="phone">Phone</option><option value="social">Social Media</option><option value="referral">Referral</option></select></Field>
+          <Field label="City"><input className="input" name="city" /></Field>
+          <Field label="Postal code"><input className="input" name="postal_code" /></Field>
           <Field label="Country"><input className="input" name="country" placeholder="Pakistan" /></Field>
           <Field label="Nationality"><input className="input" name="nationality" placeholder="e.g. Pakistani" /></Field>
           <Field label="Next of kin"><input className="input" name="next_of_kin_name" placeholder="name" /></Field>
