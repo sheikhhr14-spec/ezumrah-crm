@@ -10,8 +10,8 @@ export async function GET(req: NextRequest) {
   const db = createAdminClient();
   // Pakistan time (UTC+5) day window
   const pktNow = new Date(Date.now() + 5 * 3600000);
-  const dayStart = new Date(pktNow.toISOString().slice(0, 10) + 'T00:00:00+05:00');
-  const todayStr = dayStart.toISOString().slice(0, 10);
+  const todayStr = pktNow.toISOString().slice(0, 10); // PKT calendar date for date columns
+  const dayStart = new Date(todayStr + 'T00:00:00+05:00'); // PKT midnight as UTC instant
   const out = { agencies: 0, emails: 0, skipped: 0 };
 
   const { data: agencies } = await db.from('agencies')
