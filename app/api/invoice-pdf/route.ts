@@ -1,7 +1,7 @@
 import { PDFDocument, StandardFonts, rgb } from 'pdf-lib';
 import { getCurrentUser } from '@/lib/data';
 import { createAdminClient } from '@/lib/supabase/admin';
-import { moneyAscii } from '@/lib/format';
+import { moneyAscii, COUNTRIES } from '@/lib/format';
 
 // Helvetica (WinAnsi) can't encode arrows/unicode — sanitize every string we draw
 const clean = (t: string) => (t || '')
@@ -24,7 +24,7 @@ export async function GET(req: Request) {
   if (!profile?.agency_id) return new Response('Forbidden', { status: 403 });
   const aid = profile.agency_id;
   const agency = profile.agencies || {};
-  const cur = type === 'saas' ? 'USD' : agency.currency; // SaaS subscription always billed in USD
+  const cur = type === 'saas' ? 'USD' : (agency.currency || (COUNTRIES.find((c: any) => c.code === agency.country || c.name === agency.country) || {}).currency || 'USD'); // SaaS subscription always billed in USD
 
   const db = createAdminClient();
   type Item = { desc: string; qty: string; unit: string; amount: number };
@@ -36,6 +36,8 @@ export async function GET(req: Request) {
   let total = 0;
   let paid: number | null = null;
   let extraNote = '';
+  let itinerary: any[] = [];
+  let leadPax: any = null;
 
   const one = async (table: string) => {
     const { data } = await db.from(table).select('*').eq('id', id).eq('agency_id', aid).maybeSingle();
@@ -134,13 +136,20 @@ export async function GET(req: Request) {
     ref = fs.ref; docTitle = 'FLIGHT INVOICE';
     dateStr = (fs.created_at || '').slice(0, 10) || dateStr;
     if (fs.customer_id) customer = (await db.from('customers').select('*').eq('id', fs.customer_id).maybeSingle()).data;
-    const { data: legs } = await db.from('flight_sale_legs').select('*').eq('agency_id', aid).eq('flight_sale_id', fs.id).order('leg_no');
-    for (const l of legs || []) {
-      items.push({ desc: `Leg ${l.leg_no}: ${l.airline || ''} ${l.flight_no || ''} ${l.from_airport || ''} -> ${l.to_airport || ''} (${fs.trip_kind}, ${fs.pax || 1} pax)`, qty: String(fs.pax || 1), unit: '', amount: (Number(l.fare) + Number(l.tax)) * (fs.pax || 1) * 0 + Number(l.fare) + Number(l.tax) });
+    const [{ data: legs }, { data: paxRows }] = await Promise.all([
+      db.from('flight_sale_legs').select('*').eq('agency_id', aid).eq('flight_sale_id', fs.id).order('leg_no'),
+      db.from('flight_sale_passengers').select('*').eq('agency_id', aid).eq('flight_sale_id', fs.id).order('is_lead', { ascending: false }).order('created_at'),
+    ]);
+    itinerary = (legs || []).map((l: any) => ({ airline: l.airline, flight_no: l.flight_no, from: l.from_airport, to: l.to_airport, depart: l.depart_at, arrive: l.arrive_at, cabin: l.cabin, baggage: l.baggage }));
+    leadPax = (paxRows || [])[0] || null;
+    for (const p of paxRows || []) {
+      const nm = `${p.title ? p.title + ' ' : ''}${[p.first_name, p.last_name].filter(Boolean).join(' ') || p.full_name}`;
+      items.push({ desc: `${nm} (${p.pax_type || 'ADT'}${p.gender ? ', ' + p.gender : ''}${p.dob ? ', DOB ' + String(p.dob).slice(0, 10) : ''})`, qty: '1', unit: p.ticket_no || '', amount: Number(p.sale_amount) || 0 });
     }
     if (Number(fs.admin_fee)) items.push({ desc: 'Admin / service fee', qty: '1', unit: '', amount: Number(fs.admin_fee) });
+    if (Number(fs.tax)) items.push({ desc: 'Tax / VAT', qty: '1', unit: '', amount: Number(fs.tax) });
     if (Number(fs.discount)) items.push({ desc: 'Discount', qty: '1', unit: '', amount: -Number(fs.discount) });
-    total = Number(fs.sale_total) + Number(fs.admin_fee) - (Number(fs.discount) || 0);
+    total = Number(fs.sale_total) + Number(fs.admin_fee || 0) + Number(fs.tax || 0) - (Number(fs.discount) || 0);
     paid = Number(fs.amount_paid) || 0;
   } else if (type === 'payslip') {
     const p = await one('payroll');
@@ -204,6 +213,8 @@ export async function GET(req: Request) {
 
   let y = 760;
   page.drawText(clean(agency.name || 'Travel Agency'), { x: 40, y, size: 14, font: bold, color: DARK });
+  if (agency.address) { y -= 15; page.drawText(clean(agency.address), { x: 40, y, size: 9, font, color: GRAY }); }
+  if (agency.contact_phone || agency.contact_email) { y -= 12; page.drawText(clean([agency.contact_phone, agency.contact_email].filter(Boolean).join(' · ')), { x: 40, y, size: 9, font, color: GRAY }); }
   y -= 16;
   page.drawText(clean(`${ref ? 'Ref: ' + ref : ''}    Date: ${dateStr}`), { x: 40, y, size: 10, font, color: GRAY });
 
@@ -212,6 +223,15 @@ export async function GET(req: Request) {
   y -= 14;
   page.drawText(clean(customer?.full_name || '—'), { x: 40, y, size: 12, font: bold, color: DARK });
   if (customer?.country || customer?.phone) { y -= 14; page.drawText(clean([customer.country, customer.phone].filter(Boolean).join(' · ')), { x: 40, y, size: 10, font, color: GRAY }); }
+  if (leadPax) {
+    y -= 30;
+    page.drawText(clean('LEAD PASSENGER'), { x: 40, y, size: 9, font: bold, color: GRAY });
+    y -= 14;
+    const leadName = `${leadPax.title ? leadPax.title + ' ' : ''}${[leadPax.first_name, leadPax.last_name].filter(Boolean).join(' ') || leadPax.full_name || '-'}`;
+    page.drawText(clean(leadName), { x: 40, y, size: 12, font: bold, color: DARK });
+    const leadMeta = [leadPax.pax_type, leadPax.gender, leadPax.dob && 'DOB ' + String(leadPax.dob).slice(0, 10), leadPax.passport_no && 'PP ' + leadPax.passport_no, leadPax.pnr && 'PNR ' + leadPax.pnr, leadPax.ticket_no && 'TKT ' + leadPax.ticket_no].filter(Boolean).join(' · ');
+    if (leadMeta) { y -= 13; page.drawText(clean(leadMeta), { x: 40, y, size: 9, font, color: GRAY }); }
+  }
 
   y -= 30;
   const cols = { desc: 40, qty: 380, unit: 440, amount: 520 };
@@ -241,6 +261,21 @@ export async function GET(req: Request) {
   page.drawText(clean(totalStr), { x: 555 - bold.widthOfTextAtSize(totalStr, 12), y, size: 12, font: bold, color: DARK });
   if (paid !== null) { y -= 16; const pStr = `Paid: ${moneyAscii(paid, cur)}   Balance: ${moneyAscii(total - paid, cur)}`; page.drawText(clean(pStr), { x: 555 - font.widthOfTextAtSize(pStr, 10), y, size: 10, font, color: GRAY }); }
   if (extraNote) { y -= 16; page.drawText(clean(extraNote), { x: 555 - font.widthOfTextAtSize(extraNote, 9), y, size: 9, font, color: GRAY }); }
+  if (itinerary.length) {
+    y -= 34;
+    page.drawText(clean('FLIGHT ITINERARY'), { x: 40, y, size: 9, font: bold, color: GRAY });
+    y -= 6;
+    page.drawLine({ start: { x: 40, y }, end: { x: 300, y }, thickness: 0.5, color: GOLD });
+    y -= 14;
+    const dt = (d: any) => d ? new Date(d).toLocaleString('en-GB', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit', hour12: false, timeZone: agency.timezone || 'UTC' }) : '';
+    for (const it of itinerary) {
+      page.drawText(clean(`Leg: ${it.airline || ''}${it.flight_no ? ' ' + it.flight_no : ''}   ${it.from || ''} -> ${it.to || ''}${it.cabin ? '   ' + it.cabin + ' class' : ''}${it.baggage ? '   Baggage: ' + it.baggage : ''}`), { x: 40, y, size: 9, font, color: DARK });
+      y -= 12;
+      page.drawText(clean(`${dt(it.depart) || '-'}  ->  ${dt(it.arrive) || '-'}`), { x: 48, y, size: 9, font, color: GRAY });
+      y -= 16;
+      if (y < 110) break;
+    }
+  }
 
   const footMain = type === 'saas' ? 'EzUmrah CRM — by EzTechify' : (agency.name || 'Agency');
   const footSub = type === 'saas' ? 'support@ezumrah.com · EzUmrah CRM by EzTechify'

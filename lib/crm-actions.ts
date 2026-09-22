@@ -1542,6 +1542,8 @@ export async function sendSaleInvoiceEmail(fd: FormData) {
   if (table === 'flight_sales') {
     const { data: legs } = await db.from('flight_sale_legs').select('*').eq('flight_sale_id', id).order('leg_no');
     for (const l of legs || []) lines.push(`✈ Leg ${l.leg_no}: ${l.from_airport || ''} → ${l.to_airport || ''} — ${l.airline || ''} · ${String(l.depart_at || '').slice(0, 16).replace('T', ' ')}`);
+    const { data: pax } = await db.from('flight_sale_passengers').select('*').eq('flight_sale_id', id).order('is_lead', { ascending: false });
+    for (const p of pax || []) lines.push(`👤 ${p.title ? p.title + ' ' : ''}${[p.first_name, p.last_name].filter(Boolean).join(' ') || p.full_name} (${p.pax_type || 'ADT'})${p.ticket_no ? ' · TKT ' + p.ticket_no : ''}`);
   } else if (table === 'hotel_sales') {
     lines.push(`🏨 ${r.hotel_name || 'Hotel'}${r.city ? `, ${r.city}` : ''} — ${r.check_in || ''} → ${r.check_out || ''} · ${r.nights || 0} night(s) · ${r.rooms_count || 0} room(s)`);
     const { data: stays } = await db.from('hotel_sale_stays').select('*').eq('hotel_sale_id', id).order('created_at');
@@ -1560,7 +1562,7 @@ export async function sendSaleInvoiceEmail(fd: FormData) {
   const rows: [string, string][] = [[ 'Customer', cust.full_name || '' ]];
   if (r.due_date) rows.push(['Payment due', r.due_date]);
   const totals: [string, string][] = [
-    ['Sale amount', money2(r.sale_price ?? r.amount ?? 0)],
+    ['Sale amount', money2(r.sale_price ?? r.amount ?? r.sale_total ?? 0)],
   ];
   if (Number(r.tax)) totals.push(['Tax', money2(r.tax)]);
   if (Number(r.admin_fee)) totals.push(['Admin fee', money2(r.admin_fee)]);
