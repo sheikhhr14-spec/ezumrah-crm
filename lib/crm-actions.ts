@@ -1332,6 +1332,23 @@ export async function syncNotifications() {
   const saasCount = saasR?.count || 0;
 
   const alerts: { kind: string; key: string; title: string; body: string; href: string }[] = [];
+
+  // lead follow-up nudges (owner/manager): untouched new leads + stale contacted leads
+  if (ctx.role === 'owner' || ctx.role === 'manager') {
+    const dayAgo = new Date(Date.now() - 86400000).toISOString();
+    const fiveDaysAgo = new Date(Date.now() - 5 * 86400000).toISOString();
+    const [newR, contR] = await Promise.all([
+      db.from('leads').select('id', { count: 'exact', head: true }).eq('agency_id', aid).eq('status', 'new').lt('created_at', dayAgo),
+      db.from('leads').select('id', { count: 'exact', head: true }).eq('agency_id', aid).eq('status', 'contacted').lt('updated_at', fiveDaysAgo),
+    ]);
+    const staleNew = newR?.count || 0;
+    const staleCont = contR?.count || 0;
+    if (staleNew > 0) alerts.push({ kind: 'lead', key: 'lead-followup', title: `${staleNew} new lead${staleNew > 1 ? 's' : ''} untouched for 24h+`,
+      body: 'Fresh inquiries are waiting — assign them and reach out now.', href: '/dashboard/leads' });
+    if (staleCont > 0) alerts.push({ kind: 'lead', key: 'lead-stale', title: `${staleCont} lead${staleCont > 1 ? 's' : ''} stuck in "Contacted"`,
+      body: 'Contacted 5+ days ago with no progress — qualify them or mark as lost.', href: '/dashboard/leads' });
+  }
+
   if (overdue > 0) alerts.push({ kind: 'overdue', key: 'overdue-payments', title: `${overdue} overdue payment${overdue > 1 ? 's' : ''}`,
     body: 'Customer balances are past their due date. Follow up now.', href: '/dashboard/reports' });
   if (visaExp > 0) alerts.push({ kind: 'visa', key: 'visa-expiry', title: `${visaExp} visa${visaExp > 1 ? 's' : ''} expiring soon`,
