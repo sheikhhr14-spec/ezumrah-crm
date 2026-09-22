@@ -684,7 +684,7 @@ export async function createFlightSale(fd: FormData) {
       from_airport: str(fd, `leg_from_${i}`), to_airport: str(fd, `leg_to_${i}`),
       depart_at: str(fd, `leg_depart_${i}`) || null, arrive_at: str(fd, `leg_arrive_${i}`) || null,
       cabin: str(fd, `leg_cabin_${i}`), fare: num(fd, `leg_fare_${i}`),
-      tax: num(fd, `leg_tax_${i}`), cost: num(fd, `leg_cost_${i}`),
+      tax: num(fd, `leg_tax_${i}`), cost: num(fd, `leg_cost_${i}`) || (num(fd, `leg_fare_${i}`) + num(fd, `leg_tax_${i}`)),
       ticket_no: str(fd, `leg_ticket_${i}`), baggage: str(fd, `leg_baggage_${i}`),
     });
   }

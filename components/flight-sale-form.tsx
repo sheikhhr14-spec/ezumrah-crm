@@ -162,9 +162,13 @@ export default function FlightSaleForm({ customers, currency, taxRate }: { custo
               <input className="input" name={`leg_tax_${i}`} type="number" step="0.01" value={l.tax}
                 onChange={(e) => setLegs(legs.map((x, j) => j === i ? { ...x, tax: e.target.value } : x))} />
             </label>
-            <label className="block"><span className="text-xs font-semibold text-slate-600">Cost (our price)</span>
+            <label className="block"><span className="text-xs font-semibold text-slate-600">Total amount (auto = fare + tax)</span>
+              <input className="input accent-soft-bg font-semibold" readOnly value={n(l.fare) + n(l.tax) || ''} placeholder="0.00" />
+            </label>
+            <label className="block"><span className="text-xs font-semibold text-slate-600">Cost (our price — defaults to total)</span>
               <input className="input" name={`leg_cost_${i}`} type="number" step="0.01" value={l.cost}
-                onChange={(e) => setLegs(legs.map((x, j) => j === i ? { ...x, cost: e.target.value } : x))} />
+                onChange={(e) => setLegs(legs.map((x, j) => j === i ? { ...x, cost: e.target.value } : x))}
+                placeholder={String(n(l.fare) + n(l.tax) || '')} />
             </label>
             <div className="flex items-end text-xs font-semibold accent">
               Leg: ${n(l.fare) + n(l.tax)} · profit ${(n(l.fare) + n(l.tax)) - n(l.cost)}
