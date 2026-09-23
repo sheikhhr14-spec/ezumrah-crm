@@ -217,7 +217,7 @@ export default async function FlightSaleDetail({ params, searchParams }: { param
                     <select className="input px-2 py-1 text-xs" name="title" defaultValue={p.title || 'Mr'}>{['Mr','Mrs','Miss','Ms','Master','Mstr','Dr'].map((t) => <option key={t} value={t}>{t}</option>)}</select>
                     <label className="text-[10px] text-slate-400">First name</label><input className="input px-2 py-1 text-xs" name="first_name" defaultValue={p.first_name || p.full_name?.split(' ')[0] || ''} />
                     <label className="text-[10px] text-slate-400">Last name</label><input className="input px-2 py-1 text-xs" name="last_name" defaultValue={p.last_name || (p.full_name || '').split(' ').slice(1).join(' ')} />
-                    <label className="text-[10px] text-slate-400">Cost price (fare + tax)</label><input className="input px-2 py-1 text-xs" name="ticket_amount" type="number" defaultValue={p.ticket_amount ?? ''} />
+                    <label className="text-[10px] text-slate-400">Cost amount (fare + tax + other)</label><input className="input px-2 py-1 text-xs" name="ticket_amount" type="number" defaultValue={p.ticket_amount ?? ''} />
                     <label className="text-[10px] text-slate-400">Passport no.</label><input className="input px-2 py-1 text-xs" name="passport_no" defaultValue={p.passport_no || ''} />
                     <label className="text-[10px] text-slate-400">Age</label><input className="input px-2 py-1 text-xs" name="age" type="number" defaultValue={p.age || ''} />
                     <label className="text-[10px] text-slate-400">Nationality</label><input className="input px-2 py-1 text-xs" name="nationality" defaultValue={p.nationality || ''} />

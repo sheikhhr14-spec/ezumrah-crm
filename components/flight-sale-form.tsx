@@ -17,6 +17,23 @@ const emptyPax = () => ({ title: 'Mr', first: '', last: '', passport: '', nat: '
 const TITLES = ['Mr', 'Mrs', 'Miss', 'Ms', 'Master', 'Mstr', 'Dr'];
 const emptyLeg = () => ({});
 
+function PaxMoneyField({ label, ph, name, value, onChange, sym, symPad, readOnly }: { label: string; ph: string; name: string; value: string | number; onChange?: (e: any) => void; sym: string; symPad: string; readOnly?: boolean }) {
+  return (
+    <fieldset className={`relative rounded-lg border px-2 pb-1.5 pt-0 transition ${readOnly ? 'accent-soft-bg border-gold/30' : 'border-slate-300 focus-within:border-gold focus-within:ring-2 focus-within:ring-gold/20'}`}>
+      <legend className="ml-0.5 px-1 text-[10px] font-semibold text-slate-500">{label}</legend>
+      <div className="relative -mt-0.5 mb-0.5">
+        <span className="pointer-events-none absolute left-0 top-1/2 -translate-y-1/2 whitespace-nowrap text-[10px] font-bold accent">{sym}</span>
+        <input
+          className={`w-full border-0 bg-transparent p-0 text-sm outline-none ${readOnly ? 'font-semibold accent' : ''}`}
+          style={{ paddingLeft: symPad }}
+          name={name} type="number" placeholder={ph} value={value}
+          onChange={onChange} readOnly={readOnly}
+        />
+      </div>
+    </fieldset>
+  );
+}
+
 export default function FlightSaleForm({ customers, currency, taxRate }: { customers: { id: string; full_name: string }[]; currency?: string | null; taxRate?: number }) {
   const sym = curSym(currency);
   const symPad = sym.length <= 1 ? '2rem' : sym.length === 2 ? '2.6rem' : sym.length === 3 ? '3.3rem' : '3.8rem';
@@ -39,13 +56,12 @@ export default function FlightSaleForm({ customers, currency, taxRate }: { custo
   };
 
   const n = (v: string) => Number(v) || 0;
-  const paxTicket = (p: Pax) => n(p.fare) + n(p.ptax);
-  const ocTotal = paxRows.reduce((sm, p) => sm + n(p.oc), 0);
-  const saleTotal = paxRows.reduce((s, p) => s + (n(p.samt) || paxTicket(p)), 0) + ocTotal;
-  const costTotal = paxRows.reduce((s, p) => s + paxTicket(p), 0);
+  const paxCost = (p: Pax) => n(p.fare) + n(p.ptax) + n(p.oc);
+  const saleTotal = paxRows.reduce((s, p) => s + (n(p.samt) || paxCost(p)), 0);
+  const costTotal = paxRows.reduce((s, p) => s + paxCost(p), 0);
   const taxAuto = (saleTotal + n(adminFee) - n(discount)) * (taxRate || 0) / 100;
   const grand = saleTotal + n(adminFee) - n(discount) + n(tax);
-  const profit = grand + n(commission) - costTotal - ocTotal;
+  const profit = grand + n(commission) - costTotal;
   const balance = grand - n(paid);
   const pStatus = n(paid) <= 0 ? 'Unpaid' : n(paid) >= grand ? 'Fully paid' : 'Partial';
 
@@ -107,11 +123,22 @@ export default function FlightSaleForm({ customers, currency, taxRate }: { custo
                 <input className="input" name={`pax_ticket_${i}`} placeholder="Ticket #" value={p.ticket} onChange={(e) => setPaxRows(paxRows.map((r, j) => j === i ? { ...r, ticket: e.target.value } : r))} />
                 {i > 0 && <button type="button" className="rounded border border-red-200 px-2 text-red-400 hover:bg-red-50" onClick={() => setPaxRows(paxRows.filter((_, j) => j !== i))}>✕</button>}
               </div>
-              <label className="block"><span className="text-[10px] font-semibold text-slate-500">Fares</span><div className="relative"><span className="pointer-events-none absolute left-2 top-1/2 -translate-y-1/2 whitespace-nowrap text-[10px] font-bold accent">{sym}</span><input className="input" style={{ paddingLeft: symPad }} name={`pax_fare_${i}`} type="number" placeholder="Base fare from supplier" value={p.fare} onChange={(e) => setPaxRows(paxRows.map((r, j) => j === i ? { ...r, fare: e.target.value } : r))} /></div></label>
-              <label className="block"><span className="text-[10px] font-semibold text-slate-500">Tax</span><div className="relative"><span className="pointer-events-none absolute left-2 top-1/2 -translate-y-1/2 whitespace-nowrap text-[10px] font-bold accent">{sym}</span><input className="input" style={{ paddingLeft: symPad }} name={`pax_ptax_${i}`} type="number" placeholder="Taxes & airline fees" value={p.ptax} onChange={(e) => setPaxRows(paxRows.map((r, j) => j === i ? { ...r, ptax: e.target.value } : r))} /></div></label>
-              <label className="block"><span className="text-[10px] font-semibold text-slate-500">Cost price</span><div className="relative"><span className="pointer-events-none absolute left-2 top-1/2 -translate-y-1/2 whitespace-nowrap text-[10px] font-bold accent">{sym}</span><input className="input accent-soft-bg font-semibold" style={{ paddingLeft: symPad }} name={`pax_tamt_${i}`} type="number" readOnly placeholder="auto = fares + tax" value={n(p.fare) + n(p.ptax) || ""} title="Auto = fares + tax" /></div></label><label className="block"><span className="text-[10px] font-semibold text-slate-500">Other charges</span><div className="relative"><span className="pointer-events-none absolute left-2 top-1/2 -translate-y-1/2 whitespace-nowrap text-[10px] font-bold accent">{sym}</span><input className="input" style={{ paddingLeft: symPad }} name={`pax_oc_${i}`} type="number" placeholder="ATOL / insurance / extras" value={p.oc} onChange={(e) => setPaxRows(paxRows.map((r, j) => j === i ? { ...r, oc: e.target.value } : r))} /></div></label>
-              <label className="block"><span className="text-[10px] font-semibold text-slate-500">Sale amount</span><div className="relative"><span className="pointer-events-none absolute left-2 top-1/2 -translate-y-1/2 whitespace-nowrap text-[10px] font-bold accent">{sym}</span><input className="input" style={{ paddingLeft: symPad }} name={`pax_samt_${i}`} type="number" placeholder="Total charged to customer" value={p.samt} onChange={(e) => setPaxRows(paxRows.map((r, j) => j === i ? { ...r, samt: e.target.value } : r))} /></div></label>
-              <label className="block"><span className="text-[10px] font-semibold text-slate-500">Profit</span><div className="relative"><span className="pointer-events-none absolute left-2 top-1/2 -translate-y-1/2 whitespace-nowrap text-[10px] font-bold accent">{sym}</span><input className="input accent-soft-bg font-semibold" style={{ paddingLeft: symPad }} name={`pax_pft_${i}`} type="number" readOnly placeholder="auto = sale - cost" value={n(p.samt) ? n(p.samt) - (n(p.fare) + n(p.ptax)) : ""} title="Auto = sale amount - cost price" /></div></label>
+              <PaxMoneyField label="Fare" ph="Base airfare" sym={sym} symPad={symPad}
+                name={`pax_fare_${i}`} value={p.fare}
+                onChange={(e) => setPaxRows(paxRows.map((r, j) => j === i ? { ...r, fare: e.target.value } : r))} />
+              <PaxMoneyField label="Tax" ph="Airline tax & fees" sym={sym} symPad={symPad}
+                name={`pax_ptax_${i}`} value={p.ptax}
+                onChange={(e) => setPaxRows(paxRows.map((r, j) => j === i ? { ...r, ptax: e.target.value } : r))} />
+              <PaxMoneyField label="Other charges" ph="ATOL, insurance, etc." sym={sym} symPad={symPad}
+                name={`pax_oc_${i}`} value={p.oc}
+                onChange={(e) => setPaxRows(paxRows.map((r, j) => j === i ? { ...r, oc: e.target.value } : r))} />
+              <PaxMoneyField label="Cost amount" ph="Fare + Tax + Other" sym={sym} symPad={symPad} readOnly
+                name={`pax_tamt_${i}`} value={n(p.fare) + n(p.ptax) + n(p.oc) || ''} />
+              <PaxMoneyField label="Sale amount" ph="Charged to customer" sym={sym} symPad={symPad}
+                name={`pax_samt_${i}`} value={p.samt}
+                onChange={(e) => setPaxRows(paxRows.map((r, j) => j === i ? { ...r, samt: e.target.value } : r))} />
+              <PaxMoneyField label="Profit" ph="Sale − Cost" sym={sym} symPad={symPad} readOnly
+                name={`pax_pft_${i}`} value={n(p.samt) ? n(p.samt) - (n(p.fare) + n(p.ptax) + n(p.oc)) : ''} />
             </div>
           ))}
         </div>
