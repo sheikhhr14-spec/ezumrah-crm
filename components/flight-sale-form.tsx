@@ -5,6 +5,11 @@ import SubmitButton from '@/components/submit-button';
 import { money } from '@/lib/format';
 import CustomerPicker from '@/components/customer-picker';
 
+const curSym = (c?: string | null) => {
+  const code = (c || 'USD').toUpperCase();
+  try { return new Intl.NumberFormat('en', { style: 'currency', currency: code, currencyDisplay: 'narrowSymbol' }).formatToParts(0).find((p) => p.type === 'currency')?.value || code; } catch { return code; }
+};
+
 type Leg = {};
 type Pax = { title: string; first: string; last: string; passport: string; nat: string; ticket: string; type: string; gender: string; dob: string; pnr: string; fare: string; ptax: string; tamt: string; samt: string; pft: string };
 const ageFrom = (d: string) => { if (!d) return ''; return Math.max(0, Math.floor((Date.now() - new Date(d).getTime()) / (365.25 * 86400000))); };
@@ -13,6 +18,7 @@ const TITLES = ['Mr', 'Mrs', 'Miss', 'Ms', 'Master', 'Mstr', 'Dr'];
 const emptyLeg = () => ({});
 
 export default function FlightSaleForm({ customers, currency, taxRate }: { customers: { id: string; full_name: string }[]; currency?: string | null; taxRate?: number }) {
+  const sym = curSym(currency);
   const cur = currency;
   const [kind, setKind] = useState('oneway');
   const [legs, setLegs] = useState<Leg[]>([emptyLeg()]);
@@ -99,11 +105,11 @@ export default function FlightSaleForm({ customers, currency, taxRate }: { custo
                 <input className="input" name={`pax_ticket_${i}`} placeholder="Ticket #" value={p.ticket} onChange={(e) => setPaxRows(paxRows.map((r, j) => j === i ? { ...r, ticket: e.target.value } : r))} />
                 {i > 0 && <button type="button" className="rounded border border-red-200 px-2 text-red-400 hover:bg-red-50" onClick={() => setPaxRows(paxRows.filter((_, j) => j !== i))}>✕</button>}
               </div>
-              <input className="input" name={`pax_fare_${i}`} type="number" placeholder="Fares" value={p.fare} onChange={(e) => setPaxRows(paxRows.map((r, j) => j === i ? { ...r, fare: e.target.value } : r))} />
-              <input className="input" name={`pax_ptax_${i}`} type="number" placeholder="Tax" value={p.ptax} onChange={(e) => setPaxRows(paxRows.map((r, j) => j === i ? { ...r, ptax: e.target.value } : r))} />
-              <input className="input accent-soft-bg font-semibold" name={`pax_tamt_${i}`} type="number" readOnly placeholder="auto" value={n(p.fare) + n(p.ptax) || ""} title="Auto = fares + tax" />
-              <input className="input" name={`pax_samt_${i}`} type="number" placeholder="Sale amount" value={p.samt} onChange={(e) => setPaxRows(paxRows.map((r, j) => j === i ? { ...r, samt: e.target.value } : r))} />
-              <input className="input accent-soft-bg font-semibold" name={`pax_pft_${i}`} type="number" readOnly placeholder="auto" value={n(p.samt) ? n(p.samt) - (n(p.fare) + n(p.ptax)) : ""} title="Auto = sale amount - ticket amount" />
+              <div className="relative"><span className="pointer-events-none absolute left-2 top-1/2 -translate-y-1/2 text-[10px] font-bold accent">{sym}</span><input className="input pl-9" name={`pax_fare_${i}`} type="number" placeholder="Fares" value={p.fare} onChange={(e) => setPaxRows(paxRows.map((r, j) => j === i ? { ...r, fare: e.target.value } : r))} /></div>
+              <div className="relative"><span className="pointer-events-none absolute left-2 top-1/2 -translate-y-1/2 text-[10px] font-bold accent">{sym}</span><input className="input pl-9" name={`pax_ptax_${i}`} type="number" placeholder="Tax" value={p.ptax} onChange={(e) => setPaxRows(paxRows.map((r, j) => j === i ? { ...r, ptax: e.target.value } : r))} /></div>
+              <div className="relative"><span className="pointer-events-none absolute left-2 top-1/2 -translate-y-1/2 text-[10px] font-bold accent">{sym}</span><input className="input pl-9 accent-soft-bg font-semibold" name={`pax_tamt_${i}`} type="number" readOnly placeholder="auto" value={n(p.fare) + n(p.ptax) || ""} title="Auto = fares + tax" /></div>
+              <div className="relative"><span className="pointer-events-none absolute left-2 top-1/2 -translate-y-1/2 text-[10px] font-bold accent">{sym}</span><input className="input pl-9" name={`pax_samt_${i}`} type="number" placeholder="Sale amount" value={p.samt} onChange={(e) => setPaxRows(paxRows.map((r, j) => j === i ? { ...r, samt: e.target.value } : r))} /></div>
+              <div className="relative"><span className="pointer-events-none absolute left-2 top-1/2 -translate-y-1/2 text-[10px] font-bold accent">{sym}</span><input className="input pl-9 accent-soft-bg font-semibold" name={`pax_pft_${i}`} type="number" readOnly placeholder="auto" value={n(p.samt) ? n(p.samt) - (n(p.fare) + n(p.ptax)) : ""} title="Auto = sale amount - ticket amount" /></div>
             </div>
           ))}
         </div>
@@ -168,23 +174,23 @@ export default function FlightSaleForm({ customers, currency, taxRate }: { custo
         <p className="mb-3 text-xs font-bold uppercase tracking-wide text-slate-500">Payment</p>
         <div className="grid gap-3 sm:grid-cols-4">
           <label className="block"><span className="text-xs font-semibold text-slate-600">Admin fee</span>
-            <input className="input" name="admin_fee" type="number" step="0.01" value={adminFee}
-              onChange={(e) => setAdminFee(e.target.value)} />
+            <div className="relative"><span className="pointer-events-none absolute left-2 top-1/2 -translate-y-1/2 text-[10px] font-bold accent">{sym}</span><input className="input pl-9" name="admin_fee" type="number" step="0.01" value={adminFee}
+              onChange={(e) => setAdminFee(e.target.value)} /></div>
           </label>
           <label className="block"><span className="text-xs font-semibold text-slate-600">Discount (-)</span>
-            <input className="input" name="discount" type="number" step="0.01" value={discount}
-              onChange={(e) => setDiscount(e.target.value)} />
+            <div className="relative"><span className="pointer-events-none absolute left-2 top-1/2 -translate-y-1/2 text-[10px] font-bold accent">{sym}</span><input className="input pl-9" name="discount" type="number" step="0.01" value={discount}
+              onChange={(e) => setDiscount(e.target.value)} /></div>
             <label className="block"><span className="text-xs font-semibold text-slate-600">Tax / VAT ({taxRate || 0}% auto)</span>
-            <input className="input" name="tax" type="number" step="0.01" value={tax} onChange={(e) => setTax(e.target.value)} placeholder={String(Math.round(taxAuto * 100) / 100)} />
+            <div className="relative"><span className="pointer-events-none absolute left-2 top-1/2 -translate-y-1/2 text-[10px] font-bold accent">{sym}</span><input className="input pl-9" name="tax" type="number" step="0.01" value={tax} onChange={(e) => setTax(e.target.value)} placeholder={String(Math.round(taxAuto * 100) / 100)} /></div>
           </label>
           </label>
           <label className="block"><span className="text-xs font-semibold text-slate-600">Commission (from supplier, +)</span>
-            <input className="input" name="commission" type="number" step="0.01" value={commission}
-              onChange={(e) => setCommission(e.target.value)} />
+            <div className="relative"><span className="pointer-events-none absolute left-2 top-1/2 -translate-y-1/2 text-[10px] font-bold accent">{sym}</span><input className="input pl-9" name="commission" type="number" step="0.01" value={commission}
+              onChange={(e) => setCommission(e.target.value)} /></div>
           </label>
           <label className="block"><span className="text-xs font-semibold text-slate-600">Amount paid</span>
-            <input className="input" name="amount_paid" type="number" step="0.01" value={paid}
-              onChange={(e) => setPaid(e.target.value)} />
+            <div className="relative"><span className="pointer-events-none absolute left-2 top-1/2 -translate-y-1/2 text-[10px] font-bold accent">{sym}</span><input className="input pl-9" name="amount_paid" type="number" step="0.01" value={paid}
+              onChange={(e) => setPaid(e.target.value)} /></div>
           </label>
           <label className="block"><span className="text-xs font-semibold text-slate-600">Payment method</span>
             <select className="input" name="payment_method">

@@ -13,6 +13,11 @@ type Leg = { leg_type: string; mode: string; company: string; from_location: str
 
 const emptyPax = (name = ''): Pax => ({ full_name: name, relationship: '', gender: '', age: '', passport_no: '', room_type: 'quad', seat_no: '' });
 const emptyLeg = (leg_type = 'arrival'): Leg => ({ leg_type, mode: 'bus', company: '', from_location: '', to_location: '', leg_date: '', seats: '', notes: '' });
+const curSym = (c?: string | null) => {
+  const code = (c || 'USD').toUpperCase();
+  try { return new Intl.NumberFormat('en', { style: 'currency', currency: code, currencyDisplay: 'narrowSymbol' }).formatToParts(0).find((p) => p.type === 'currency')?.value || code; } catch { return code; }
+};
+
 const LEG_TYPES = ['arrival', 'intercity', 'departure', 'ziyarat_transfer', 'other'];
 const MODES = ['bus', 'van', 'private_car', 'train', 'taxi', 'other'];
 
@@ -23,6 +28,7 @@ export default function PackageSaleForm({ category, customers, currency, taxRate
   customers: { id: string; full_name: string }[];
   currency?: string | null; taxRate?: number;
 }) {
+  const sym = curSym(currency);
   const cur = currency;
   const [pax, setPax] = useState<Pax[]>([emptyPax()]);
   const [legs, setLegs] = useState<Leg[]>([]);
@@ -204,22 +210,22 @@ export default function PackageSaleForm({ category, customers, currency, taxRate
       <p className={SECT}>{category === 'tour' ? '7' : '8'} · Price summary</p>
       <div className="grid gap-3 sm:grid-cols-4">
         <label className="block"><span className="text-xs font-semibold text-slate-600">Package price per person</span>
-          <input className="input" name="price_per_person" type="number" step="0.01" value={money.perPerson} onChange={set('perPerson')} /></label>
+          <div className="relative"><span className="pointer-events-none absolute left-2 top-1/2 -translate-y-1/2 text-[10px] font-bold accent">{sym}</span><input className="input pl-9" name="price_per_person" type="number" step="0.01" value={money.perPerson} onChange={set('perPerson')} /></div></label>
         <label className="block"><span className="text-xs font-semibold text-slate-600">Separate-room supplement (+)</span>
-          <input className="input" name="supplement" type="number" step="0.01" value={money.supp} onChange={set('supp')} /></label>
+          <div className="relative"><span className="pointer-events-none absolute left-2 top-1/2 -translate-y-1/2 text-[10px] font-bold accent">{sym}</span><input className="input pl-9" name="supplement" type="number" step="0.01" value={money.supp} onChange={set('supp')} /></div></label>
         <label className="block"><span className="text-xs font-semibold text-slate-600">Admin fee</span>
-          <input className="input" name="admin_fee" type="number" step="0.01" value={money.fee} onChange={set('fee')} /></label>
+          <div className="relative"><span className="pointer-events-none absolute left-2 top-1/2 -translate-y-1/2 text-[10px] font-bold accent">{sym}</span><input className="input pl-9" name="admin_fee" type="number" step="0.01" value={money.fee} onChange={set('fee')} /></div></label>
         <label className="block"><span className="text-xs font-semibold text-slate-600">Discount (-)</span>
-          <input className="input" name="discount" type="number" step="0.01" value={money.discount} onChange={set('discount')} /></label>
+          <div className="relative"><span className="pointer-events-none absolute left-2 top-1/2 -translate-y-1/2 text-[10px] font-bold accent">{sym}</span><input className="input pl-9" name="discount" type="number" step="0.01" value={money.discount} onChange={set('discount')} /></div></label>
           <label className="block"><span className="text-xs font-semibold text-slate-600">Tax / VAT ({taxRate || 0}% auto)</span>
-            <input className="input" name="tax" type="number" step="0.01" value={money.tax} onChange={set('tax')} placeholder={String(Math.round(taxAuto * 100) / 100)} />
+            <div className="relative"><span className="pointer-events-none absolute left-2 top-1/2 -translate-y-1/2 text-[10px] font-bold accent">{sym}</span><input className="input pl-9" name="tax" type="number" step="0.01" value={money.tax} onChange={set('tax')} placeholder={String(Math.round(taxAuto * 100) / 100)} /></div>
           </label>
         <label className="block"><span className="text-xs font-semibold text-slate-600">Total cost to us</span>
-          <input className="input" name="cost" type="number" step="0.01" value={money.cost} onChange={set('cost')} /></label>
+          <div className="relative"><span className="pointer-events-none absolute left-2 top-1/2 -translate-y-1/2 text-[10px] font-bold accent">{sym}</span><input className="input pl-9" name="cost" type="number" step="0.01" value={money.cost} onChange={set('cost')} /></div></label>
         <label className="block"><span className="text-xs font-semibold text-slate-600">Supplier commission (+)</span>
-          <input className="input" name="commission" type="number" step="0.01" value={money.commission} onChange={set('commission')} /></label>
+          <div className="relative"><span className="pointer-events-none absolute left-2 top-1/2 -translate-y-1/2 text-[10px] font-bold accent">{sym}</span><input className="input pl-9" name="commission" type="number" step="0.01" value={money.commission} onChange={set('commission')} /></div></label>
         <label className="block"><span className="text-xs font-semibold text-slate-600">Amount paid</span>
-          <input className="input" name="amount_paid" type="number" step="0.01" value={money.paid} onChange={set('paid')} /></label>
+          <div className="relative"><span className="pointer-events-none absolute left-2 top-1/2 -translate-y-1/2 text-[10px] font-bold accent">{sym}</span><input className="input pl-9" name="amount_paid" type="number" step="0.01" value={money.paid} onChange={set('paid')} /></div></label>
         <label className="block"><span className="text-xs font-semibold text-slate-600">Payment method</span>
           <select className="input" name="payment_method">
             <option value="">— none yet —</option><option value="cash">Cash</option>

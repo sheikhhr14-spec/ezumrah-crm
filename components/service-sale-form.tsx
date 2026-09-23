@@ -6,10 +6,16 @@ import SubmitButton from '@/components/submit-button';
 import { money as fmtMoney } from '@/lib/format';
 import type { SvcField } from '@/lib/service-sales';
 
+const curSym = (c?: string | null) => {
+  const code = (c || 'USD').toUpperCase();
+  try { return new Intl.NumberFormat('en', { style: 'currency', currency: code, currencyDisplay: 'narrowSymbol' }).formatToParts(0).find((p) => p.type === 'currency')?.value || code; } catch { return code; }
+};
+
 export default function ServiceSaleForm({
   table, fields, customers, currency, taxRate,
 }: { table: string; fields: SvcField[]; customers: { id: string; full_name: string }[]; currency?: string | null; taxRate?: number }) {
   const cur = currency;
+  const sym = curSym(currency);
   const [useExisting, setUseExisting] = useState(false);
   const [dates, setDates] = useState({ ci: '', co: '' });
   const hasStay = fields.some((f) => f.name === 'check_in') && fields.some((f) => f.name === 'check_out');
@@ -78,13 +84,13 @@ export default function ServiceSaleForm({
       <div className="rounded-xl border border-slate-200 bg-white p-4">
         <p className="mb-3 text-xs font-bold uppercase tracking-wide text-slate-500">Pricing & payment</p>
         <div className="grid gap-3 sm:grid-cols-4">
-          <M label="Sale price (to customer)" k="sale_price" money={money} set={set} />
-          <M label="Cost (our price)" k="cost" money={money} set={set} />
-          <M label="Admin fee" k="admin_fee" money={money} set={set} />
-          <M label="Discount (-)" k="discount" money={money} set={set} />
-          <M label="Tax / VAT" k="tax" money={money} set={set} />
-          <M label="Commission (from supplier, +)" k="commission" money={money} set={set} />
-          <M label="Amount paid" k="paid" money={money} set={set} />
+          <M label="Sale price (to customer)" k="sale_price" money={money} set={set} sym={sym} />
+          <M label="Cost (our price)" k="cost" money={money} set={set} sym={sym} />
+          <M label="Admin fee" k="admin_fee" money={money} set={set} sym={sym} />
+          <M label="Discount (-)" k="discount" money={money} set={set} sym={sym} />
+          <M label="Tax / VAT" k="tax" money={money} set={set} sym={sym} />
+          <M label="Commission (from supplier, +)" k="commission" money={money} set={set} sym={sym} />
+          <M label="Amount paid" k="paid" money={money} set={set} sym={sym} />
           <label className="block"><span className="text-xs font-semibold text-slate-600">Payment method</span>
             <select className="input" name="payment_method">
               <option value="">— none yet —</option>
@@ -132,8 +138,8 @@ export default function ServiceSaleForm({
                     <input className="input" placeholder="Driver name" value={x.driver_name} onChange={up(i, 'driver_name')} name={`extra_driver_${i}`} />
                     <input className="input" placeholder="Driver phone" value={x.driver_phone} onChange={up(i, 'driver_phone')} name={`extra_phone_${i}`} />
                   </>)}
-                  <input className="input" type="number" step="0.01" placeholder={`Sale price${cur ? ' (' + cur + ')' : ''}`} value={x.sale_price} onChange={up(i, 'sale_price')} name={`extra_sale_price_${i}`} />
-                  <input className="input" type="number" step="0.01" placeholder="Our cost" value={x.cost} onChange={up(i, 'cost')} name={`extra_cost_${i}`} />
+                  <div className="relative"><span className="pointer-events-none absolute left-2 top-1/2 -translate-y-1/2 text-[10px] font-bold accent">{sym}</span><input className="input pl-9" type="number" step="0.01" placeholder={`Sale price${cur ? ' (' + cur + ')' : ''}`} value={x.sale_price} onChange={up(i, 'sale_price')} name={`extra_sale_price_${i}`} /></div>
+                  <div className="relative"><span className="pointer-events-none absolute left-2 top-1/2 -translate-y-1/2 text-[10px] font-bold accent">{sym}</span><input className="input pl-9" type="number" step="0.01" placeholder="Our cost" value={x.cost} onChange={up(i, 'cost')} name={`extra_cost_${i}`} /></div>
                 </div>
               </div>
             ))}
@@ -166,11 +172,11 @@ function L({ label, name }: { label: string; name: string }) {
   );
 }
 
-function M({ label, k, money, set }: { label: string; k: string; money: any; set: (k: string, v: string) => void }) {
+function M({ label, k, money, set, sym }: { label: string; k: string; money: any; set: (k: string, v: string) => void; sym?: string }) {
   const name = k === 'paid' ? 'amount_paid' : k;
   return (
     <label className="block"><span className="text-xs font-semibold text-slate-600">{label}</span>
-      <input className="input" name={name} type="number" step="0.01" value={money[k]} onChange={(e) => set(k, e.target.value)} />
+      <div className="relative"><span className="pointer-events-none absolute left-2 top-1/2 -translate-y-1/2 text-[10px] font-bold accent">{sym}</span><input className="input pl-9" name={name} type="number" step="0.01" value={money[k]} onChange={(e) => set(k, e.target.value)} /></div>
     </label>
   );
 }
