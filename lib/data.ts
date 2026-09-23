@@ -61,9 +61,9 @@ export async function requireRole(min: 'owner' | 'manager' | 'staff') {
 // Module access by subscription plan (Starter / Professional / Enterprise)
 export const PLAN_MODULES: Record<string, string[]> = {
   starter: ['calendar', 'leads', 'customers', 'bookings', 'flightsales', 'hotelsales', 'visasales', 'transportsales',
-    'umrahsales', 'hajjsales', 'toursales', 'packages', 'documents', 'tasks', 'support', 'invoices', 'settings', 'billing'],
+    'umrahsales', 'hajjsales', 'toursales', 'packages', 'documents', 'tasks', 'support', 'invoices', 'hr', 'settings', 'billing'],
   professional: ['calendar', 'leads', 'customers', 'bookings', 'flightsales', 'hotelsales', 'visasales', 'transportsales',
-    'umrahsales', 'hajjsales', 'toursales', 'packages', 'documents', 'tasks', 'support', 'invoices', 'quotations', 'reports', 'accounts', 'settings', 'billing'],
+    'umrahsales', 'hajjsales', 'toursales', 'packages', 'documents', 'tasks', 'support', 'invoices', 'quotations', 'reports', 'accounts', 'hr', 'settings', 'billing'],
   enterprise: ['calendar', 'leads', 'customers', 'bookings', 'flightsales', 'hotelsales', 'visasales', 'transportsales',
     'umrahsales', 'hajjsales', 'toursales', 'packages', 'documents', 'tasks', 'support', 'invoices', 'quotations', 'reports', 'accounts', 'hr', 'vault', 'settings', 'billing'],
 };
