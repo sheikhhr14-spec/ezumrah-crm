@@ -146,6 +146,8 @@ export async function GET(req: Request) {
       const nm = `${p.title ? p.title + ' ' : ''}${[p.first_name, p.last_name].filter(Boolean).join(' ') || p.full_name}`;
       items.push({ desc: `${nm} (${p.pax_type || 'ADT'}${p.gender ? ', ' + p.gender : ''}${p.dob ? ', DOB ' + String(p.dob).slice(0, 10) : ''})`, qty: '1', unit: p.ticket_no || '', amount: Number(p.sale_amount) || 0 });
     }
+    const ocSum = (paxRows || []).reduce((s: number, px: any) => s + (Number(px.other_charges) || 0), 0);
+    if (ocSum) items.push({ desc: 'Other charges (ATOL / insurance)', qty: '1', unit: '', amount: ocSum });
     if (Number(fs.admin_fee)) items.push({ desc: 'Admin / service fee', qty: '1', unit: '', amount: Number(fs.admin_fee) });
     if (Number(fs.tax)) items.push({ desc: 'Tax / VAT', qty: '1', unit: '', amount: Number(fs.tax) });
     if (Number(fs.discount)) items.push({ desc: 'Discount', qty: '1', unit: '', amount: -Number(fs.discount) });

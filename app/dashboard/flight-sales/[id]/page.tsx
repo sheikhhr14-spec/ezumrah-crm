@@ -195,7 +195,7 @@ export default async function FlightSaleDetail({ params, searchParams }: { param
       <SaleDocuments table="flight_sales" saleId={sale.id} docs={docs || []} />
       <div className="card mt-6 p-5">
         <h3 className="mb-3 text-sm font-bold text-slate-900">👥 Passengers ({(passengers || []).length})</h3>
-        <Table head={['Title', 'Name', 'Type', 'DOB', 'Passport', 'PNR', 'Ticket', 'Fare', 'Sale', 'Profit', '']}>
+        <Table head={['Title', 'Name', 'Type', 'DOB', 'Passport', 'PNR', 'Ticket', 'Fare', 'Other', 'Sale', 'Profit', '']}>
           {(passengers || []).length ? (passengers || []).map((p: any) => (
             <tr key={p.id} className="hover:bg-slate-50">
               <td className="p-2 font-semibold">{p.title || '—'}</td>
@@ -207,6 +207,7 @@ export default async function FlightSaleDetail({ params, searchParams }: { param
               <td className="p-2 text-xs">{p.pnr || '—'}</td>
               <td className="p-2 text-xs">{p.ticket_no || '—'}</td>
               <td className="p-2 text-xs">{p.fare != null ? money(Number(p.fare), cur) : '—'}</td>
+              <td className="p-2 text-xs">{p.other_charges ? money(Number(p.other_charges), cur) : '—'}</td>
               <td className="p-2 text-xs">{p.sale_amount != null ? money(Number(p.sale_amount), cur) : '—'}</td>
               <td className="p-2 text-xs font-semibold accent">{p.profit != null ? money(Number(p.profit), cur) : '—'}</td>
               <td className="p-2">
@@ -216,7 +217,7 @@ export default async function FlightSaleDetail({ params, searchParams }: { param
                     <select className="input px-2 py-1 text-xs" name="title" defaultValue={p.title || 'Mr'}>{['Mr','Mrs','Miss','Ms','Master','Mstr','Dr'].map((t) => <option key={t} value={t}>{t}</option>)}</select>
                     <label className="text-[10px] text-slate-400">First name</label><input className="input px-2 py-1 text-xs" name="first_name" defaultValue={p.first_name || p.full_name?.split(' ')[0] || ''} />
                     <label className="text-[10px] text-slate-400">Last name</label><input className="input px-2 py-1 text-xs" name="last_name" defaultValue={p.last_name || (p.full_name || '').split(' ').slice(1).join(' ')} />
-                    <label className="text-[10px] text-slate-400">Ticket amount</label><input className="input px-2 py-1 text-xs" name="ticket_amount" type="number" defaultValue={p.ticket_amount ?? ''} />
+                    <label className="text-[10px] text-slate-400">Cost price (fare + tax)</label><input className="input px-2 py-1 text-xs" name="ticket_amount" type="number" defaultValue={p.ticket_amount ?? ''} />
                     <label className="text-[10px] text-slate-400">Passport no.</label><input className="input px-2 py-1 text-xs" name="passport_no" defaultValue={p.passport_no || ''} />
                     <label className="text-[10px] text-slate-400">Age</label><input className="input px-2 py-1 text-xs" name="age" type="number" defaultValue={p.age || ''} />
                     <label className="text-[10px] text-slate-400">Nationality</label><input className="input px-2 py-1 text-xs" name="nationality" defaultValue={p.nationality || ''} />
@@ -229,6 +230,7 @@ export default async function FlightSaleDetail({ params, searchParams }: { param
                     <label className="text-[10px] text-slate-400">PNR</label><input className="input px-2 py-1 text-xs" name="pnr" defaultValue={p.pnr || ''} />
                     <label className="text-[10px] text-slate-400">Fare</label><input className="input px-2 py-1 text-xs" name="fare" type="number" defaultValue={p.fare ?? ''} />
                     <label className="text-[10px] text-slate-400">Tax</label><input className="input px-2 py-1 text-xs" name="tax" type="number" defaultValue={p.tax ?? ''} />
+                    <label className="text-[10px] text-slate-400">Other charges (ATOL / insurance)</label><input className="input px-2 py-1 text-xs" name="other_charges" type="number" defaultValue={p.other_charges ?? ''} />
                     <label className="text-[10px] text-slate-400">Sale amount</label><input className="input px-2 py-1 text-xs" name="sale_amount" type="number" defaultValue={p.sale_amount ?? ''} />
                     <label className="text-[10px] text-slate-400">Profit</label><input className="input px-2 py-1 text-xs" name="profit" type="number" defaultValue={p.profit ?? ''} />
                   </RowEdit>
@@ -255,6 +257,7 @@ export default async function FlightSaleDetail({ params, searchParams }: { param
           <select className="input" name="gender" defaultValue=""><option value="">Gender</option><option>Male</option><option>Female</option></select>
           <input className="input" name="dob" type="date" placeholder="DOB" />
           <input className="input" name="pnr" placeholder="PNR" />
+          <input className="input" name="other_charges" type="number" placeholder="Other charges (ATOL)" />
           <div className="sm:col-span-6"><SubmitButton className="btn-secondary text-xs">+ Add passenger</SubmitButton></div>
         </form>
       </div>

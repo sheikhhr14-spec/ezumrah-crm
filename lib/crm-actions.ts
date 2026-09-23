@@ -579,7 +579,7 @@ const EDITABLE: Record<string, string[]> = {
   documents: ['title', 'doc_type', 'expiry_date', 'file_url', 'notes'],
   tasks: ['title', 'due_date', 'priority', 'status', 'assigned_to'],
   leads: ['full_name', 'phone', 'whatsapp', 'email', 'country', 'source', 'interest', 'budget', 'assigned_to', 'notes'],
-  flight_sale_passengers: ['title', 'first_name', 'last_name', 'full_name', 'passport_no', 'age', 'nationality', 'ticket_no', 'pax_type', 'gender', 'dob', 'pnr', 'fare', 'tax', 'ticket_amount', 'sale_amount', 'profit'],
+  flight_sale_passengers: ['title', 'first_name', 'last_name', 'full_name', 'passport_no', 'age', 'nationality', 'ticket_no', 'pax_type', 'gender', 'dob', 'pnr', 'fare', 'tax', 'ticket_amount', 'other_charges', 'sale_amount', 'profit'],
   employees: ['full_name', 'email', 'phone', 'designation', 'department', 'join_date', 'monthly_salary'],
   expenses: ['category', 'description', 'amount', 'expense_date', 'payment_method', 'reference'],
   payments: ['amount', 'payment_date', 'method', 'reference', 'notes'],
@@ -640,17 +640,18 @@ await logActivity(aid, table, id, 'updated', 'Edited: ' + allowed.filter((f: str
 
 // ================= FLIGHT SALES (standalone, multi-leg) =================
 async function recomputeSale(db: any, aid: string, saleId: string) {
-  const { data: pax } = await db.from('flight_sale_passengers').select('fare, tax, ticket_amount, sale_amount').eq('agency_id', aid).eq('flight_sale_id', saleId);
+  const { data: pax } = await db.from('flight_sale_passengers').select('fare, tax, ticket_amount, sale_amount, other_charges').eq('agency_id', aid).eq('flight_sale_id', saleId);
   const { data: sale } = await db.from('flight_sales').select('admin_fee, amount_paid, discount, commission, tax').eq('agency_id', aid).eq('id', saleId).single();
   if (!sale) return;
-  const saleTotal = (pax || []).reduce((s: number, p: any) => s + (Number(p.sale_amount) || (Number(p.fare) || 0) + (Number(p.tax) || 0)), 0);
+  const ocTotal = (pax || []).reduce((s: number, p: any) => s + (Number(p.other_charges) || 0), 0);
+  const saleTotal = (pax || []).reduce((s: number, p: any) => s + (Number(p.sale_amount) || (Number(p.fare) || 0) + (Number(p.tax) || 0)), 0) + ocTotal;
   const costTotal = (pax || []).reduce((s: number, p: any) => s + (Number(p.ticket_amount) || (Number(p.fare) || 0) + (Number(p.tax) || 0)), 0);
   const grand = saleTotal + Number(sale.admin_fee) - Number(sale.discount || 0) + Number(sale.tax || 0);
   const paid = Number(sale.amount_paid);
   const paymentStatus = paid <= 0 ? 'unpaid' : paid >= grand ? 'full' : 'partial';
   await db.from('flight_sales').update({
     sale_total: saleTotal, cost_total: costTotal, payment_status: paymentStatus,
-    balance: grand - paid, profit: grand + Number(sale.commission || 0) - costTotal,
+    balance: grand - paid, profit: grand + Number(sale.commission || 0) - costTotal - ocTotal,
     updated_at: new Date().toISOString(),
   }).eq('id', saleId);
 }
@@ -700,14 +701,14 @@ export async function createFlightSale(fd: FormData) {
       nationality: str(fd, `pax_nat_${i}`), ticket_no: str(fd, `pax_ticket_${i}`), is_lead: i === 0,
       pax_type: str(fd, `pax_type_${i}`), gender: str(fd, `pax_gender_${i}`),
       dob: str(fd, `pax_dob_${i}`) || null, pnr: str(fd, `pax_pnr_${i}`),
-      fare: num(fd, `pax_fare_${i}`) || null, tax: num(fd, `pax_ptax_${i}`) || null,
+      fare: num(fd, `pax_fare_${i}`) || null, tax: num(fd, `pax_ptax_${i}`) || null, other_charges: num(fd, `pax_oc_${i}`) || null,
       ticket_amount: (num(fd, `pax_tamt_${i}`) || num(fd, `pax_fare_${i}`) + num(fd, `pax_ptax_${i}`)) || null,
       sale_amount: (num(fd, `pax_samt_${i}`) || num(fd, `pax_fare_${i}`) + num(fd, `pax_ptax_${i}`)) || null,
       profit: ((num(fd, `pax_samt_${i}`) || num(fd, `pax_fare_${i}`) + num(fd, `pax_ptax_${i}`)) - (num(fd, `pax_tamt_${i}`) || num(fd, `pax_fare_${i}`) + num(fd, `pax_ptax_${i}`))) || null,
     });
   }
   const paxTicketJoin = paxList.map((p) => p.ticket_no).filter(Boolean).join(', ');
-  const saleTotal = paxList.reduce((s, p) => s + Number(p.sale_amount || 0), 0);
+  const saleTotal = paxList.reduce((s, p) => s + Number(p.sale_amount || 0), 0) + paxList.reduce((s, p) => s + Number(p.other_charges || 0), 0);
   const costTotal = paxList.reduce((s, p) => s + Number(p.ticket_amount || 0), 0);
   const taxV = num(fd, 'tax');
   const grand = saleTotal + adminFee - discount + taxV;
@@ -727,7 +728,7 @@ export async function createFlightSale(fd: FormData) {
     payment_status: paymentStatus,     fare_basis: str(fd, 'fare_basis'), source: str(fd, 'source'), tags: str(fd, 'tags'), follow_up_date: str(fd, 'follow_up_date') || null,
   notes: str(fd, 'notes'),
     status: str(fd, 'status') || 'confirmed',
-    balance: grand - amountPaid, profit: grand + commission - costTotal,
+    balance: grand - amountPaid, profit: grand + commission - costTotal - paxList.reduce((s, p) => s + Number(p.other_charges || 0), 0),
   }).select('id').single();
   if (paxList.length) {
     await db.from('flight_sale_passengers').insert(paxList.map((p) => ({ ...p, flight_sale_id: sale!.id })));
@@ -1599,7 +1600,7 @@ export async function addFlightPassenger(fd: FormData) {
   if (!name) throw new Error('Passenger name is required.');
   await db.from('flight_sale_passengers').insert({
     agency_id: aid, flight_sale_id: saleId,
-    title: str(fd, 'title'), full_name: name, first_name: first, last_name: last, ticket_amount: num(fd, 'ticket_amount') || null, passport_no: str(fd, 'passport_no'),
+    title: str(fd, 'title'), full_name: name, first_name: first, last_name: last, ticket_amount: num(fd, 'ticket_amount') || null, other_charges: num(fd, 'other_charges') || null, passport_no: str(fd, 'passport_no'),
     age: num(fd, 'age') || null, nationality: str(fd, 'nationality'), ticket_no: str(fd, 'ticket_no'), is_lead: false,
     pax_type: str(fd, 'pax_type'), gender: str(fd, 'gender'), dob: str(fd, 'dob') || null, pnr: str(fd, 'pnr'),
   });
