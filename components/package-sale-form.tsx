@@ -29,6 +29,7 @@ export default function PackageSaleForm({ category, customers, currency, taxRate
   currency?: string | null; taxRate?: number;
 }) {
   const sym = curSym(currency);
+  const symPad = sym.length <= 1 ? '2rem' : sym.length === 2 ? '2.6rem' : sym.length === 3 ? '3.3rem' : '3.8rem';
   const cur = currency;
   const [pax, setPax] = useState<Pax[]>([emptyPax()]);
   const [legs, setLegs] = useState<Leg[]>([]);
@@ -210,22 +211,22 @@ export default function PackageSaleForm({ category, customers, currency, taxRate
       <p className={SECT}>{category === 'tour' ? '7' : '8'} · Price summary</p>
       <div className="grid gap-3 sm:grid-cols-4">
         <label className="block"><span className="text-xs font-semibold text-slate-600">Package price per person</span>
-          <div className="relative"><span className="pointer-events-none absolute left-2 top-1/2 -translate-y-1/2 text-[10px] font-bold accent">{sym}</span><input className="input pl-9" name="price_per_person" type="number" step="0.01" value={money.perPerson} onChange={set('perPerson')} /></div></label>
+          <div className="relative"><span className="pointer-events-none absolute left-2 top-1/2 -translate-y-1/2 whitespace-nowrap text-[10px] font-bold accent">{sym}</span><input className="input" style={{ paddingLeft: symPad }} name="price_per_person" type="number" step="0.01" value={money.perPerson} onChange={set('perPerson')} /></div></label>
         <label className="block"><span className="text-xs font-semibold text-slate-600">Separate-room supplement (+)</span>
-          <div className="relative"><span className="pointer-events-none absolute left-2 top-1/2 -translate-y-1/2 text-[10px] font-bold accent">{sym}</span><input className="input pl-9" name="supplement" type="number" step="0.01" value={money.supp} onChange={set('supp')} /></div></label>
+          <div className="relative"><span className="pointer-events-none absolute left-2 top-1/2 -translate-y-1/2 whitespace-nowrap text-[10px] font-bold accent">{sym}</span><input className="input" style={{ paddingLeft: symPad }} name="supplement" type="number" step="0.01" value={money.supp} onChange={set('supp')} /></div></label>
         <label className="block"><span className="text-xs font-semibold text-slate-600">Admin fee</span>
-          <div className="relative"><span className="pointer-events-none absolute left-2 top-1/2 -translate-y-1/2 text-[10px] font-bold accent">{sym}</span><input className="input pl-9" name="admin_fee" type="number" step="0.01" value={money.fee} onChange={set('fee')} /></div></label>
+          <div className="relative"><span className="pointer-events-none absolute left-2 top-1/2 -translate-y-1/2 whitespace-nowrap text-[10px] font-bold accent">{sym}</span><input className="input" style={{ paddingLeft: symPad }} name="admin_fee" type="number" step="0.01" value={money.fee} onChange={set('fee')} /></div></label>
         <label className="block"><span className="text-xs font-semibold text-slate-600">Discount (-)</span>
-          <div className="relative"><span className="pointer-events-none absolute left-2 top-1/2 -translate-y-1/2 text-[10px] font-bold accent">{sym}</span><input className="input pl-9" name="discount" type="number" step="0.01" value={money.discount} onChange={set('discount')} /></div></label>
+          <div className="relative"><span className="pointer-events-none absolute left-2 top-1/2 -translate-y-1/2 whitespace-nowrap text-[10px] font-bold accent">{sym}</span><input className="input" style={{ paddingLeft: symPad }} name="discount" type="number" step="0.01" value={money.discount} onChange={set('discount')} /></div></label>
           <label className="block"><span className="text-xs font-semibold text-slate-600">Tax / VAT ({taxRate || 0}% auto)</span>
-            <div className="relative"><span className="pointer-events-none absolute left-2 top-1/2 -translate-y-1/2 text-[10px] font-bold accent">{sym}</span><input className="input pl-9" name="tax" type="number" step="0.01" value={money.tax} onChange={set('tax')} placeholder={String(Math.round(taxAuto * 100) / 100)} /></div>
+            <div className="relative"><span className="pointer-events-none absolute left-2 top-1/2 -translate-y-1/2 whitespace-nowrap text-[10px] font-bold accent">{sym}</span><input className="input" style={{ paddingLeft: symPad }} name="tax" type="number" step="0.01" value={money.tax} onChange={set('tax')} placeholder={String(Math.round(taxAuto * 100) / 100)} /></div>
           </label>
         <label className="block"><span className="text-xs font-semibold text-slate-600">Total cost to us</span>
-          <div className="relative"><span className="pointer-events-none absolute left-2 top-1/2 -translate-y-1/2 text-[10px] font-bold accent">{sym}</span><input className="input pl-9" name="cost" type="number" step="0.01" value={money.cost} onChange={set('cost')} /></div></label>
+          <div className="relative"><span className="pointer-events-none absolute left-2 top-1/2 -translate-y-1/2 whitespace-nowrap text-[10px] font-bold accent">{sym}</span><input className="input" style={{ paddingLeft: symPad }} name="cost" type="number" step="0.01" value={money.cost} onChange={set('cost')} /></div></label>
         <label className="block"><span className="text-xs font-semibold text-slate-600">Supplier commission (+)</span>
-          <div className="relative"><span className="pointer-events-none absolute left-2 top-1/2 -translate-y-1/2 text-[10px] font-bold accent">{sym}</span><input className="input pl-9" name="commission" type="number" step="0.01" value={money.commission} onChange={set('commission')} /></div></label>
+          <div className="relative"><span className="pointer-events-none absolute left-2 top-1/2 -translate-y-1/2 whitespace-nowrap text-[10px] font-bold accent">{sym}</span><input className="input" style={{ paddingLeft: symPad }} name="commission" type="number" step="0.01" value={money.commission} onChange={set('commission')} /></div></label>
         <label className="block"><span className="text-xs font-semibold text-slate-600">Amount paid</span>
-          <div className="relative"><span className="pointer-events-none absolute left-2 top-1/2 -translate-y-1/2 text-[10px] font-bold accent">{sym}</span><input className="input pl-9" name="amount_paid" type="number" step="0.01" value={money.paid} onChange={set('paid')} /></div></label>
+          <div className="relative"><span className="pointer-events-none absolute left-2 top-1/2 -translate-y-1/2 whitespace-nowrap text-[10px] font-bold accent">{sym}</span><input className="input" style={{ paddingLeft: symPad }} name="amount_paid" type="number" step="0.01" value={money.paid} onChange={set('paid')} /></div></label>
         <label className="block"><span className="text-xs font-semibold text-slate-600">Payment method</span>
           <select className="input" name="payment_method">
             <option value="">— none yet —</option><option value="cash">Cash</option>

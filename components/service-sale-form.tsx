@@ -16,6 +16,7 @@ export default function ServiceSaleForm({
 }: { table: string; fields: SvcField[]; customers: { id: string; full_name: string }[]; currency?: string | null; taxRate?: number }) {
   const cur = currency;
   const sym = curSym(currency);
+  const symPad = sym.length <= 1 ? '2rem' : sym.length === 2 ? '2.6rem' : sym.length === 3 ? '3.3rem' : '3.8rem';
   const [useExisting, setUseExisting] = useState(false);
   const [dates, setDates] = useState({ ci: '', co: '' });
   const hasStay = fields.some((f) => f.name === 'check_in') && fields.some((f) => f.name === 'check_out');
@@ -138,8 +139,8 @@ export default function ServiceSaleForm({
                     <input className="input" placeholder="Driver name" value={x.driver_name} onChange={up(i, 'driver_name')} name={`extra_driver_${i}`} />
                     <input className="input" placeholder="Driver phone" value={x.driver_phone} onChange={up(i, 'driver_phone')} name={`extra_phone_${i}`} />
                   </>)}
-                  <div className="relative"><span className="pointer-events-none absolute left-2 top-1/2 -translate-y-1/2 text-[10px] font-bold accent">{sym}</span><input className="input pl-9" type="number" step="0.01" placeholder={`Sale price${cur ? ' (' + cur + ')' : ''}`} value={x.sale_price} onChange={up(i, 'sale_price')} name={`extra_sale_price_${i}`} /></div>
-                  <div className="relative"><span className="pointer-events-none absolute left-2 top-1/2 -translate-y-1/2 text-[10px] font-bold accent">{sym}</span><input className="input pl-9" type="number" step="0.01" placeholder="Our cost" value={x.cost} onChange={up(i, 'cost')} name={`extra_cost_${i}`} /></div>
+                  <div className="relative"><span className="pointer-events-none absolute left-2 top-1/2 -translate-y-1/2 whitespace-nowrap text-[10px] font-bold accent">{sym}</span><input className="input" style={{ paddingLeft: symPad }} type="number" step="0.01" placeholder={`Sale price${cur ? ' (' + cur + ')' : ''}`} value={x.sale_price} onChange={up(i, 'sale_price')} name={`extra_sale_price_${i}`} /></div>
+                  <div className="relative"><span className="pointer-events-none absolute left-2 top-1/2 -translate-y-1/2 whitespace-nowrap text-[10px] font-bold accent">{sym}</span><input className="input" style={{ paddingLeft: symPad }} type="number" step="0.01" placeholder="Our cost" value={x.cost} onChange={up(i, 'cost')} name={`extra_cost_${i}`} /></div>
                 </div>
               </div>
             ))}
@@ -174,9 +175,11 @@ function L({ label, name }: { label: string; name: string }) {
 
 function M({ label, k, money, set, sym }: { label: string; k: string; money: any; set: (k: string, v: string) => void; sym?: string }) {
   const name = k === 'paid' ? 'amount_paid' : k;
+  const s2 = sym || '';
+  const symPad = s2.length <= 1 ? '2rem' : s2.length === 2 ? '2.6rem' : s2.length === 3 ? '3.3rem' : '3.8rem';
   return (
     <label className="block"><span className="text-xs font-semibold text-slate-600">{label}</span>
-      <div className="relative"><span className="pointer-events-none absolute left-2 top-1/2 -translate-y-1/2 text-[10px] font-bold accent">{sym}</span><input className="input pl-9" name={name} type="number" step="0.01" value={money[k]} onChange={(e) => set(k, e.target.value)} /></div>
+      <div className="relative"><span className="pointer-events-none absolute left-2 top-1/2 -translate-y-1/2 whitespace-nowrap text-[10px] font-bold accent">{sym}</span><input className="input" style={{ paddingLeft: symPad }} name={name} type="number" step="0.01" value={money[k]} onChange={(e) => set(k, e.target.value)} /></div>
     </label>
   );
 }
