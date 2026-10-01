@@ -211,24 +211,225 @@ export async function createInvoice(fd: FormData) {
 }
 
 // ---------- QUOTATIONS ----------
+async function recomputeQuotation(db: any, aid: string, id: string) {
+  const { data: items } = await db.from('quotation_items').select('amount').eq('agency_id', aid).eq('quotation_id', id);
+  const subtotal = (items || []).reduce((s: number, it: any) => s + (Number(it.amount) || 0), 0);
+  const { data: q } = await db.from('quotations').select('discount, tax_amount').eq('id', id).single();
+  const total = subtotal - (Number(q?.discount) || 0) + (Number(q?.tax_amount) || 0);
+  await db.from('quotations').update({ subtotal, total }).eq('id', id);
+}
+
 export async function createQuotation(fd: FormData) {
   const db = createAdminClient();
   const aid = await agencyId();
   const count = await db.from('quotations').select('id', { count: 'exact', head: true }).eq('agency_id', aid);
   const no = `QT-${new Date().getFullYear()}-${String((count.count || 0) + 1).padStart(4, '0')}`;
-  await db.from('quotations').insert({
+  const { data: q } = await db.from('quotations').insert({
     agency_id: aid,
     quote_no: no,
-    customer_id: str(fd, 'customer_id'),
-    valid_until: str(fd, 'valid_until'),
+    title: str(fd, 'title') || null,
+    customer_id: str(fd, 'customer_id') || null,
+    valid_until: str(fd, 'valid_until') || null,
     status: str(fd, 'status') || 'draft',
-    subtotal: num(fd, 'subtotal'),
-    tax_amount: num(fd, 'tax_amount'),
-    total: num(fd, 'subtotal', 0) + num(fd, 'tax_amount', 0),
+    discount: num(fd, 'discount') || 0,
+    tax_amount: num(fd, 'tax_amount') || 0,
     currency: str(fd, 'currency') || 'USD',
-    notes: str(fd, 'notes'),
-  });
+    notes: str(fd, 'notes') || null,
+    terms: str(fd, 'terms') || null,
+  }).select('id').single();
+  const rows: Record<string, unknown>[] = [];
+  for (let i = 0; i < 50; i++) {
+    const d = str(fd, `qi_desc_${i}`);
+    if (!d) continue;
+    const qty = num(fd, `qi_qty_${i}`) || 1;
+    const unit = num(fd, `qi_unit_${i}`) || 0;
+    rows.push({ agency_id: aid, quotation_id: q!.id, description: d, quantity: qty, unit_price: unit, amount: Math.round(qty * unit * 100) / 100 });
+  }
+  if (rows.length) await db.from('quotation_items').insert(rows);
+  await recomputeQuotation(db, aid, q!.id);
   revalidatePath('/dashboard/quotations');
+}
+
+export async function updateQuotationItem(fd: FormData) {
+  const db = createAdminClient();
+  const aid = await agencyId();
+  const id = String(fd.get('item_id'));
+  const qid = String(fd.get('quotation_id'));
+  const { data: rec } = await db.from('quotation_items').select('id, agency_id').eq('id', id).single();
+  if (!rec || rec.agency_id !== aid) throw new Error('Item not found in your agency.');
+  const qty = num(fd, 'quantity') || 1;
+  const unit = num(fd, 'unit_price') || 0;
+  await db.from('quotation_items').update({
+    description: str(fd, 'description'), quantity: qty, unit_price: unit, amount: Math.round(qty * unit * 100) / 100,
+  }).eq('id', id);
+  await recomputeQuotation(db, aid, qid);
+  revalidatePath(`/dashboard/quotations/${qid}`);
+}
+
+export async function addQuotationItem(fd: FormData) {
+  const db = createAdminClient();
+  const aid = await agencyId();
+  const qid = String(fd.get('quotation_id'));
+  const { data: rec } = await db.from('quotations').select('id, agency_id').eq('id', qid).single();
+  if (!rec || rec.agency_id !== aid) throw new Error('Quotation not found in your agency.');
+  const qty = num(fd, 'quantity') || 1;
+  const unit = num(fd, 'unit_price') || 0;
+  await db.from('quotation_items').insert({
+    agency_id: aid, quotation_id: qid, description: str(fd, 'description') || 'Service',
+    quantity: qty, unit_price: unit, amount: Math.round(qty * unit * 100) / 100,
+  });
+  await recomputeQuotation(db, aid, qid);
+  revalidatePath(`/dashboard/quotations/${qid}`);
+}
+
+export async function deleteQuotationItem(fd: FormData) {
+  const db = createAdminClient();
+  const aid = await agencyId();
+  const id = String(fd.get('item_id'));
+  const qid = String(fd.get('quotation_id'));
+  const { data: rec } = await db.from('quotation_items').select('id, agency_id').eq('id', id).single();
+  if (!rec || rec.agency_id !== aid) throw new Error('Item not found in your agency.');
+  await db.from('quotation_items').delete().eq('id', id);
+  await recomputeQuotation(db, aid, qid);
+  revalidatePath(`/dashboard/quotations/${qid}`);
+}
+
+export async function updateQuotationMeta(fd: FormData) {
+  const db = createAdminClient();
+  const aid = await agencyId();
+  const id = String(fd.get('id'));
+  const { data: rec } = await db.from('quotations').select('id, agency_id').eq('id', id).single();
+  if (!rec || rec.agency_id !== aid) throw new Error('Quotation not found in your agency.');
+  await db.from('quotations').update({
+    title: str(fd, 'title') || null,
+    valid_until: str(fd, 'valid_until') || null,
+    status: str(fd, 'status') || 'draft',
+    discount: num(fd, 'discount') || 0,
+    tax_amount: num(fd, 'tax_amount') || 0,
+    notes: str(fd, 'notes') || null,
+    terms: str(fd, 'terms') || null,
+  }).eq('id', id);
+  await recomputeQuotation(db, aid, id);
+  revalidatePath(`/dashboard/quotations/${id}`);
+  revalidatePath('/dashboard/quotations');
+}
+
+export async function setQuotationStatus(fd: FormData) {
+  const db = createAdminClient();
+  const aid = await agencyId();
+  const id = String(fd.get('id'));
+  const status = String(fd.get('status'));
+  const { data: rec } = await db.from('quotations').select('id, agency_id').eq('id', id).single();
+  if (!rec || rec.agency_id !== aid) throw new Error('Quotation not found in your agency.');
+  await db.from('quotations').update({ status }).eq('id', id);
+  revalidatePath(`/dashboard/quotations/${id}`);
+  revalidatePath('/dashboard/quotations');
+}
+
+export async function convertQuotationToInvoice(fd: FormData) {
+  const db = createAdminClient();
+  const ctx = await requireActiveAgency();
+  const aid = ctx.profile.agency_id!;
+  const id = String(fd.get('id'));
+  const { data: q } = await db.from('quotations').select('*').eq('id', id).eq('agency_id', aid).single();
+  if (!q) throw new Error('Quotation not found.');
+  const { data: items } = await db.from('quotation_items').select('*').eq('quotation_id', id);
+  const count = await db.from('invoices').select('id', { count: 'exact', head: true }).eq('agency_id', aid);
+  const no = `INV-${new Date().getFullYear()}-${String((count.count || 0) + 1).padStart(4, '0')}`;
+  const { data: inv } = await db.from('invoices').insert({
+    agency_id: aid, invoice_no: no, customer_id: q.customer_id,
+    issue_date: new Date().toISOString().slice(0, 10), due_date: q.valid_until,
+    status: 'unpaid', subtotal: q.subtotal, tax_amount: q.tax_amount, total: q.total,
+    currency: q.currency, notes: `From quotation ${q.quote_no}${q.title ? ' — ' + q.title : ''}`,
+  }).select('id').single();
+  if (items?.length) {
+    await db.from('invoice_items').insert((items as any[]).map((it) => ({
+      agency_id: aid, invoice_id: inv!.id, description: it.description, quantity: it.quantity, unit_price: it.unit_price, amount: it.amount,
+    })));
+  }
+  await db.from('quotations').update({ status: 'accepted' }).eq('id', id);
+  revalidatePath('/dashboard/invoices');
+  revalidatePath(`/dashboard/quotations/${id}`);
+  redirect('/dashboard/invoices');
+}
+
+export async function sendQuotationEmail(fd: FormData) {
+  const db = createAdminClient();
+  const ctx = await requireActiveAgency();
+  const aid = ctx.profile.agency_id!;
+  const id = String(fd.get('id'));
+  const { data: q } = await db.from('quotations').select('*, customers(full_name, email)').eq('id', id).eq('agency_id', aid).single();
+  if (!q) throw new Error('Quotation not found.');
+  const cust: any = q.customers || {};
+  if (!cust.email) throw new Error('This customer has no email address.');
+  const { data: items } = await db.from('quotation_items').select('*').eq('agency_id', aid).eq('quotation_id', id).order('created_at');
+  const { sendAgencyEmail, invoiceHtml } = await import('@/lib/email');
+  const cur = (ctx as any).agency?.currency || 'USD';
+  const money2 = (n: any) => `${cur} ${Number(n || 0).toFixed(2)}`;
+  const rows: [string, string][] = [
+    ['Quotation', q.quote_no],
+    ['Service', q.title || '—'],
+    ['Valid until', q.valid_until || '—'],
+    ['Status', String(q.status || 'draft').toUpperCase()],
+  ];
+  const lines = (items || []).map((it: any) => `${it.quantity} x ${it.description} — ${money2(it.amount)}`);
+  const totals: [string, string][] = [['Subtotal', money2(q.subtotal)]];
+  if (Number(q.discount)) totals.push(['Discount', '-' + money2(q.discount)]);
+  if (Number(q.tax_amount)) totals.push(['Tax', money2(q.tax_amount)]);
+  totals.push(['Total', money2(q.total)]);
+  const html = invoiceHtml({
+    title: 'Quotation', ref: q.quote_no, agencyName: (ctx as any).agency?.name || 'Agency',
+    agencyLogo: (ctx as any).agency?.logo_url || null,
+    meta: `Valid until: ${q.valid_until || 'until cancelled'}`,
+    rows, lines, totals,
+    note: [q.terms, q.notes].filter(Boolean).join('\n') || undefined,
+  });
+  await sendAgencyEmail(aid, { to: cust.email, subject: `Quotation ${q.quote_no} from ${(ctx as any).agency?.name || 'our agency'}`, html });
+  if (q.status === 'draft') await db.from('quotations').update({ status: 'sent' }).eq('id', id);
+  redirect(`/dashboard/quotations/${id}?emailed=ok`);
+}
+
+export async function submitVisaToNusuk(fd: FormData) {
+  const db = createAdminClient();
+  const ctx = await requireActiveAgency();
+  const aid = ctx.profile.agency_id!;
+  const id = String(fd.get('id'));
+  const { data: r } = await db.from('visa_sales').select('*, customers(full_name, passport_no, nationality, country, date_of_birth, gender)').eq('id', id).eq('agency_id', aid).single();
+  if (!r) throw new Error('Visa sale not found.');
+  const c: any = r.customers || {};
+  if (!c.full_name || !c.passport_no) throw new Error('Customer name and passport number are required to submit to Nusuk.');
+  const { submitUmrahVisa } = await import('@/lib/nusuk');
+  const res = await submitUmrahVisa(db, aid, {
+    applicantName: c.full_name,
+    passportNo: c.passport_no,
+    nationality: c.nationality || c.country || '',
+    dob: c.date_of_birth,
+    gender: c.gender,
+    visaType: r.visa_type || 'umrah',
+    sponsorName: r.sponsor_name,
+    insurance: !!r.insurance,
+    reference: r.ref,
+  });
+  await db.from('visa_sales').update({
+    nusuk_ref: res.ref, nusuk_status: res.status, nusuk_submitted_at: new Date().toISOString(),
+  }).eq('id', id);
+  revalidatePath(`/dashboard/visa-sales/${id}`);
+}
+
+export async function syncNusukVisaStatus(fd: FormData) {
+  const db = createAdminClient();
+  const ctx = await requireActiveAgency();
+  const aid = ctx.profile.agency_id!;
+  const id = String(fd.get('id'));
+  const { data: r } = await db.from('visa_sales').select('nusuk_ref').eq('id', id).eq('agency_id', aid).single();
+  if (!r?.nusuk_ref) throw new Error('This visa has not been submitted to Nusuk yet.');
+  const { getNusukVisaStatus } = await import('@/lib/nusuk');
+  const res = await getNusukVisaStatus(db, aid, r.nusuk_ref);
+  const patch: Record<string, unknown> = { nusuk_status: res.status };
+  if (res.visaNo) patch.visa_no = res.visaNo;
+  if (res.status === 'issued') { patch.processing_status = 'issued'; patch.issued_date = new Date().toISOString().slice(0, 10); }
+  await db.from('visa_sales').update(patch).eq('id', id);
+  revalidatePath(`/dashboard/visa-sales/${id}`);
 }
 
 // ---------- DOCUMENTS ----------
@@ -575,7 +776,7 @@ const EDITABLE: Record<string, string[]> = {
   visas: ['visa_type', 'application_date', 'visa_no', 'status', 'notes', 'amount', 'customer_id'],
   transports: ['transport_type', 'from_location', 'to_location', 'transport_date', 'transport_time', 'vehicle_type', 'seats', 'driver_name', 'driver_phone', 'status', 'amount', 'customer_id'],
   invoices: ['issue_date', 'due_date', 'subtotal', 'tax_amount', 'total', 'status', 'notes'],
-  quotations: ['valid_until', 'status', 'subtotal', 'tax_amount', 'notes'],
+  quotations: ['title', 'valid_until', 'status', 'discount', 'tax_amount', 'notes', 'terms'],
   documents: ['title', 'doc_type', 'expiry_date', 'file_url', 'notes'],
   tasks: ['title', 'due_date', 'priority', 'status', 'assigned_to'],
   leads: ['full_name', 'phone', 'whatsapp', 'email', 'country', 'source', 'interest', 'budget', 'assigned_to', 'notes'],
@@ -1270,6 +1471,10 @@ export async function updateAgencySettings(fd: FormData) {
   }
   if (fd.get('smtp_port') !== null) patch.smtp_port = num(fd, 'smtp_port');
   if (fd.get('smtp_secure') !== null) patch.smtp_secure = fd.get('smtp_secure') === 'true';
+  for (const f of ['nusuk_api_url', 'nusuk_api_key']) {
+    if (fd.get(f) !== null) patch[f] = str(fd, f) || null;
+  }
+  if (fd.get('nusuk_enabled') !== null) patch.nusuk_enabled = fd.get('nusuk_enabled') === 'on';
   if (fd.get('remove_logo') === 'true') patch.logo_url = null;
   patch.staff_privacy = fd.get('staff_privacy') === 'on';
   if (patch.tax_rate !== undefined && patch.tax_rate !== null && patch.tax_rate !== '') patch.tax_rate = Number(patch.tax_rate);

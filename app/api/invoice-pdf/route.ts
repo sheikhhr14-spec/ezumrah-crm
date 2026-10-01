@@ -36,6 +36,7 @@ export async function GET(req: Request) {
   let total = 0;
   let paid: number | null = null;
   let extraNote = '';
+  let termsText = '';
   let itinerary: any[] = [];
   let leadPax: any = null;
 
@@ -79,9 +80,15 @@ export async function GET(req: Request) {
     ref = q.quote_no; docTitle = 'QUOTATION';
     dateStr = (q.created_at || '').slice(0, 10) || dateStr;
     if (q.customer_id) customer = (await db.from('customers').select('*').eq('id', q.customer_id).maybeSingle()).data;
-    const { data: lines } = await db.from('quotation_items').select('*').eq('agency_id', aid).eq('quotation_id', q.id);
+    if (customer) (customer as any).country = q.title || 'Service quotation';
+    else customer = { full_name: q.title || 'Quotation', country: '', phone: '' };
+    const { data: lines } = await db.from('quotation_items').select('*').eq('agency_id', aid).eq('quotation_id', q.id).order('created_at');
     items = (lines || []).map((l: any) => ({ desc: l.description, qty: String(l.quantity), unit: Number(l.unit_price).toFixed(2), amount: Number(l.amount) }));
+    if (Number(q.discount)) items.push({ desc: 'Discount', qty: '1', unit: '', amount: -Number(q.discount) });
+    if (Number(q.tax_amount)) items.push({ desc: 'Tax / VAT', qty: '1', unit: '', amount: Number(q.tax_amount) });
     total = Number(q.total) || 0;
+    extraNote = `Valid until: ${q.valid_until || 'until cancelled'} · Status: ${String(q.status || 'draft').toUpperCase()}`;
+    if (q.terms) termsText = String(q.terms);
   } else if (type === 'invoice') {
     const inv = await one('invoices');
     if (!inv) return new Response('Not found', { status: 404 });
@@ -91,6 +98,7 @@ export async function GET(req: Request) {
       const b = (await db.from('bookings').select('customer_id').eq('id', inv.booking_id).maybeSingle()).data as any;
       if (b?.customer_id) customer = (await db.from('customers').select('*').eq('id', b.customer_id).maybeSingle()).data;
     }
+    if (!customer && (inv as any).customer_id) customer = (await db.from('customers').select('*').eq('id', (inv as any).customer_id).maybeSingle()).data;
     const { data: lines } = await db.from('invoice_items').select('*').eq('agency_id', aid).eq('invoice_id', inv.id);
     items = (lines || []).map((l: any) => ({ desc: l.description, qty: String(l.quantity), unit: Number(l.unit_price).toFixed(2), amount: Number(l.amount) }));
     if (!items.length) items.push({ desc: 'Services as agreed', qty: '1', unit: '', amount: Number(inv.subtotal) || 0 });
@@ -277,6 +285,21 @@ export async function GET(req: Request) {
       y -= 16;
       if (y < 110) break;
     }
+  }
+
+  if (termsText) {
+    let ty = 108;
+    const words = String(termsText).replace(/\s+/g, ' ').split(' ');
+    let line = '';
+    for (const w of words) {
+      if (font.widthOfTextAtSize(line + w, 8) > 500) {
+        page.drawText(clean(line), { x: 40, y: ty, size: 8, font, color: GRAY });
+        ty -= 11;
+        if (ty < 82) break;
+        line = w + ' ';
+      } else line += w + ' ';
+    }
+    if (line.trim() && ty >= 82) page.drawText(clean(line), { x: 40, y: ty, size: 8, font, color: GRAY });
   }
 
   const footMain = type === 'saas' ? 'EzUmrah CRM — by EzTechify' : (agency.name || 'Agency');

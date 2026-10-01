@@ -79,6 +79,17 @@ export default async function SettingsPage() {
         </form>
       </div>
 
+      <div className="card p-5">
+        <h2 className="mb-1 text-lg font-semibold">🕌 Nusuk API (Umrah visa)</h2>
+        <p className="mb-4 text-xs text-slate-400">Connect the Saudi Ministry of Hajj & Umrah (Nusuk) visa API to submit Umrah visa applications and sync their status from the Visa Sales module. API credentials are issued to licensed agents via the Nusuk partner portal.</p>
+        <form action={updateAgencySettings} className="grid gap-4 sm:grid-cols-3">
+          <L label="API gateway URL" name="nusuk_api_url" def={a.nusuk_api_url} ph="https://api.nusuk.sa/partner" />
+          <L label="API key" name="nusuk_api_key" def={a.nusuk_api_key} type="password" />
+          <label className="flex items-end gap-2 pb-2"><input type="checkbox" name="nusuk_enabled" defaultChecked={a.nusuk_enabled} className="h-4 w-4 accent-[var(--gold)]" /><span className="text-xs font-semibold text-slate-600">Enable Nusuk integration</span></label>
+          <div className="flex items-end"><SubmitButton pendingText="Saving…" className="btn-primary">Save Nusuk settings</SubmitButton></div>
+        </form>
+      </div>
+
     </div>
   );
 }

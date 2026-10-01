@@ -7,10 +7,11 @@ export const metadata = {
     'All-in-one CRM for Umrah and Hajj travel agencies worldwide: flight, hotel, visa, transport and ziyarat sales, packages, bookings calendar, leads, invoicing, documents, reports and multi-branch management.',
   keywords: [
     'Umrah CRM', 'Hajj CRM', 'Umrah travel agency software', 'Hajj operator software', 'Umrah booking system',
+    'Nusuk visa API', 'Umrah visa management', 'Hajj group management', 'travel agency CRM',
     'Saudi Arabia', 'UAE', 'Pakistan', 'India', 'Bangladesh', 'Indonesia', 'Malaysia', 'Turkey', 'Egypt',
     'United Kingdom', 'USA', 'Canada', 'Australia', 'Germany', 'France', 'Netherlands', 'Spain', 'Italy',
     'Kuwait', 'Qatar', 'Bahrain', 'Oman', 'Jordan', 'Morocco', 'Algeria', 'Tunisia', 'Nigeria', 'Kenya',
-    'South Africa', 'Sri Lanka', 'Philippines', 'Umrah visa management', 'Hajj group management',
+    'South Africa', 'Sri Lanka', 'Philippines',
   ],
   openGraph: {
     title: 'EzUmrah CRM — Run your Umrah & Hajj agency end to end',
@@ -19,26 +20,97 @@ export const metadata = {
   },
 };
 
-const FEATURES = [
-  { icon: '✈️', title: 'Flight sales', text: 'Multi-leg itineraries, passenger lists, PNR and ticket tracking, cost and profit per passenger.' },
-  { icon: '🏨', title: 'Hotel sales', text: 'Room bookings with supplier cost, sale price, commission and automatic profit math.' },
-  { icon: '🛂', title: 'Visa sales', text: 'Visa processing pipeline with document checks, visa numbers and status tracking.' },
-  { icon: '🚌', title: 'Transport & ziyarat', text: 'Vehicle types, seat layouts and ziyarat tours from city to city.' },
-  { icon: '🕋', title: 'Umrah & Hajj sales', text: 'Dedicated modules for Umrah and Hajj groups with passenger manifests and package pricing.' },
-  { icon: '🌍', title: 'Tour sales', text: 'Holiday and tour packages with per-person pricing and passenger management.' },
-  { icon: '📦', title: 'Packages', text: 'Build reusable packages with inclusions, pricing and validity, then sell from them.' },
-  { icon: '🎯', title: 'Leads & customers', text: 'Capture leads from every source, assign staff, convert to customers and track every touch.' },
-  { icon: '📅', title: 'Bookings calendar', text: 'See departures, arrivals and follow-ups across your whole agency in one calendar.' },
-  { icon: '💰', title: 'Invoices & quotations', text: 'Professional PDF invoices with your agency branding, email delivery, quotations and balance tracking.' },
-  { icon: '🔐', title: 'Roles & permissions', text: 'Owner, manager and staff roles with per-user module access. Audit log visible to the owner only.' },
-  { icon: '⚙️', title: 'Your brand, your rules', text: 'Custom agency colors and logo, own SMTP email, currency, timezone and tax regional settings.' },
+const MODULES = [
+  {
+    icon: '✈️', title: 'Flight sales', tag: 'Ticketing desk',
+    text: 'Record every flight sale the way a ticketing desk actually works: multi-leg itineraries, full passenger manifests and money that adds up by itself.',
+    points: [
+      'Multi-leg itineraries with airline, flight number, airports, cabin and baggage',
+      'Passenger manifests: passport, DOB with auto-age, PNR, ticket number, pax type (ADT / CHD / INF)',
+      'Per-passenger Fare, Tax and Other charges roll up into Cost amount automatically',
+      'Profit per passenger and per sale, with commission, discount and admin fee',
+      'Payment tracking: paid, balance, due date and payment status per sale',
+      'Branded PDF invoice + email delivery in one click',
+    ],
+  },
+  {
+    icon: '🏨', title: 'Hotel sales', tag: 'Hotel desk',
+    text: 'Book Makkah and Madinah hotels with full stay details and instant margin math.',
+    points: [
+      'Hotel, city, check-in / check-out, nights and room counts',
+      'Supplier cost vs sale price with commission on top',
+      'Extra stays on the same sale for split-city itineraries',
+      'Balance and payment status tracking with due dates',
+    ],
+  },
+  {
+    icon: '🛂', title: 'Visa sales', tag: 'Nusuk-ready',
+    text: 'A complete visa pipeline, from application to issuance, ready for the Nusuk API.',
+    points: [
+      'Visa type, application, embassy submission, issue and expiry dates',
+      'Processing center, speed, sponsor and insurance tracking',
+      'Insurance expiry dates kept alongside the visa',
+      'Nusuk (Ministry of Hajj & Umrah) API integration: submit Umrah visa applications and sync their status right from the sale',
+    ],
+  },
+  {
+    icon: '🚌', title: 'Transport & Ziyarat', tag: 'Ground ops',
+    text: 'Airport pickups, intercity transfers and ziyarat tours with the vehicle details your operations team needs.',
+    points: [
+      'Vehicle types with front-to-back seat layouts and driver-side identification',
+      'Multi-leg transport routes on one sale',
+      'Ziyarat tours from city to city with dates and times',
+      'Cost, sale price and profit per trip',
+    ],
+  },
+  {
+    icon: '🕋', title: 'Umrah & Hajj sales', tag: 'Group travel',
+    text: 'Dedicated modules for the two journeys that matter most, built for group handling.',
+    points: [
+      'Umrah and Hajj sales as first-class modules, not afterthoughts',
+      'Passenger manifests with package details per sale',
+      'Per-person pricing with pax counts and package-level totals',
+      'Profit, balances and due dates tracked to the group',
+    ],
+  },
+  {
+    icon: '📦', title: 'Packages', tag: 'Product shelf',
+    text: 'Turn your fixed departures into reusable products you can sell again and again.',
+    points: [
+      'Build packages with inclusions, pricing and validity dates',
+      'Sell from a package and inherit all its details',
+      'Tour sales module for holiday and custom tours',
+      'Package manifests linked to passenger records',
+    ],
+  },
 ];
 
-const STATS = [
-  { n: '19+', l: 'built-in modules' },
-  { n: '100%', l: 'multi-tenant & secure' },
-  { n: 'Any', l: 'currency & country' },
-  { n: 'PDF', l: 'invoices & manifests' },
+const PLATFORM = [
+  { icon: '🎯', title: 'Leads pipeline', points: ['Capture leads from walk-ins, WhatsApp and referrals', 'Assign owners and track follow-up dates', 'Convert leads to customers in one click'] },
+  { icon: '📅', title: 'Bookings calendar', points: ['Every departure and follow-up in one calendar', 'Color-coded by module and status', 'Never miss a follow-up date'] },
+  { icon: '💰', title: 'Invoices & quotations', points: ['Professional quotations with line items, terms and validity', 'Accept a quote and it converts to an invoice', 'Branded PDFs and one-click email delivery'] },
+  { icon: '📊', title: 'Reports & accounts', points: ['Sales, profit and receivables across every module', 'Staff performance and top customers', 'Agency-wide totals in your currency'] },
+  { icon: '👥', title: 'Roles & permissions', points: ['Owner, manager and staff roles', 'Per-user module access with checkboxes', 'Owner-only audit log and billing controls'] },
+  { icon: '💬', title: 'Live team chat', points: ['1-to-1 and group channels', 'Owner-controlled message editing and deletion', 'Talk shop without leaving the CRM'] },
+  { icon: '✅', title: 'Tasks & support', points: ['Follow-up tasks with due dates', 'Support tickets with status workflow', 'Documents module for passports and visas'] },
+  { icon: '🧑‍💼', title: 'HR & payroll', points: ['Employee records with contracts and documents', 'Salary slips with allowances and deductions', 'Payslip PDFs straight from the system'] },
+  { icon: '🎨', title: 'Your brand', points: ['Custom logo, brand color and agency details', 'Your own SMTP for every outbound email', 'Currency, timezone and tax rate per agency'] },
+];
+
+const INTEGRATIONS = [
+  { icon: '🕌', title: 'Nusuk visa API', text: 'Submit Umrah visa applications and sync statuses through the official Ministry of Hajj & Umrah platform.' },
+  { icon: '💳', title: 'Stripe billing', text: 'Secure checkout for your subscription. Cards, invoices and plan upgrades handled automatically.' },
+  { icon: '📄', title: 'Branded PDF engine', text: 'Invoices, quotations, payslips and manifests with your logo, colors and terms on every document.' },
+  { icon: '📧', title: 'Own SMTP email', text: 'Every email your agency sends — invoices, quotations, reminders — goes from your own domain.' },
+  { icon: '🌍', title: 'Multi-currency & regional', text: 'Currency, timezone and tax configured per agency. Sell from anywhere, bill correctly everywhere.' },
+  { icon: '🔐', title: 'Multi-tenant security', text: 'Row-level security keeps every agency workspace isolated. Your data is yours alone.' },
+];
+
+const FAQ = [
+  { q: 'Is my agency data separate from other agencies?', a: 'Yes. EzUmrah CRM is fully multi-tenant with row-level security — every record belongs to your agency and is never visible to others.' },
+  { q: 'Can I use my own logo and colors?', a: 'Absolutely. Your logo, brand color, agency details and email domain are applied across the dashboard, invoices and quotations.' },
+  { q: 'Does it connect to the Nusuk visa platform?', a: 'Yes. Add your licensed-agent API credentials under Settings → Integrations and submit Umrah visa applications directly from the Visa Sales module, with status sync.' },
+  { q: 'What happens after my trial?', a: 'Your subscription runs through Stripe at your chosen plan. You can upgrade or cancel any time from the billing dashboard.' },
 ];
 
 export default function LandingPage() {
@@ -53,9 +125,11 @@ export default function LandingPage() {
             EzUmrah CRM
           </Link>
           <div className="hidden items-center gap-6 text-sm font-medium text-slate-600 md:flex">
-            <a href="#features" className="hover:text-gold">Features</a>
+            <a href="#modules" className="hover:text-gold">Modules</a>
+            <a href="#platform" className="hover:text-gold">Platform</a>
+            <a href="#integrations" className="hover:text-gold">Integrations</a>
             <a href="#pricing" className="hover:text-gold">Pricing</a>
-            <a href="#contact" className="hover:text-gold">Contact</a>
+            <a href="#faq" className="hover:text-gold">FAQ</a>
           </div>
           <div className="flex items-center gap-3">
             <Link href="/login" className="text-sm font-semibold text-slate-700 hover:text-gold">Sign in</Link>
@@ -64,10 +138,10 @@ export default function LandingPage() {
         </div>
       </nav>
 
-      {/* HERO */}
+      {/* HERO + MOCKUP */}
       <section className="relative overflow-hidden">
         <div className="pointer-events-none absolute -top-24 left-1/2 h-96 w-[40rem] -translate-x-1/2 rounded-full bg-gold/20 blur-3xl" />
-        <div className="mx-auto max-w-6xl px-4 py-20 text-center md:py-28">
+        <div className="mx-auto max-w-6xl px-4 pb-10 pt-16 text-center md:pt-24">
           <p className="mb-4 inline-flex items-center gap-2 rounded-full border border-gold/30 bg-white/60 px-4 py-1 text-xs font-semibold accent backdrop-blur">
             Built for Umrah & Hajj agencies in 25+ countries
           </p>
@@ -75,86 +149,183 @@ export default function LandingPage() {
             Run your Umrah agency <span className="accent">end to end</span>
           </h1>
           <p className="mx-auto mt-5 max-w-2xl text-lg text-slate-600">
-            Flight, hotel, visa, transport and ziyarat sales. Packages, leads, passengers, invoices and reports.
+            Flight, hotel, visa, transport and ziyarat sales. Packages, leads, passengers, quotations and reports.
             One workspace for your whole team, from first enquiry to the final invoice.
           </p>
           <div className="mt-8 flex flex-wrap items-center justify-center gap-4">
             <Link href="/signup" className="btn-primary px-8 py-3 text-base">Start your agency</Link>
-            <a href="#pricing" className="btn-secondary px-8 py-3 text-base">See pricing</a>
+            <a href="#modules" className="btn-secondary px-8 py-3 text-base">Explore the modules</a>
           </div>
-          <div className="mx-auto mt-14 grid max-w-4xl grid-cols-2 gap-4 md:grid-cols-4">
-            {STATS.map((s) => (
-              <div key={s.l} className="card bg-white/60 p-5 backdrop-blur">
-                <p className="text-2xl font-extrabold accent">{s.n}</p>
-                <p className="mt-1 text-xs font-medium uppercase tracking-wide text-slate-500">{s.l}</p>
+          {/* CSS product mockup */}
+          <div className="mx-auto mt-14 max-w-4xl rounded-2xl border border-gold/30 bg-white/70 p-3 shadow-2xl backdrop-blur">
+            <div className="flex items-center gap-1.5 border-b border-slate-100 px-2 pb-2">
+              <span className="h-2.5 w-2.5 rounded-full bg-red-300" /><span className="h-2.5 w-2.5 rounded-full bg-amber-300" /><span className="h-2.5 w-2.5 rounded-full bg-emerald-300" />
+              <span className="ml-3 text-[10px] font-semibold text-slate-400">ezumrah-crm — dashboard</span>
+            </div>
+            <div className="mt-2 grid gap-3 text-left sm:grid-cols-[150px_1fr]">
+              <div className="hidden rounded-xl bg-slate-50 p-3 sm:block">
+                {['📊 Dashboard', '✈️ Flight sales', '🏨 Hotel sales', '🛂 Visa sales', '🕋 Umrah sales', '📦 Packages', '🎯 Leads', '💰 Invoices'].map((r) => (
+                  <p key={r} className="mb-1.5 rounded-md px-2 py-1 text-[11px] font-medium text-slate-500">{r}</p>
+                ))}
+              </div>
+              <div className="rounded-xl bg-slate-50/60 p-3">
+                <div className="grid grid-cols-3 gap-2">
+                  {[['Sales this month', '$48,250'], ['Profit', '$6,840'], ['Unpaid balance', '$3,120']].map(([l, v]) => (
+                    <div key={l} className="rounded-lg border border-gold/20 bg-white p-2.5">
+                      <p className="text-[9px] font-semibold uppercase tracking-wide text-slate-400">{l}</p>
+                      <p className="text-sm font-extrabold accent">{v}</p>
+                    </div>
+                  ))}
+                </div>
+                <div className="mt-3 flex h-20 items-end gap-1.5 rounded-lg border border-gold/20 bg-white p-2">
+                  {[35, 55, 40, 70, 62, 85, 58, 92, 76, 100, 88, 68].map((h, i) => (
+                    <div key={i} className="flex-1 rounded-t bg-gold/80" style={{ height: `${h}%` }} />
+                  ))}
+                </div>
+                <div className="mt-3 space-y-1.5">
+                  {[['FS-2026-0101', 'Al Noor group · 12 pax', 'Paid'], ['HT-2026-0034', 'Makkah 5 nights', 'Partial'], ['VS-2026-0090', 'Umrah visa · Nusuk', 'Processing']].map(([a, b, c]) => (
+                    <div key={a} className="flex items-center justify-between rounded-md bg-white px-2 py-1.5 text-[10px]">
+                      <span className="font-bold">{a}</span><span className="text-slate-400">{b}</span>
+                      <span className="rounded-full bg-gold/10 px-2 py-0.5 font-semibold accent">{c}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* MODULES DEEP DIVE */}
+      <section id="modules" className="mx-auto max-w-6xl px-4 py-16">
+        <div className="mb-12 text-center">
+          <h2 className="text-3xl font-extrabold md:text-4xl">Everything you sell, in one system</h2>
+          <p className="mx-auto mt-3 max-w-2xl text-slate-600">Every module tracks passengers, cost, sale and profit, and totals roll up to agency-wide reports. No spreadsheets, no double entry.</p>
+        </div>
+        <div className="space-y-8">
+          {MODULES.map((m, i) => (
+            <div key={m.title} className={`card border-gold/20 p-6 md:p-8 ${i % 2 ? 'md:border-l-4' : 'md:border-r-4'} border-gold`}>
+              <div className="grid items-start gap-6 md:grid-cols-[1fr_1.4fr]">
+                <div>
+                  <p className="mb-2 inline-block rounded-full bg-gold/10 px-3 py-1 text-[10px] font-bold uppercase tracking-wide accent">{m.tag}</p>
+                  <div className="flex items-center gap-3">
+                    <span className="flex h-12 w-12 items-center justify-center rounded-xl bg-gold/10 text-2xl">{m.icon}</span>
+                    <h3 className="text-2xl font-extrabold">{m.title}</h3>
+                  </div>
+                  <p className="mt-3 text-sm leading-relaxed text-slate-600">{m.text}</p>
+                </div>
+                <ul className="grid gap-2 sm:grid-cols-2">
+                  {m.points.map((pt) => (
+                    <li key={pt} className="flex items-start gap-2 rounded-lg bg-slate-50 p-2.5 text-xs leading-relaxed text-slate-600">
+                      <span className="mt-0.5 accent">✓</span>{pt}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      {/* PLATFORM GRID */}
+      <section id="platform" className="border-y border-gold/10 bg-white/50 py-16">
+        <div className="mx-auto max-w-6xl px-4">
+          <div className="mb-10 text-center">
+            <h2 className="text-3xl font-extrabold md:text-4xl">Run the whole agency, not just the sales</h2>
+            <p className="mx-auto mt-3 max-w-2xl text-slate-600">Leads, follow-ups, documents, payroll and team chat are built in — the work that happens around every sale.</p>
+          </div>
+          <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
+            {PLATFORM.map((f) => (
+              <div key={f.title} className="card border-gold/20 p-6 transition hover:-translate-y-0.5 hover:border-gold/50 hover:shadow-lg">
+                <div className="mb-3 flex h-11 w-11 items-center justify-center rounded-xl bg-gold/10 text-xl">{f.icon}</div>
+                <h3 className="font-bold">{f.title}</h3>
+                <ul className="mt-2 space-y-1.5 text-sm text-slate-600">
+                  {f.points.map((pt) => <li key={pt} className="flex items-start gap-2"><span className="mt-1 text-[10px] accent">●</span>{pt}</li>)}
+                </ul>
               </div>
             ))}
           </div>
         </div>
       </section>
 
-      {/* FEATURES */}
-      <section id="features" className="mx-auto max-w-6xl px-4 py-16">
+      {/* INTEGRATIONS */}
+      <section id="integrations" className="mx-auto max-w-6xl px-4 py-16">
         <div className="mb-10 text-center">
-          <h2 className="text-3xl font-extrabold">Everything your agency sells, in one system</h2>
-          <p className="mx-auto mt-3 max-w-2xl text-slate-600">Every module tracks passengers, cost, sale and profit, and totals roll up to agency-wide reports.</p>
+          <h2 className="text-3xl font-extrabold md:text-4xl">Plugged into your world</h2>
+          <p className="mx-auto mt-3 max-w-2xl text-slate-600">Connect the platforms your agency already depends on — starting with the Saudi Ministry of Hajj & Umrah.</p>
         </div>
         <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
-          {FEATURES.map((f) => (
-            <div key={f.title} className="card border-gold/20 p-6 transition hover:-translate-y-0.5 hover:border-gold/50 hover:shadow-lg">
+          {INTEGRATIONS.map((f) => (
+            <div key={f.title} className="card border-gold/20 p-6">
               <div className="mb-3 flex h-11 w-11 items-center justify-center rounded-xl bg-gold/10 text-xl">{f.icon}</div>
               <h3 className="font-bold">{f.title}</h3>
               <p className="mt-1.5 text-sm leading-relaxed text-slate-600">{f.text}</p>
             </div>
           ))}
         </div>
-        <div className="mt-10 grid gap-4 rounded-2xl border border-gold/20 bg-white/60 p-6 backdrop-blur md:grid-cols-3">
-          <div>
-            <h4 className="font-bold accent">💬 Live team chat</h4>
-            <p className="mt-1 text-sm text-slate-600">1-to-1 and group messaging between staff, with owner-only message controls.</p>
-          </div>
-          <div>
-            <h4 className="font-bold accent">🧾 Documents & tasks</h4>
-            <p className="mt-1 text-sm text-slate-600">Passport and visa documents, follow-up tasks and support tickets in one place.</p>
-          </div>
-          <div>
-            <h4 className="font-bold accent">📊 Reports & accounts</h4>
-            <p className="mt-1 text-sm text-slate-600">Sales, profit, receivables and staff performance across every module.</p>
+      </section>
+
+      {/* HOW IT WORKS */}
+      <section className="border-y border-gold/10 bg-white/50 py-16">
+        <div className="mx-auto max-w-6xl px-4">
+          <h2 className="mb-10 text-center text-3xl font-extrabold md:text-4xl">From signup to first invoice in a day</h2>
+          <div className="grid gap-6 md:grid-cols-4">
+            {[
+              { n: '1', t: 'Create your agency', d: 'Sign up, pick a plan and your isolated workspace is ready in minutes.' },
+              { n: '2', t: 'Add your team', d: 'Invite managers and staff, tick exactly which modules each person can use.' },
+              { n: '3', t: 'Sell & track', d: 'Log flight, hotel, visa and transport sales with passengers and payments.' },
+              { n: '4', t: 'Get paid & report', d: 'Branded invoices by email, balances tracked, profit reported live.' },
+            ].map((s) => (
+              <div key={s.n} className="card p-6 text-center">
+                <p className="mx-auto mb-3 flex h-10 w-10 items-center justify-center rounded-full bg-gold font-extrabold text-white">{s.n}</p>
+                <h3 className="font-bold">{s.t}</h3>
+                <p className="mt-1.5 text-sm text-slate-600">{s.d}</p>
+              </div>
+            ))}
           </div>
         </div>
       </section>
 
       {/* PRICING */}
-      <section id="pricing" className="border-y border-gold/10 bg-white/50 py-16">
-        <div className="mx-auto max-w-6xl px-4">
-          <div className="mb-10 text-center">
-            <h2 className="text-3xl font-extrabold">Simple pricing for every agency</h2>
-            <p className="mt-3 text-slate-600">Start with a card at secure checkout. Cancel any time.</p>
-          </div>
-          <div className="grid gap-6 md:grid-cols-3">
-            {PLAN_IDS.map((id) => {
-              const p = PLANS[id];
-              const popular = id === 'professional';
-              return (
-                <div key={id} className={`card relative p-7 ${popular ? 'border-gold shadow-xl' : ''}`}>
-                  {popular && (
-                    <span className="absolute -top-3 left-1/2 -translate-x-1/2 rounded-full bg-gold px-3 py-1 text-[10px] font-bold uppercase tracking-wide text-white">
-                      Most popular
-                    </span>
-                  )}
-                  <h3 className="text-lg font-bold">{p.name}</h3>
-                  <p className="mt-2 text-4xl font-extrabold">${p.price_monthly}<span className="text-sm font-medium text-slate-400">/month</span></p>
-                  <ul className="mt-5 space-y-2.5 text-sm text-slate-600">
-                    {p.features.map((f) => (
-                      <li key={f} className="flex items-start gap-2"><span className="mt-0.5 accent">✓</span>{f}</li>
-                    ))}
-                  </ul>
-                  <Link href={`/signup?plan=${id}`} className={`mt-7 w-full ${popular ? 'btn-primary' : 'btn-secondary'}`}>
-                    Choose {p.name}
-                  </Link>
-                </div>
-              );
-            })}
+      <section id="pricing" className="mx-auto max-w-6xl px-4 py-16">
+        <div className="mb-10 text-center">
+          <h2 className="text-3xl font-extrabold md:text-4xl">Simple pricing for every agency</h2>
+          <p className="mt-3 text-slate-600">Start with a card at secure checkout. Cancel any time.</p>
+        </div>
+        <div className="grid gap-6 md:grid-cols-3">
+          {PLAN_IDS.map((id) => {
+            const p = PLANS[id];
+            const popular = id === 'professional';
+            return (
+              <div key={id} className={`card relative p-7 ${popular ? 'border-gold shadow-xl' : ''}`}>
+                {popular && (
+                  <span className="absolute -top-3 left-1/2 -translate-x-1/2 rounded-full bg-gold px-3 py-1 text-[10px] font-bold uppercase tracking-wide text-white">Most popular</span>
+                )}
+                <h3 className="text-lg font-bold">{p.name}</h3>
+                <p className="mt-2 text-4xl font-extrabold">${p.price_monthly}<span className="text-sm font-medium text-slate-400">/month</span></p>
+                <ul className="mt-5 space-y-2.5 text-sm text-slate-600">
+                  {p.features.map((f) => (
+                    <li key={f} className="flex items-start gap-2"><span className="mt-0.5 accent">✓</span>{f}</li>
+                  ))}
+                </ul>
+                <Link href={`/signup?plan=${id}`} className={`mt-7 w-full ${popular ? 'btn-primary' : 'btn-secondary'}`}>Choose {p.name}</Link>
+              </div>
+            );
+          })}
+        </div>
+      </section>
+
+      {/* FAQ */}
+      <section id="faq" className="border-y border-gold/10 bg-white/50 py-16">
+        <div className="mx-auto max-w-3xl px-4">
+          <h2 className="mb-8 text-center text-3xl font-extrabold">Questions agencies ask</h2>
+          <div className="space-y-4">
+            {FAQ.map((f) => (
+              <details key={f.q} className="card border-gold/20 p-5 [&_summary]:cursor-pointer">
+                <summary className="font-bold">{f.q}</summary>
+                <p className="mt-2 text-sm leading-relaxed text-slate-600">{f.a}</p>
+              </details>
+            ))}
           </div>
         </div>
       </section>
@@ -218,7 +389,8 @@ export default function LandingPage() {
             EzUmrah CRM
           </p>
           <div className="flex items-center gap-6">
-            <a href="#features" className="hover:text-gold">Features</a>
+            <a href="#modules" className="hover:text-gold">Modules</a>
+            <a href="#integrations" className="hover:text-gold">Integrations</a>
             <a href="#pricing" className="hover:text-gold">Pricing</a>
             <Link href="/login" className="hover:text-gold">Sign in</Link>
             <Link href="/signup" className="hover:text-gold">Get started</Link>

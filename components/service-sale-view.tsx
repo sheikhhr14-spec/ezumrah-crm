@@ -3,7 +3,7 @@ import { createAdminClient } from '@/lib/supabase/admin';
 import { money } from '@/lib/format';
 import { requireModule } from '@/lib/data';
 import { StatusBadge } from '@/components/ui';
-import { updateServiceSale, deleteRecord, sendSaleInvoiceEmail } from '@/lib/crm-actions';
+import { updateServiceSale, deleteRecord, sendSaleInvoiceEmail, submitVisaToNusuk, syncNusukVisaStatus } from '@/lib/crm-actions';
 import { SERVICE_SALES, SALE_PAYMENT_FIELDS } from '@/lib/service-sales';
 import Link from 'next/link';
 import SaleDocuments from '@/components/sale-documents';
@@ -76,6 +76,28 @@ export default async function ServiceSaleView({ table, id, emailFlag }: { table:
           </form>
         </div>
       </div>
+
+      {table === 'visa_sales' && (
+        <div className="card mb-6 p-4">
+          <div className="mb-2 flex flex-wrap items-center justify-between gap-3">
+            <div>
+              <h3 className="text-sm font-bold text-slate-900">🕌 Nusuk visa integration</h3>
+              <p className="text-xs text-slate-500">
+                {rec.nusuk_ref
+                  ? <>Submitted to Nusuk · ref <span className="font-semibold">{rec.nusuk_ref}</span> · status <span className="font-semibold">{rec.nusuk_status || 'submitted'}</span>{rec.nusuk_submitted_at ? ` · ${String(rec.nusuk_submitted_at).slice(0, 16).replace('T', ' ')}` : ''}</>
+                  : 'Not submitted to Nusuk yet. Configure the API under Settings → Integrations, then submit this visa application.'}
+              </p>
+            </div>
+            <div className="flex items-center gap-2">
+              {!rec.nusuk_ref ? (
+                <form action={submitVisaToNusuk}><input type="hidden" name="id" value={rec.id} /><button className="btn-primary text-xs" type="submit">Submit to Nusuk</button></form>
+              ) : (
+                <form action={syncNusukVisaStatus}><input type="hidden" name="id" value={rec.id} /><button className="btn-secondary text-xs" type="submit">↻ Sync status</button></form>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* money summary */}
       <div className="mb-8 grid gap-4 sm:grid-cols-3 lg:grid-cols-6">
