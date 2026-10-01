@@ -9,10 +9,14 @@ export default async function TeamPage() {
   const { data: members } = await db
     .from('profiles').select('id, full_name, email, role, modules, created_at')
     .eq('agency_id', ctx.profile.agency_id).order('created_at');
+  const { data: agency } = await db.from('agencies').select('plan, seats').eq('id', ctx.profile.agency_id).single();
+  const seatNote = agency && agency.plan !== 'enterprise'
+    ? ` — ${members?.length || 0} of ${agency.seats || 2} users included (extra users $50/month)`
+    : ' — unlimited users';
 
   return (
     <div>
-      <PageHeader title="Team & Permissions" subtitle="Invite users, set roles, and assign which CRM modules each team member can access" />
+      <PageHeader title="Team & Permissions" subtitle={`Invite users, set roles, and assign module access${seatNote}`} />
 
       <AddPanel label="Invite team member">
         <form action={inviteMember} className="grid gap-4 sm:grid-cols-3">

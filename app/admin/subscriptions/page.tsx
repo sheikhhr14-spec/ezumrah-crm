@@ -3,7 +3,7 @@ import { setAgencyStatus, setAgencyPlan } from '@/lib/admin-actions';
 import { PageHeader, StatusBadge, Table, Empty } from '@/components/ui';
 import Link from 'next/link';
 
-const PLANS: Record<string, number> = { starter: 29, professional: 79, enterprise: 199 };
+const PLANS: Record<string, number> = { starter: 79, professional: 100, enterprise: 0 }; // legacy starter billed at old price; enterprise custom
 
 export default async function SubscriptionsPage({ searchParams }: { searchParams: { status?: string } }) {
   const db = createAdminClient();
@@ -44,7 +44,7 @@ export default async function SubscriptionsPage({ searchParams }: { searchParams
               <form action={setAgencyPlan}>
                 <input type="hidden" name="id" value={a.id} />
                 <select name="plan" defaultValue={a.plan} className="input max-w-36">
-                  <option value="starter">Starter</option>
+                  
                   <option value="professional">Professional</option>
                   <option value="enterprise">Enterprise</option>
                 </select>

@@ -94,7 +94,7 @@ export default async function AgencyDetail({ params }: { params: { id: string } 
           <Field label="Label (tag)"><input className="input" name="label" defaultValue={agency.label || ''} placeholder="VIP, Priority…" /></Field>
           <Field label="Plan">
             <select className="input" name="plan" defaultValue={agency.plan}>
-              <option value="starter">Starter ($29)</option>
+              
               <option value="professional">Professional ($79)</option>
               <option value="enterprise">Enterprise ($199)</option>
             </select>

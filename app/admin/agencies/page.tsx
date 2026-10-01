@@ -32,8 +32,8 @@ export default async function AgenciesPage({ searchParams }: { searchParams: { q
           <Field label="Agency name"><input className="input" name="name" required placeholder="Al-Noor Travels" /></Field>
           <Field label="Email"><input className="input" name="email" type="email" placeholder="info@agency.com" /></Field>
           <Field label="Plan">
-            <select className="input" name="plan" defaultValue="starter">
-              <option value="starter">Starter ($29)</option>
+            <select className="input" name="plan" defaultValue="professional">
+              
               <option value="professional">Professional ($79)</option>
               <option value="enterprise">Enterprise ($199)</option>
             </select>

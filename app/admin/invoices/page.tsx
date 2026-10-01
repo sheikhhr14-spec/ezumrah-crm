@@ -47,7 +47,7 @@ export default async function InvoicesPage({ searchParams }: { searchParams: { s
               {(agencies || []).map((a: any) => <option key={a.id} value={a.id}>{a.name}</option>)}
             </select>
           </Field>
-          <Field label="Plan"><input className="input" name="plan" defaultValue="starter" /></Field>
+          <Field label="Plan"><input className="input" name="plan" defaultValue="professional" /></Field>
           <Field label="Amount (USD)"><input className="input" name="amount" type="number" step="0.01" required placeholder="29" /></Field>
           <Field label="Period start"><input className="input" name="period_start" type="date" /></Field>
           <Field label="Period end"><input className="input" name="period_end" type="date" /></Field>

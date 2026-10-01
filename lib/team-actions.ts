@@ -7,6 +7,17 @@ import { revalidatePath } from 'next/cache';
 export async function inviteMember(fd: FormData) {
   const ctx = await requireRole('owner');
   const db = createAdminClient();
+
+  // seat limit: Enterprise = unlimited; otherwise agencies.seats (default 2)
+  const { data: agency } = await db.from('agencies').select('plan, seats').eq('id', ctx.profile.agency_id).single();
+  if (agency && agency.plan !== 'enterprise') {
+    const { count } = await db.from('profiles').select('id', { count: 'exact', head: true }).eq('agency_id', ctx.profile.agency_id);
+    const limit = agency.seats || 2;
+    if ((count || 0) >= limit) {
+      throw new Error(`Your plan includes ${limit} users. Extra users are $50/month each — contact support to add seats.`);
+    }
+  }
+
   const email = String(fd.get('email'));
   const password = String(fd.get('password'));
   const fullName = String(fd.get('full_name'));

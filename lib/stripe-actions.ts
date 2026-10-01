@@ -16,14 +16,19 @@ export async function createCheckout(formData: FormData) {
     redirect('/billing?error=' + encodeURIComponent('Stripe keys not configured yet. Add STRIPE_SECRET_KEY in Vercel.'));
   }
 
-  const plan = String(formData.get('plan') || 'starter') as PlanId;
+  const plan = String(formData.get('plan') || 'professional') as PlanId;
   const origin = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
+
+  if (!(PLANS as any)[plan]) redirect('/billing?error=' + encodeURIComponent('Unknown plan.'));
+  if ((PLANS as any)[plan].price_monthly === null) {
+    redirect('/billing?error=' + encodeURIComponent('Enterprise is custom-priced. Our team will contact you — no card needed yet.'));
+  }
 
   const body = new URLSearchParams();
   body.set('mode', 'subscription');
   body.set('line_items[0][quantity]', '1');
   body.set('line_items[0][price_data][currency]', 'usd');
-  body.set('line_items[0][price_data][unit_amount]', String(PLANS[plan].price_monthly * 100));
+  body.set('line_items[0][price_data][unit_amount]', String((PLANS[plan].price_monthly || 0) * 100));
   body.set('line_items[0][price_data][recurring][interval]', 'month');
   body.set('line_items[0][price_data][product_data][name]', `EzUmrah CRM — ${PLANS[plan].name} plan`);
   body.set('success_url', `${origin}/api/stripe/verify?session_id={CHECKOUT_SESSION_ID}`);

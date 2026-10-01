@@ -2,7 +2,7 @@ import { createAdminClient } from '@/lib/supabase/admin';
 import { PageHeader, StatusBadge, Table, Empty } from '@/components/ui';
 import Link from 'next/link';
 
-const PLANS: Record<string, number> = { starter: 29, professional: 79, enterprise: 199 };
+const PLANS: Record<string, number> = { starter: 79, professional: 100, enterprise: 0 }; // legacy starter billed at old price; enterprise custom
 
 export default async function AdminDashboard() {
   const db = createAdminClient();

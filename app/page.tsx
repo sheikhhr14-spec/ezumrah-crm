@@ -110,7 +110,8 @@ const FAQ = [
   { q: 'Is my agency data separate from other agencies?', a: 'Yes. EzUmrah CRM is fully multi-tenant with row-level security — every record belongs to your agency and is never visible to others.' },
   { q: 'Can I use my own logo and colors?', a: 'Absolutely. Your logo, brand color, agency details and email domain are applied across the dashboard, invoices and quotations.' },
   { q: 'Does it connect to the Nusuk visa platform?', a: 'Yes. Add your licensed-agent API credentials under Settings → Integrations and submit Umrah visa applications directly from the Visa Sales module, with status sync.' },
-  { q: 'What happens after my trial?', a: 'Your subscription runs through Stripe at your chosen plan. You can upgrade or cancel any time from the billing dashboard.' },
+  { q: 'How does user pricing work?', a: 'The Professional plan at $100/month includes 2 users. Each additional user is $50/month. Enterprise includes unlimited users.' },
+  { q: 'What is white-labeling?', a: 'Enterprise agencies get the whole CRM under their own domain and brand — your clients and staff never see our name. It also unlocks GDS integration and full API access.' },
 ];
 
 export default function LandingPage() {
@@ -289,26 +290,29 @@ export default function LandingPage() {
       {/* PRICING */}
       <section id="pricing" className="mx-auto max-w-6xl px-4 py-16">
         <div className="mb-10 text-center">
-          <h2 className="text-3xl font-extrabold md:text-4xl">Simple pricing for every agency</h2>
-          <p className="mt-3 text-slate-600">Start with a card at secure checkout. Cancel any time.</p>
+          <h2 className="text-3xl font-extrabold md:text-4xl">Two plans. No surprises.</h2>
+          <p className="mt-3 text-slate-600">Professional is billed monthly by card. Enterprise is priced per agency with white-labeling, GDS and API.</p>
         </div>
-        <div className="grid gap-6 md:grid-cols-3">
+        <div className="mx-auto grid max-w-4xl gap-6 md:grid-cols-2">
           {PLAN_IDS.map((id) => {
-            const p = PLANS[id];
+            const p: any = (PLANS as any)[id];
             const popular = id === 'professional';
+            const custom = p.price_monthly === null;
             return (
-              <div key={id} className={`card relative p-7 ${popular ? 'border-gold shadow-xl' : ''}`}>
+              <div key={id} className={`card relative p-8 ${popular ? 'border-gold shadow-xl' : ''}`}>
                 {popular && (
                   <span className="absolute -top-3 left-1/2 -translate-x-1/2 rounded-full bg-gold px-3 py-1 text-[10px] font-bold uppercase tracking-wide text-white">Most popular</span>
                 )}
                 <h3 className="text-lg font-bold">{p.name}</h3>
-                <p className="mt-2 text-4xl font-extrabold">${p.price_monthly}<span className="text-sm font-medium text-slate-400">/month</span></p>
+                <p className="mt-2 text-4xl font-extrabold">{custom ? 'Custom' : `$${p.price_monthly}`}<span className="text-sm font-medium text-slate-400">{custom ? ' pricing' : '/month'}</span></p>
+                {!custom && <p className="mt-1 text-xs text-slate-400">2 users included · +$50 per extra user</p>}
+                {custom && <p className="mt-1 text-xs text-slate-400">Unlimited users · arranged with our team</p>}
                 <ul className="mt-5 space-y-2.5 text-sm text-slate-600">
-                  {p.features.map((f) => (
+                  {p.features.map((f: string) => (
                     <li key={f} className="flex items-start gap-2"><span className="mt-0.5 accent">✓</span>{f}</li>
                   ))}
                 </ul>
-                <Link href={`/signup?plan=${id}`} className={`mt-7 w-full ${popular ? 'btn-primary' : 'btn-secondary'}`}>Choose {p.name}</Link>
+                <Link href={`/signup?plan=${id}`} className={`mt-7 w-full ${popular ? 'btn-primary' : 'btn-secondary'}`}>{custom ? 'Talk to us' : `Choose ${p.name}`}</Link>
               </div>
             );
           })}

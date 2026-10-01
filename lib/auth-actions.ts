@@ -24,7 +24,7 @@ export async function signup(formData: FormData) {
   const password = String(formData.get('password'));
   const fullName = String(formData.get('full_name'));
   const agencyName = String(formData.get('agency_name'));
-  const plan = String(formData.get('plan') || 'starter');
+  const plan = String(formData.get('plan') || 'professional');
 
   const { data, error } = await supabase.auth.signUp({
     email,
@@ -36,9 +36,10 @@ export async function signup(formData: FormData) {
 
   // Create the agency + link the profile
   const db = createAdminClient();
+  const isEnterprise = plan === 'enterprise';
   const { data: agency } = await db
     .from('agencies')
-    .insert({ name: agencyName, plan, subscription_status: 'incomplete' })
+    .insert({ name: agencyName, plan, subscription_status: 'incomplete', seats: isEnterprise ? null : 2 })
     .select()
     .single();
 
@@ -47,7 +48,18 @@ export async function signup(formData: FormData) {
     .update({ agency_id: agency.id, full_name: fullName, role: 'owner' })
     .eq('id', data.user.id);
 
-  redirect('/billing');
+  if (isEnterprise) {
+    try {
+      const { sendPlatformEmail } = await import('@/lib/email');
+      await sendPlatformEmail({
+        to: 'hamza@ezumrah.com',
+        subject: `New Enterprise enquiry — ${agencyName}`,
+        html: `<p>An agency signed up for the <b>Enterprise</b> plan:</p><p><b>${agencyName}</b><br/>Owner: ${fullName} (${email})</p><p>Contact them to prepare custom pricing (white-labeling, GDS, API access).</p>`,
+      });
+    } catch { /* non-fatal */ }
+  }
+
+  redirect(isEnterprise ? '/billing?enterprise=1' : '/billing');
 }
 
 export async function logout() {

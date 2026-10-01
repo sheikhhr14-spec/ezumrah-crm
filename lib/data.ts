@@ -58,17 +58,15 @@ export async function requireRole(min: 'owner' | 'manager' | 'staff') {
 }
 
 /* ============ Per-user module permissions ============ */
-// Module access by subscription plan (Starter / Professional / Enterprise)
+// Module access by subscription plan (Professional / Enterprise)
 export const PLAN_MODULES: Record<string, string[]> = {
-  starter: ['calendar', 'leads', 'customers', 'bookings', 'flightsales', 'hotelsales', 'visasales', 'transportsales',
-    'umrahsales', 'hajjsales', 'toursales', 'packages', 'documents', 'tasks', 'support', 'invoices', 'hr', 'settings', 'billing'],
   professional: ['calendar', 'leads', 'customers', 'bookings', 'flightsales', 'hotelsales', 'visasales', 'transportsales',
-    'umrahsales', 'hajjsales', 'toursales', 'packages', 'documents', 'tasks', 'support', 'invoices', 'quotations', 'reports', 'accounts', 'hr', 'settings', 'billing'],
+    'umrahsales', 'hajjsales', 'toursales', 'packages', 'documents', 'tasks', 'support', 'chat', 'invoices', 'quotations', 'reports', 'accounts', 'hr', 'settings', 'billing'],
   enterprise: ['calendar', 'leads', 'customers', 'bookings', 'flightsales', 'hotelsales', 'visasales', 'transportsales',
-    'umrahsales', 'hajjsales', 'toursales', 'packages', 'documents', 'tasks', 'support', 'invoices', 'quotations', 'reports', 'accounts', 'hr', 'vault', 'settings', 'billing'],
+    'umrahsales', 'hajjsales', 'toursales', 'packages', 'documents', 'tasks', 'support', 'chat', 'invoices', 'quotations', 'reports', 'accounts', 'hr', 'vault', 'settings', 'billing'],
 };
 export function planAllows(plan: any, key: string): boolean {
-  const p = PLAN_MODULES[String(plan || '').toLowerCase()] || PLAN_MODULES.starter;
+  const p = PLAN_MODULES[String(plan || '').toLowerCase()] || PLAN_MODULES.professional;
   return p.includes(key);
 }
 
