@@ -44,13 +44,14 @@ const MODULES = [
     ],
   },
   {
-    icon: '🛂', title: 'Visa sales', tag: 'Nusuk-ready',
+    icon: '🛂', title: 'Visa sales', tag: 'Visa pipeline',
     text: 'A complete visa pipeline, from application to issuance, ready for the Nusuk API.',
     points: [
       'Visa type, application, embassy submission, issue and expiry dates',
       'Processing center, speed, sponsor and insurance tracking',
       'Insurance expiry dates kept alongside the visa',
-      'Nusuk (Ministry of Hajj & Umrah) API integration: submit Umrah visa applications and sync their status right from the sale',
+      'Visa pipeline: application, embassy submission, issue and expiry dates with insurance tracking',
+      'Optional Nusuk (Ministry of Hajj & Umrah) API integration on Enterprise: submit and sync right from the sale',
     ],
   },
   {
@@ -98,7 +99,7 @@ const PLATFORM = [
 ];
 
 const INTEGRATIONS = [
-  { icon: '🕌', title: 'Nusuk visa API', text: 'Submit Umrah visa applications and sync statuses through the official Ministry of Hajj & Umrah platform.' },
+  { icon: '🕌', title: 'Nusuk visa API', text: 'Submit Umrah visa applications and sync statuses through the official Ministry of Hajj & Umrah platform. Included with Enterprise.' },
   { icon: '💳', title: 'Stripe billing', text: 'Secure checkout for your subscription. Cards, invoices and plan upgrades handled automatically.' },
   { icon: '📄', title: 'Branded PDF engine', text: 'Invoices, quotations, payslips and manifests with your logo, colors and terms on every document.' },
   { icon: '📧', title: 'Own SMTP email', text: 'Every email your agency sends — invoices, quotations, reminders — goes from your own domain.' },
@@ -109,7 +110,7 @@ const INTEGRATIONS = [
 const FAQ = [
   { q: 'Is my agency data separate from other agencies?', a: 'Yes. EzUmrah CRM is fully multi-tenant with row-level security — every record belongs to your agency and is never visible to others.' },
   { q: 'Can I use my own logo and colors?', a: 'Absolutely. Your logo, brand color, agency details and email domain are applied across the dashboard, invoices and quotations.' },
-  { q: 'Does it connect to the Nusuk visa platform?', a: 'Yes. Add your licensed-agent API credentials under Settings → Integrations and submit Umrah visa applications directly from the Visa Sales module, with status sync.' },
+  { q: 'Does it connect to the Nusuk visa platform?', a: 'Yes — the Nusuk (Ministry of Hajj & Umrah) API integration is included with the Enterprise plan. Add your licensed-agent credentials under Settings → Integrations and submit applications directly from Visa Sales, with status sync.' },
   { q: 'How does user pricing work?', a: 'The Professional plan at $100/month includes 2 users. Each additional user is $50/month. Enterprise includes unlimited users.' },
   { q: 'What is white-labeling?', a: 'Enterprise agencies get the whole CRM under their own domain and brand — your clients and staff never see our name. It also unlocks GDS integration and full API access.' },
 ];

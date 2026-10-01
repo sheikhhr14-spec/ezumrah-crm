@@ -85,7 +85,7 @@ export default async function ServiceSaleView({ table, id, emailFlag }: { table:
               <p className="text-xs text-slate-500">
                 {rec.nusuk_ref
                   ? <>Submitted to Nusuk · ref <span className="font-semibold">{rec.nusuk_ref}</span> · status <span className="font-semibold">{rec.nusuk_status || 'submitted'}</span>{rec.nusuk_submitted_at ? ` · ${String(rec.nusuk_submitted_at).slice(0, 16).replace('T', ' ')}` : ''}</>
-                  : 'Not submitted to Nusuk yet. Configure the API under Settings → Integrations, then submit this visa application.'}
+                  : 'Not submitted to Nusuk yet — the Nusuk integration is available on the Enterprise plan. Configure the API under Settings → Integrations, then submit this visa application.'}
               </p>
             </div>
             <div className="flex items-center gap-2">

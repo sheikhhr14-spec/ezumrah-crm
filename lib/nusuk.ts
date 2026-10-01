@@ -5,8 +5,9 @@
 export type NusukConfig = { baseUrl: string; apiKey: string; enabled: boolean };
 
 export async function getNusukConfig(db: any, aid: string): Promise<NusukConfig | null> {
-  const { data: a } = await db.from('agencies').select('nusuk_api_url, nusuk_api_key, nusuk_enabled').eq('id', aid).single();
-  if (!a || !a.nusuk_enabled || !a.nusuk_api_url || !a.nusuk_api_key) return null;
+  const { data: a } = await db.from('agencies').select('plan, nusuk_api_url, nusuk_api_key, nusuk_enabled').eq('id', aid).single();
+  if (!a || a.plan !== 'enterprise') throw new Error('The Nusuk visa integration is part of the Enterprise plan. Contact us to upgrade.');
+  if (!a.nusuk_enabled || !a.nusuk_api_url || !a.nusuk_api_key) throw new Error('Nusuk API is not configured. Add your API URL and key under Settings → Integrations.');
   return { baseUrl: a.nusuk_api_url.replace(/\/+$/, ''), apiKey: a.nusuk_api_key, enabled: true };
 }
 
@@ -47,7 +48,7 @@ async function nusukFetch(cfg: NusukConfig, path: string, init?: RequestInit) {
 // Submit an Umrah visa application. Returns the Nusuk application reference.
 export async function submitUmrahVisa(db: any, aid: string, app: NusukVisaApplication): Promise<{ ref: string; status: string }> {
   const cfg = await getNusukConfig(db, aid);
-  if (!cfg) throw new Error('Nusuk API is not configured. Add your API URL and key under Settings → Integrations.');
+  if (!cfg) throw new Error(cfg === null ? 'The Nusuk visa integration is part of the Enterprise plan.' : 'Nusuk API is not configured.');
   const body = await nusukFetch(cfg, '/api/v1/visa/umrah/apply', {
     method: 'POST',
     body: JSON.stringify({
@@ -72,7 +73,7 @@ export async function submitUmrahVisa(db: any, aid: string, app: NusukVisaApplic
 // Poll the current status of a previously submitted application.
 export async function getNusukVisaStatus(db: any, aid: string, ref: string): Promise<{ status: string; visaNo?: string; message?: string }> {
   const cfg = await getNusukConfig(db, aid);
-  if (!cfg) throw new Error('Nusuk API is not configured. Add your API URL and key under Settings → Integrations.');
+  if (!cfg) throw new Error(cfg === null ? 'The Nusuk visa integration is part of the Enterprise plan.' : 'Nusuk API is not configured.');
   const body = await nusukFetch(cfg, `/api/v1/visa/status/${encodeURIComponent(ref)}`);
   const d = body?.data || body;
   return { status: String(d?.status || 'unknown'), visaNo: d?.visaNumber || d?.visaNo, message: d?.message };

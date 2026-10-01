@@ -9,10 +9,9 @@ export const PLANS = {
       'All sales & operations modules',
       'HR & payroll + team chat',
       'Quotations, reports & accounts',
-      'Nusuk Umrah visa integration',
+      'Built-in support ticket system',
       'Agency branding & own SMTP',
       '2 users included — +$50 per extra user',
-      'Email support',
     ],
   },
   enterprise: {
@@ -22,11 +21,12 @@ export const PLANS = {
     extra_user_price: 0,
     features: [
       'Everything in Professional',
-      'Unlimited users',
+      'Nusuk Umrah visa integration',
       'White-labeling — your domain & brand',
       'GDS integration (Amadeus / Sabre)',
       'Full API access',
-      'Dedicated manager & priority support',
+      'Unlimited users',
+      'Dedicated manager',
     ],
   },
 } as const;
