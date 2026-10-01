@@ -1,6 +1,7 @@
 import { login } from '@/lib/auth-actions';
 import Link from 'next/link';
 import SubmitButton from '@/components/submit-button';
+import QuickLogin from '@/components/quick-login';
 
 export default function LoginPage({ searchParams }: { searchParams: { error?: string; env?: string } }) {
   return (
@@ -38,6 +39,7 @@ export default function LoginPage({ searchParams }: { searchParams: { error?: st
             New agency? <Link className="font-semibold text-gold hover:underline" href="/signup">Create account</Link>
           </p>
         </form>
+          <QuickLogin />
       </div>
     </main>
   );
