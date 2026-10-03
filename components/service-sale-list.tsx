@@ -61,7 +61,14 @@ export default async function ServiceSaleList({ table, searchParams }: { table: 
                 <Link className="accent hover:underline" href={`/dashboard/${cfg.route}/${r.id}`}>{r.ref}</Link>
               </td>
               <td className="px-4 py-2">{r.customers?.full_name || '—'}</td>
-              <td className="px-4 py-2">{cfg.desc(r)}</td>
+              <td className="px-4 py-2">
+                {cfg.desc(r)}
+                {exOf(r).length > 0 && (
+                  <span className="ml-1 rounded-full accent-soft-bg accent px-1.5 py-0.5 text-[10px] font-bold">
+                    +{exOf(r).length} {table === 'hotel_sales' ? 'hotel' : 'trip'}{exOf(r).length > 1 ? 's' : ''}
+                  </span>
+                )}
+              </td>
               <td className="px-4 py-2 font-semibold">{money(grand, cur)}</td>
               <td className="px-4 py-2">{money(Number(r.amount_paid), cur)}</td>
               <td className={`px-4 py-2 ${bal > 0 ? 'text-red-500' : 'text-emerald-600'}`}>{money(bal, cur)}{overdue ? ' ⚠' : ''}</td>

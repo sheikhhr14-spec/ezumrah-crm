@@ -24,10 +24,9 @@ export default function ServiceSaleForm({
   const symPad = sym.length <= 1 ? '2rem' : sym.length === 2 ? '2.6rem' : sym.length === 3 ? '3.3rem' : '3.8rem';
   const edit = !!sale?.id;
   const s2 = (v: any) => v === null || v === undefined ? '' : String(v);
-  // stored sale_price/cost include extras — recover the main item's amounts for the form
-  const extrasSum = (k: string) => (saleExtras || []).reduce((sm: number, x: any) => sm + Number(x[k] || 0), 0);
-  const mainPrice = edit ? String(Math.round((Number(sale.sale_price) - extrasSum('sale_price')) * 100) / 100) : '';
-  const mainCost = edit ? String(Math.round((Number(sale.cost) - extrasSum('cost')) * 100) / 100) : '';
+  // stored sale_price/cost cover the primary hotel only — extras are separate stays/legs rows
+  const mainPrice = edit ? String(Number(sale.sale_price || 0)) : '';
+  const mainCost = edit ? String(Number(sale.cost || 0)) : '';
   const [useExisting, setUseExisting] = useState(!!edit);
   const [dates, setDates] = useState(edit ? { ci: s2(sale.check_in), co: s2(sale.check_out) } : { ci: '', co: '' });
   const hasStay = fields.some((f) => f.name === 'check_in') && fields.some((f) => f.name === 'check_out');

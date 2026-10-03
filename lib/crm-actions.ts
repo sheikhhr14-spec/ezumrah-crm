@@ -1227,7 +1227,7 @@ export async function createServiceSale(fd: FormData) {
   const ref = `${cfg.prefix}-${new Date().getFullYear()}-${String((count || 0) + 1).padStart(4, '0')}`;
   const { data: rec2 } = await db.from(table).insert({
     ...patch, agency_id: aid, customer_id: customerId || null, ref, custom_data: cfData,
-    sale_price: salePrice + extrasPrice, cost: cost + extrasCost, admin_fee: adminFee, tax: taxV,
+    sale_price: salePrice, cost: cost, admin_fee: adminFee, tax: taxV,
     discount: discount, commission: commission,
     sold_by: ctx.profile.full_name || null,
     amount_paid: amountPaid, payment_method: str(fd, 'payment_method'),
@@ -1310,7 +1310,7 @@ export async function updateServiceSaleFull(fd: FormData) {
 
   await db.from(table).update({
     ...patch, customer_id: customerId || null, custom_data: cfData,
-    sale_price: salePrice + extrasPrice, cost: cost + extrasCost, admin_fee: adminFee, tax: taxV,
+    sale_price: salePrice, cost: cost, admin_fee: adminFee, tax: taxV,
     discount: discount, commission: commission,
     amount_paid: amountPaid, payment_method: str(fd, 'payment_method'),
     payment_status: saleStatus(grand, amountPaid), notes: str(fd, 'notes'),
