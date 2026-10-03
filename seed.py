@@ -100,7 +100,7 @@ if not RESUME:
     print('agencies done')
 
     # ============ 4. PROFILES ============
-    BASE = ['leads','customers','bookings','packages','flights','hotels','visas','transports','documents','tasks','support']
+    BASE = ['leads','customers','bookings','packages','flights','hotels','visas','transports','submitted','tasks','support']
     staff_mods, mgr_mods = arr(BASE), arr(BASE + ['invoices','quotations','reports'])
     def prof(email, name, role, ag, modules):
         return {'id': U_[email], 'agency_id': AG[ag], 'full_name': name, 'email': email, 'role': role, 'modules': modules, 'created_at': 'now()', 'updated_at': 'now()'}
@@ -245,16 +245,16 @@ def visa(ag, i, ref, vtype, sale, cost, paid, pay_status, status, proc_status, a
     return r
 ins('visa_sales', [
     visa('pk',0,'VS-PK-001','Umrah visa',48000,35000,48000,'paid','completed','issued','2026-09-05','2026-09-14','2026-12-14','Islamabad'),
-    visa('pk',1,'VS-PK-002','Umrah visa',48000,35000,24000,'partial','confirmed','in_process','2026-09-22',center='Lahore',due='2026-10-12'),
+    visa('pk',1,'VS-PK-002','Umrah visa',48000,35000,24000,'partial','confirmed','processing','2026-09-22',center='Lahore',due='2026-10-12'),
     visa('pk',4,'VS-PK-003','Umrah visa',96000,70000,96000,'paid','completed','issued','2026-09-10','2026-09-20','2027-03-20','Karachi'),
-    visa('pk',6,'VS-PK-004','Visit visa (KSA)',125000,98000,0,'unpaid','pending','documents','2026-09-30',center='Rawalpindi',due='2026-10-15'),
+    visa('pk',6,'VS-PK-004','Visit visa (KSA)',125000,98000,0,'unpaid','pending','submitted','2026-09-30',center='Rawalpindi',due='2026-10-15'),
     visa('ae',0,'VS-AE-001','Nusuk Umrah e-visa',450,300,450,'paid','completed','issued','2026-09-06','2026-09-08','2027-03-08','Online via Nusuk','NUS-2026-88123','issued'),
     visa('ae',1,'VS-AE-002','Nusuk Umrah e-visa',1800,1200,900,'partial','confirmed','submitted','2026-09-24',nusuk_ref='NUS-2026-90417',nusuk_status='submitted',due='2026-10-11'),
     visa('ae',3,'VS-AE-003','Nusuk Umrah e-visa',450,300,450,'paid','completed','issued','2026-09-02','2026-09-05','2027-03-05','Online via Nusuk','NUS-2026-87002','issued'),
     visa('ae',5,'VS-AE-004','UAE re-entry permit',300,150,300,'paid','completed','issued','2026-09-15','2026-09-16','2027-03-16','Dubai'),
     visa('sa',4,'VS-SA-001','Family visit visa',950,700,950,'paid','completed','issued','2026-09-08','2026-09-19','2027-03-19','Jeddah'),
     visa('sa',6,'VS-SA-002','Umrah visa (expat)',300,180,300,'paid','completed','issued','2026-09-12','2026-09-13','2026-12-13','Jeddah','NUS-2026-91558','issued'),
-    visa('sa',2,'VS-SA-003','Umrah visa (expat)',600,360,0,'unpaid','pending','documents','2026-09-28',center='Dammam',due='2026-10-13'),
+    visa('sa',2,'VS-SA-003','Umrah visa (expat)',600,360,0,'unpaid','pending','submitted','2026-09-28',center='Dammam',due='2026-10-13'),
 ])
 print('visa_sales done')
 
@@ -292,15 +292,15 @@ def transport(ag, i, ref, ttype, frm, to, tdate, veh, pax, sale, cost, paid, pay
               'meeting_point': 'Arrivals gate', 'luggage': pax, 'guide_name': None, 'commission': 0, 'discount': 0, 'tax': 0})
     return r
 ins('transport_sales', [
-    transport('pk',0,'TS-PK-001','airport_transfer','Jeddah Airport (JED)','Makkah hotel','2026-10-20','Toyota Hiace',6,38000,30000,38000,'paid','completed'),
+    transport('pk',0,'TS-PK-001','airport pickup','Jeddah Airport (JED)','Makkah hotel','2026-10-20','Toyota Hiace',6,38000,30000,38000,'paid','completed'),
     transport('pk',2,'TS-PK-002','intercity','Makkah hotel','Madinah hotel','2026-10-24','Coaster 30-seater',11,95000,78000,47500,'partial','confirmed',due='2026-10-22'),
-    transport('pk',4,'TS-PK-003','airport_transfer','Madinah hotel','Madinah Airport (MED)','2026-11-01','Toyota Hiace',6,22000,17000,22000,'paid','completed'),
-    transport('pk',6,'TS-PK-004','ziyarat','Makkah hotel','Ziyarat program','2026-11-22','GMC Suburban',6,45000,36000,0,'unpaid','pending',due='2026-10-30'),
-    transport('ae',0,'TS-AE-001','airport_transfer','Jeddah Airport (JED)','Makkah hotel','2026-10-15','GMC Yukon XL',6,750,550,750,'paid','completed',flight_no='EK1861'),
+    transport('pk',4,'TS-PK-003','airport pickup','Madinah hotel','Madinah Airport (MED)','2026-11-01','Toyota Hiace',6,22000,17000,22000,'paid','completed'),
+    transport('pk',6,'TS-PK-004','ziyarah','Makkah hotel','Ziyarat program','2026-11-22','GMC Suburban',6,45000,36000,0,'unpaid','pending',due='2026-10-30'),
+    transport('ae',0,'TS-AE-001','airport pickup','Jeddah Airport (JED)','Makkah hotel','2026-10-15','GMC Yukon XL',6,750,550,750,'paid','completed',flight_no='EK1861'),
     transport('ae',1,'TS-AE-002','intercity','Makkah hotel','Madinah hotel','2026-10-19','GMC Yukon XL',5,950,700,950,'paid','completed'),
-    transport('ae',3,'TS-AE-003','airport_transfer','Jeddah Airport (JED)','Makkah hotel','2026-10-28','Toyota Hiace',10,1100,850,0,'unpaid','pending',due='2026-10-26',flight_no='FZ1721'),
-    transport('sa',0,'TS-SA-001','airport_transfer','Jeddah Airport (JED)','Makkah hotel','2026-10-12','GMC Yukon XL',6,500,350,500,'paid','completed',flight_no='SV1420'),
-    transport('sa',3,'TS-SA-002','ziyarat','Madinah hotel','Ziyarat program','2026-10-19','Toyota Hiace',8,450,300,450,'paid','completed'),
+    transport('ae',3,'TS-AE-003','airport pickup','Jeddah Airport (JED)','Makkah hotel','2026-10-28','Toyota Hiace',10,1100,850,0,'unpaid','pending',due='2026-10-26',flight_no='FZ1721'),
+    transport('sa',0,'TS-SA-001','airport pickup','Jeddah Airport (JED)','Makkah hotel','2026-10-12','GMC Yukon XL',6,500,350,500,'paid','completed',flight_no='SV1420'),
+    transport('sa',3,'TS-SA-002','ziyarah','Madinah hotel','Ziyarat program','2026-10-19','Toyota Hiace',8,450,300,450,'paid','completed'),
     transport('sa',6,'TS-SA-003','intercity','Taif resort','Jeddah home','2026-11-15','Toyota Camry',3,600,400,0,'unpaid','pending',due='2026-11-10',ret='2026-11-16'),
 ])
 print('transport_sales done')
@@ -429,7 +429,7 @@ def doc(ag, cust_i, title, dtype, fname, expiry=None):
     return {'id': U(), 'booking_id': None, 'customer_id': C[ag][cust_i]['id'], 'title': title, 'doc_type': dtype,
             'file_url': f'/documents/{AG[ag][:8]}/{fname}', 'file_name': fname, 'file_size': random.randint(200000, 1800000),
             'expiry_date': expiry, 'notes': None, 'agency_id': AG[ag], 'created_at': 'now()', 'updated_at': 'now()'}
-ins('documents', [
+ins('submitted', [
     doc('pk',0,'Passport scan — Asif Khan','passport','asif-khan-passport.pdf'),
     doc('pk',0,'Umrah visa copy','visa','asif-khan-visa.pdf','2026-12-14'),
     doc('pk',1,'Passport scan — Rukhsana Bibi','passport','rukhsana-passport.pdf','2030-06-15'),
@@ -551,7 +551,7 @@ ins('custom_field_defs', [
 print('custom fields done')
 
 # ============ VERIFY ============
-for t in ('agencies','profiles','customers','packages','leads','flight_sales','visa_sales','hotel_sales','transport_sales','package_sales','bookings','invoices','invoice_items','payments','quotations','quotation_items','tasks','documents','employees','payroll','leaves','attendance','expenses','chat_conversations','chat_messages','custom_field_defs'):
+for t in ('agencies','profiles','customers','packages','leads','flight_sales','visa_sales','hotel_sales','transport_sales','package_sales','bookings','invoices','invoice_items','payments','quotations','quotation_items','tasks','submitted','employees','payroll','leaves','attendance','expenses','chat_conversations','chat_messages','custom_field_defs'):
     n = q(f"select count(*) c from {t};")[0]['c']
     print(f"{t}: {n}")
 print('SEED COMPLETE')
