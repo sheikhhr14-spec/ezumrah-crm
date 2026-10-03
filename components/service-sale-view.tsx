@@ -6,7 +6,6 @@ import { StatusBadge } from '@/components/ui';
 import { deleteRecord, sendSaleInvoiceEmail, submitVisaToNusuk, syncNusukVisaStatus } from '@/lib/crm-actions';
 import { getCustomFields, customAdjustment } from '@/lib/custom-fields';
 import { SERVICE_SALES } from '@/lib/service-sales';
-import ServiceSaleForm from '@/components/service-sale-form';
 import Link from 'next/link';
 import SaleDocuments from '@/components/sale-documents';
 import { notFound } from 'next/navigation';
@@ -67,7 +66,8 @@ export default async function ServiceSaleView({ table, id, emailFlag, editFlag }
           <p className="text-sm text-slate-500">{cfg.desc(rec)}{rec.sold_by ? ` · sold by ${rec.sold_by}` : ''}</p>
         </div>
         <div className="flex items-center gap-3">
-          <form action={sendSaleInvoiceEmail}>
+          <Link className="btn-secondary text-xs" href={`/dashboard/${cfg.route}/${rec.id}/edit`}>✏️ Edit sale</Link>
+            <form action={sendSaleInvoiceEmail}>
               <input type="hidden" name="table" value={table} />
               <input type="hidden" name="id" value={rec.id} />
               <button className="btn-secondary text-xs" type="submit">📧 Send invoice by email</button>
@@ -147,18 +147,6 @@ export default async function ServiceSaleView({ table, id, emailFlag, editFlag }
           <p><span className="text-slate-400">Passport:</span> {rec.customers?.passport_no || '—'}</p>
         </div>
       </div>
-
-      {/* full edit form — same as add-new, prefilled */}
-      <details className="card mb-8 p-5" open={editFlag === '1'}>
-        <summary className="cursor-pointer select-none text-sm font-bold accent">✏️ Edit this sale — full form (customer, details, pricing & payment)</summary>
-        <div className="mt-4 border-t border-slate-100 pt-4">
-          <ServiceSaleForm
-            table={table} fields={cfg.fields} customers={customers || []}
-            currency={cur} taxRate={Number((ctx as any).agency?.tax_rate || 0)}
-            customFields={cfDefs} sale={rec} saleExtras={legs || []}
-          />
-        </div>
-      </details>
 
       {/* details at a glance */}
       <div className="card mb-8 p-5">

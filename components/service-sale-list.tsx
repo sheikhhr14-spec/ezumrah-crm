@@ -61,7 +61,7 @@ export default async function ServiceSaleList({ table, searchParams }: { table: 
               <td className="px-4 py-2 font-semibold accent">{money((grand - Number(r.cost)), cur)}</td>
               <td className="px-4 py-2"><StatusBadge status={r.payment_status} /></td>
               <td className="px-4 py-2"><div className="flex items-center gap-2">
-                <Link className="text-xs font-semibold accent hover:underline" href={`/dashboard/${cfg.route}/${r.id}?edit=1`}>Edit</Link>
+                <Link className="text-xs font-semibold accent hover:underline" href={`/dashboard/${cfg.route}/${r.id}/edit`}>Edit</Link>
                 <a className="text-xs font-semibold accent hover:underline" href={`/api/invoice-pdf?type=${table.replace('_sales', '_sale')}&id=${r.id}`}>PDF</a>
                 <form action={deleteRecord}>
                   <input type="hidden" name="table" value={table} />

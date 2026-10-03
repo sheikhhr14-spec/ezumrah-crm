@@ -5,7 +5,6 @@ import { money } from '@/lib/format';
 import { requireModule } from '@/lib/data';
 import { Table, Empty, StatusBadge } from '@/components/ui';
 import { deleteRecord, sendSaleInvoiceEmail, addFlightPassenger, deleteFlightPassenger } from '@/lib/crm-actions';
-import FlightSaleForm from '@/components/flight-sale-form';
 import RowEdit from '@/components/row-edit';
 import Link from 'next/link';
 import SaleDocuments from '@/components/sale-documents';
@@ -18,7 +17,7 @@ const L = ({ label, name, def, type = 'text', ph = '' }: { label: string; name: 
   </label>
 );
 
-export default async function FlightSaleDetail({ params, searchParams }: { params: { id: string }; searchParams?: { emailed?: string; edit?: string } }) {
+export default async function FlightSaleDetail({ params, searchParams }: { params: { id: string }; searchParams?: { emailed?: string } }) {
   const ctx = await requireModule('flightsales');
   const cur = (ctx as any).agency?.currency;
   const aid = ctx.profile.agency_id;
@@ -60,6 +59,7 @@ export default async function FlightSaleDetail({ params, searchParams }: { param
           </p>
         </div>
         <div className="flex items-center gap-3">
+          <Link className="btn-secondary text-xs" href={`/dashboard/flight-sales/${sale.id}/edit`}>✏️ Edit sale</Link>
           <a className="btn-primary" href={`/api/invoice-pdf?type=flightsale&id=${sale.id}`}>⬇ Download PDF invoice</a>
           <form action={sendSaleInvoiceEmail}>
             <input type="hidden" name="table" value="flight_sales" />
@@ -107,19 +107,6 @@ export default async function FlightSaleDetail({ params, searchParams }: { param
         ))}
       </div>
 
-      {/* full edit form — same as add-new, prefilled */}
-      <details className="card mb-8 p-5" open={searchParams?.edit === '1'}>
-        <summary className="cursor-pointer select-none text-sm font-bold accent">✏️ Edit this sale — full form (customer, passengers, legs, payment)</summary>
-        <div className="mt-4 border-t border-slate-100 pt-4">
-          <FlightSaleForm
-            customers={customers || []} currency={cur}
-            taxRate={Number((ctx as any).agency?.tax_rate || 0)}
-            customFields={cfDefs}
-            sale={sale} saleLegs={legs || []} salePassengers={passengers || []}
-          />
-        </div>
-      </details>
-
       {/* customer */}
       <div className="card mb-8 p-5">
         <h2 className="mb-3 text-lg font-semibold">Customer</h2>
@@ -147,7 +134,7 @@ export default async function FlightSaleDetail({ params, searchParams }: { param
               <p><span className="text-slate-400">Arrives:</span> {l.arrive_at ? new Date(l.arrive_at).toLocaleString() : '—'}</p>
             </div>
           </div>
-        )) : <p className="text-sm text-slate-400">No legs recorded — open the edit form above to add the itinerary.</p>}
+        )) : <p className="text-sm text-slate-400">No legs recorded — add the itinerary on the edit page.</p>}
       </div>
 
       {/* payment & details — read-only; edit via the full form above */}
