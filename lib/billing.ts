@@ -6,9 +6,11 @@ export const PLANS = {
     users_included: 2,
     extra_user_price: 50,
     features: [
-      'All sales & operations modules',
+      'Flight, hotel, visa & transport sales',
+      'Umrah, Hajj & tour package sales',
+      'Leads, customers, bookings & calendar',
+      'Documents, tasks & ticket system',
       'Invoices, quotations & reports',
-      'Built-in support ticket system',
       'Agency branding & colors',
       '2 users included — +$50 per extra user',
     ],
