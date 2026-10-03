@@ -10,11 +10,20 @@ export type CustomFieldDef = {
   label: string;
   field_type: CustomFieldType;
   position: number;
+  section?: string;
 };
+
+/** Where a custom field renders inside a sale form */
+export const CF_SECTIONS: { id: string; label: string }[] = [
+  { id: 'general', label: 'Additional details (own block at the end)' },
+  { id: 'customer', label: 'Customer section' },
+  { id: 'money', label: 'Price & payment section' },
+  { id: 'payment', label: 'Payment section' },
+];
 
 export async function getCustomFields(db: any, aid: string, module: string): Promise<CustomFieldDef[]> {
   const { data } = await db.from('custom_field_defs')
-    .select('id, label, field_type, position')
+    .select('id, label, field_type, position, section')
     .eq('agency_id', aid).eq('module', module).eq('active', true)
     .order('position').order('created_at');
   return (data || []) as CustomFieldDef[];

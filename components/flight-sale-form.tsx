@@ -3,6 +3,7 @@ import { useState } from 'react';
 import { createFlightSale } from '@/lib/crm-actions';
 import SubmitButton from '@/components/submit-button';
 import { money } from '@/lib/format';
+import CustomFieldInputs from '@/components/custom-field-inputs';
 import CustomerPicker from '@/components/customer-picker';
 
 const curSym = (c?: string | null) => {
@@ -34,7 +35,7 @@ function PaxMoneyField({ label, ph, name, value, onChange, sym, symPad, readOnly
   );
 }
 
-export default function FlightSaleForm({ customers, currency, taxRate, customFields }: { customers: { id: string; full_name: string }[]; currency?: string | null; taxRate?: number; customFields?: { id: string; label: string; field_type: string }[] }) {
+export default function FlightSaleForm({ customers, currency, taxRate, customFields }: { customers: { id: string; full_name: string }[]; currency?: string | null; taxRate?: number; customFields?: { id: string; label: string; field_type: string; section?: string }[] }) {
   const cfFields = customFields || [];
   const sym = curSym(currency);
   const symPad = sym.length <= 1 ? '2rem' : sym.length === 2 ? '2.6rem' : sym.length === 3 ? '3.3rem' : '3.8rem';
@@ -62,6 +63,8 @@ export default function FlightSaleForm({ customers, currency, taxRate, customFie
   const costTotal = paxRows.reduce((s, p) => s + paxCost(p), 0);
   const taxAuto = (saleTotal + n(adminFee) - n(discount)) * (taxRate || 0) / 100;
   const [cf, setCf] = useState<Record<string, string>>({});
+  const sec = (s: string) => cfFields.filter((f) => (f.section || 'general') === s);
+
 
   const cfAdj = cfFields.reduce((s, f) => {
     const v = Number(cf[f.id]) || 0;
@@ -96,6 +99,8 @@ export default function FlightSaleForm({ customers, currency, taxRate, customFie
           </>
         )}
       </div>
+
+      {sec('customer').length > 0 && <div className="mt-4 grid gap-4 sm:grid-cols-3"><CustomFieldInputs fields={sec('customer')} cf={cf} setCf={setCf} /></div>}
 
       {/* passengers */}
       <div className="rounded-xl border border-slate-200 p-4">
@@ -247,6 +252,10 @@ export default function FlightSaleForm({ customers, currency, taxRate, customFie
             </select>
           </label>
         </div>
+      {[...sec('money'), ...sec('payment')].length > 0 && (
+        <div className="grid gap-4 sm:grid-cols-3"><CustomFieldInputs fields={[...sec('money'), ...sec('payment')]} cf={cf} setCf={setCf} /></div>
+      )}
+
         <div className="mt-4 grid gap-3 text-sm sm:grid-cols-5">
           <div className="rounded-lg bg-slate-50 p-3"><p className="text-xs text-slate-400">Sale total</p><p className="font-bold">{money(saleTotal, cur)}</p></div>
           <div className="rounded-lg bg-slate-50 p-3"><p className="text-xs text-slate-400">Admin fee</p><p className="font-bold">{money(n(adminFee), cur)}</p></div>
@@ -262,22 +271,11 @@ export default function FlightSaleForm({ customers, currency, taxRate, customFie
 
 
       {/* custom fields (owner-defined) */}
-      {cfFields.length > 0 && (
+      {sec('general').length > 0 && (
         <div className="rounded-xl border border-gold/30 bg-gold/5 p-4">
           <p className="mb-3 text-xs font-bold uppercase tracking-wide text-slate-500">Additional details</p>
           <div className="grid gap-3 sm:grid-cols-3">
-            {cfFields.map((f) => (
-              <div key={f.id}>
-                <label className="label" htmlFor={`cf-${f.id}`}>{f.label}{f.field_type === 'plus' ? ' (adds to total)' : f.field_type === 'minus' ? ' (deducts)' : ''}</label>
-                {f.field_type === 'date' ? (
-                  <input className="input" id={`cf-${f.id}`} name={`cf_${f.id}`} type="date" onChange={(e) => setCf({ ...cf, [f.id]: e.target.value })} value={cf[f.id] || ''} />
-                ) : f.field_type === 'text' ? (
-                  <input className="input" id={`cf-${f.id}`} name={`cf_${f.id}`} onChange={(e) => setCf({ ...cf, [f.id]: e.target.value })} value={cf[f.id] || ''} />
-                ) : (
-                  <input className="input" id={`cf-${f.id}`} name={`cf_${f.id}`} type="number" step="0.01" onChange={(e) => setCf({ ...cf, [f.id]: e.target.value })} value={cf[f.id] || ''} />
-                )}
-              </div>
-            ))}
+                        <CustomFieldInputs fields={sec('general')} cf={cf} setCf={setCf} />
           </div>
         </div>
       )}

@@ -1,4 +1,5 @@
 'use client';
+import CustomFieldInputs from '@/components/custom-field-inputs';
 import CustomerPicker from '@/components/customer-picker';
 import { useState } from 'react';
 import { createPackageSale } from '@/lib/crm-actions';
@@ -27,7 +28,7 @@ export default function PackageSaleForm({ category, customers, currency, taxRate
   category: 'umrah' | 'hajj' | 'tour';
   customers: { id: string; full_name: string }[];
   currency?: string | null; taxRate?: number;
-  customFields?: { id: string; label: string; field_type: string }[];
+  customFields?: { id: string; label: string; field_type: string; section?: string }[];
 }) {
   const cfFields = customFields || [];
   const sym = curSym(currency);
@@ -50,6 +51,8 @@ export default function PackageSaleForm({ category, customers, currency, taxRate
   const base = n(money.perPerson) * travelers;
   const taxAuto = (base + n(money.supp) + n(money.fee) - n(money.discount)) * (taxRate || 0) / 100;
   const [cf, setCf] = useState<Record<string, string>>({});
+  const sec = (s: string) => cfFields.filter((f) => (f.section || 'general') === s);
+
 
   const cfAdj = cfFields.reduce((s, f) => {
     const v = Number(cf[f.id]) || 0;
@@ -86,6 +89,8 @@ export default function PackageSaleForm({ category, customers, currency, taxRate
         <L label="Country" name="country" />
         <L label="Lead passport no." name="passport_no" />
       </div>
+
+      {sec('customer').length > 0 && <div className="mt-4 grid gap-4 sm:grid-cols-3"><CustomFieldInputs fields={sec('customer')} cf={cf} setCf={setCf} /></div>}
 
       {/* 2 — PASSENGERS */}
       <p className={SECT}>2 · Passengers — {capacity} traveler{capacity === 1 ? '' : 's'} on this booking</p>
@@ -249,6 +254,7 @@ export default function PackageSaleForm({ category, customers, currency, taxRate
             <option value="confirmed">Confirmed</option><option value="pending">Pending</option>
             <option value="completed">Completed</option><option value="cancelled">Cancelled</option>
           </select></label>
+        <CustomFieldInputs fields={[...sec('money'), ...sec('payment')]} cf={cf} setCf={setCf} />
         <L label="Notes" name="notes" />
       </div>
       <div className="grid gap-3 text-sm sm:grid-cols-4">
@@ -266,22 +272,11 @@ export default function PackageSaleForm({ category, customers, currency, taxRate
 
 
       {/* custom fields (owner-defined) */}
-      {cfFields.length > 0 && (
+      {sec('general').length > 0 && (
         <div className="rounded-xl border border-gold/30 bg-gold/5 p-4">
           <p className="mb-3 text-xs font-bold uppercase tracking-wide text-slate-500">Additional details</p>
           <div className="grid gap-3 sm:grid-cols-3">
-            {cfFields.map((f) => (
-              <div key={f.id}>
-                <label className="label" htmlFor={`cf-${f.id}`}>{f.label}{f.field_type === 'plus' ? ' (adds to total)' : f.field_type === 'minus' ? ' (deducts)' : ''}</label>
-                {f.field_type === 'date' ? (
-                  <input className="input" id={`cf-${f.id}`} name={`cf_${f.id}`} type="date" onChange={(e) => setCf({ ...cf, [f.id]: e.target.value })} value={cf[f.id] || ''} />
-                ) : f.field_type === 'text' ? (
-                  <input className="input" id={`cf-${f.id}`} name={`cf_${f.id}`} onChange={(e) => setCf({ ...cf, [f.id]: e.target.value })} value={cf[f.id] || ''} />
-                ) : (
-                  <input className="input" id={`cf-${f.id}`} name={`cf_${f.id}`} type="number" step="0.01" onChange={(e) => setCf({ ...cf, [f.id]: e.target.value })} value={cf[f.id] || ''} />
-                )}
-              </div>
-            ))}
+                        <CustomFieldInputs fields={sec('general')} cf={cf} setCf={setCf} />
           </div>
         </div>
       )}

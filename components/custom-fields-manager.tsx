@@ -1,7 +1,7 @@
 import { createAdminClient } from '@/lib/supabase/admin';
 import { requireActiveAgency } from '@/lib/data';
 import { addCustomField, toggleCustomField, deleteCustomField } from '@/lib/crm-actions';
-import { CF_TYPE_LABEL, type CustomFieldType } from '@/lib/custom-fields';
+import { CF_TYPE_LABEL, CF_SECTIONS, type CustomFieldType } from '@/lib/custom-fields';
 import { AddPanel } from '@/components/ui';
 import SubmitButton from '@/components/submit-button';
 
@@ -35,6 +35,12 @@ export default async function CustomFieldsManager({ module, revalidate }: { modu
               </div>
               <div><label className="label">Order</label><input className="input" name="position" type="number" placeholder="0" /></div>
             </div>
+            <div>
+              <label className="label">Show in section</label>
+              <select className="input" name="section" defaultValue="general">
+                {CF_SECTIONS.map((s) => <option key={s.id} value={s.id}>{s.label}</option>)}
+              </select>
+            </div>
             <SubmitButton className="btn-primary" pendingText="Adding…">Add field</SubmitButton>
           </form>
         </div>
@@ -44,7 +50,7 @@ export default async function CustomFieldsManager({ module, revalidate }: { modu
             <div key={d.id} className={`mb-2 flex items-center justify-between gap-3 rounded-lg border p-2.5 ${d.active ? 'border-slate-200 bg-white' : 'border-slate-100 bg-slate-50 opacity-60'}`}>
               <div>
                 <p className="text-sm font-semibold">{d.label}</p>
-                <p className="text-[11px] text-slate-400">{CF_TYPE_LABEL[d.field_type as CustomFieldType]}{d.active ? '' : ' · hidden'}</p>
+                <p className="text-[11px] text-slate-400">{CF_TYPE_LABEL[d.field_type as CustomFieldType]} · {CF_SECTIONS.find((s) => s.id === (d.section || 'general'))?.label || 'Additional details'}{d.active ? '' : ' · hidden'}</p>
               </div>
               <div className="flex items-center gap-2">
                 <form action={toggleCustomField}>

@@ -1844,12 +1844,13 @@ export async function addCustomField(fd: FormData) {
   const label = String(fd.get('label') || '').trim();
   const field_type = String(fd.get('field_type') || 'text');
   const position = Number(fd.get('position')) || 0;
+  const section = String(fd.get('section') || 'general');
   if (!module || !label) throw new Error('Label is required.');
   const { count } = await db.from('custom_field_defs').select('id', { count: 'exact', head: true })
     .eq('agency_id', ctx.profile.agency_id).eq('module', module);
   if ((count || 0) >= 15) throw new Error('Maximum of 15 custom fields per module.');
   await db.from('custom_field_defs').insert({
-    agency_id: ctx.profile.agency_id, module, label, field_type, position,
+    agency_id: ctx.profile.agency_id, module, label, field_type, position, section,
   });
   revalidatePath('/dashboard/' + (fd.get('revalidate') || ''));
 }
