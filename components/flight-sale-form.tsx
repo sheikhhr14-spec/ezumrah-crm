@@ -4,6 +4,7 @@ import { createFlightSale } from '@/lib/crm-actions';
 import SubmitButton from '@/components/submit-button';
 import { money } from '@/lib/format';
 import CustomFieldInputs from '@/components/custom-field-inputs';
+import { groupCustomSections } from '@/lib/custom-fields';
 import CustomerPicker from '@/components/customer-picker';
 
 const SECT = "mb-2 mt-2 text-xs font-bold uppercase tracking-wide text-slate-500 border-b border-slate-100 pb-1";
@@ -282,14 +283,14 @@ export default function FlightSaleForm({ customers, currency, taxRate, customFie
 
 
       {/* custom fields (owner-defined) */}
-      {sec('general').length > 0 && (
-        <div className="rounded-xl border border-gold/30 bg-gold/5 p-4">
-          <p className="mb-3 text-xs font-bold uppercase tracking-wide text-slate-500">Additional details</p>
+      {groupCustomSections(cfFields).map((grp) => (
+        <div key={grp.title} className="rounded-xl border border-gold/30 bg-gold/5 p-4">
+          <p className="mb-3 text-xs font-bold uppercase tracking-wide text-slate-500">{grp.title}</p>
           <div className="grid gap-3 sm:grid-cols-3">
-                        <CustomFieldInputs fields={sec('general')} cf={cf} setCf={setCf} />
+            <CustomFieldInputs fields={grp.fields} cf={cf} setCf={setCf} />
           </div>
         </div>
-      )}
+      ))}
       <SubmitButton pendingText="Saving flight sale…">Save flight sale</SubmitButton>
     </form>
   );

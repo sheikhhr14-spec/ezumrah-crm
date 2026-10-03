@@ -40,12 +40,18 @@ export default async function CustomFieldsManager({ module, revalidate }: { modu
               <select className="input" name="section" defaultValue="general">
                 {CF_SECTIONS.map((s) => <option key={s.id} value={s.id}>{s.label}</option>)}
               </select>
+              <p className="mt-1 text-[10px] text-slate-400">"Merge in" places it inside that existing section — no new box appears.</p>
             </div>
             <div>
               <label className="label">Place next to (customer section only)</label>
               <select className="input" name="anchor" defaultValue="bottom">
                 {CF_ANCHORS.map((x) => <option key={x.id} value={x.id}>{x.label}</option>)}
               </select>
+            </div>
+            <div>
+              <label className="label">Or create a new named section</label>
+              <input className="input" name="new_section" placeholder="e.g. Insurance details" />
+              <p className="mt-1 text-[10px] text-slate-400">Fill this to start a brand-new section card with its own title — overrides the dropdown above. Add more fields with the same name to group them together.</p>
             </div>
             <SubmitButton className="btn-primary" pendingText="Adding…">Add field</SubmitButton>
           </form>
@@ -56,7 +62,7 @@ export default async function CustomFieldsManager({ module, revalidate }: { modu
             <div key={d.id} className={`mb-2 flex items-center justify-between gap-3 rounded-lg border p-2.5 ${d.active ? 'border-slate-200 bg-white' : 'border-slate-100 bg-slate-50 opacity-60'}`}>
               <div>
                 <p className="text-sm font-semibold">{d.label}</p>
-                <p className="text-[11px] text-slate-400">{CF_TYPE_LABEL[d.field_type as CustomFieldType]} · {CF_SECTIONS.find((s) => s.id === (d.section || 'general'))?.label || 'Additional details'}{d.active ? '' : ' · hidden'}</p>
+                <p className="text-[11px] text-slate-400">{CF_TYPE_LABEL[d.field_type as CustomFieldType]} · {CF_SECTIONS.find((s) => s.id === d.section)?.label || `Section: "${d.section === 'general' || !d.section ? 'Additional details' : d.section}"`}{d.active ? '' : ' · hidden'}</p>
               </div>
               <div className="flex items-center gap-2">
                 <form action={toggleCustomField}>

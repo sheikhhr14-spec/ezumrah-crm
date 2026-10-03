@@ -1,5 +1,6 @@
 'use client';
 import CustomFieldInputs from '@/components/custom-field-inputs';
+import { groupCustomSections } from '@/lib/custom-fields';
 import CustomerPicker from '@/components/customer-picker';
 import { useState } from 'react';
 import { createServiceSale } from '@/lib/crm-actions';
@@ -127,14 +128,14 @@ export default function ServiceSaleForm({
           </label>
 
       {/* custom fields (owner-defined) */}
-      {sec('general').length > 0 && (
-        <div className="rounded-xl border border-gold/30 bg-gold/5 p-4">
-          <p className="mb-3 text-xs font-bold uppercase tracking-wide text-slate-500">Additional details</p>
+      {groupCustomSections(cfFields).map((grp) => (
+        <div key={grp.title} className="rounded-xl border border-gold/30 bg-gold/5 p-4">
+          <p className="mb-3 text-xs font-bold uppercase tracking-wide text-slate-500">{grp.title}</p>
           <div className="grid gap-3 sm:grid-cols-3">
-                        <CustomFieldInputs fields={sec('general')} cf={cf} setCf={setCf} />
+            <CustomFieldInputs fields={grp.fields} cf={cf} setCf={setCf} />
           </div>
         </div>
-      )}
+      ))}
           <CustomFieldInputs fields={[...sec('money'), ...sec('payment')]} cf={cf} setCf={setCf} />
           <L label="Notes" name="notes" />
           <label className="block"><span className="text-xs font-semibold text-slate-600">Sale status</span>

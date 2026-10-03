@@ -1844,7 +1844,8 @@ export async function addCustomField(fd: FormData) {
   const label = String(fd.get('label') || '').trim();
   const field_type = String(fd.get('field_type') || 'text');
   const position = Number(fd.get('position')) || 0;
-  const section = String(fd.get('section') || 'general');
+  const newSectionTitle = String(fd.get('new_section') || '').trim();
+  const section = newSectionTitle || String(fd.get('section') || 'general');
   const anchor = String(fd.get('anchor') || 'bottom');
   if (!module || !label) throw new Error('Label is required.');
   const { count } = await db.from('custom_field_defs').select('id', { count: 'exact', head: true })

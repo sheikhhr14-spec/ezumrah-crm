@@ -1,5 +1,6 @@
 'use client';
 import CustomFieldInputs from '@/components/custom-field-inputs';
+import { groupCustomSections } from '@/lib/custom-fields';
 import CustomerPicker from '@/components/customer-picker';
 import { useState } from 'react';
 import { createPackageSale } from '@/lib/crm-actions';
@@ -281,14 +282,14 @@ export default function PackageSaleForm({ category, customers, currency, taxRate
 
 
       {/* custom fields (owner-defined) */}
-      {sec('general').length > 0 && (
-        <div className="rounded-xl border border-gold/30 bg-gold/5 p-4">
-          <p className="mb-3 text-xs font-bold uppercase tracking-wide text-slate-500">Additional details</p>
+      {groupCustomSections(cfFields).map((grp) => (
+        <div key={grp.title} className="rounded-xl border border-gold/30 bg-gold/5 p-4">
+          <p className="mb-3 text-xs font-bold uppercase tracking-wide text-slate-500">{grp.title}</p>
           <div className="grid gap-3 sm:grid-cols-3">
-                        <CustomFieldInputs fields={sec('general')} cf={cf} setCf={setCf} />
+            <CustomFieldInputs fields={grp.fields} cf={cf} setCf={setCf} />
           </div>
         </div>
-      )}
+      ))}
       <SubmitButton pendingText="Saving booking…">Save {category} booking</SubmitButton>
     </form>
   );

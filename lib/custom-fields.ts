@@ -16,11 +16,27 @@ export type CustomFieldDef = {
 
 /** Where a custom field renders inside a sale form */
 export const CF_SECTIONS: { id: string; label: string }[] = [
-  { id: 'general', label: 'Additional details (own block at the end)' },
-  { id: 'customer', label: 'Customer section' },
-  { id: 'money', label: 'Price & payment section' },
-  { id: 'payment', label: 'Payment section' },
+  { id: 'customer', label: 'Customer section (merge in)' },
+  { id: 'money', label: 'Price & payment section (merge in)' },
+  { id: 'general', label: 'Additional details (default section)' },
 ];
+
+const CF_BUILTIN_SECTIONS = new Set(['customer', 'money', 'payment']);
+
+/** Groups fields NOT targeting a built-in section into named cards — covers the
+ * default "Additional details" block and any custom section title an owner typed. */
+export function groupCustomSections<T extends { section?: string }>(fields: T[]): { title: string; fields: T[] }[] {
+  const map = new Map<string, { title: string; fields: T[] }>();
+  for (const f of fields) {
+    const raw = (f.section || 'general').trim();
+    if (CF_BUILTIN_SECTIONS.has(raw)) continue;
+    const title = raw === 'general' ? 'Additional details' : raw;
+    const key = title.toLowerCase();
+    if (!map.has(key)) map.set(key, { title, fields: [] });
+    map.get(key)!.fields.push(f);
+  }
+  return Array.from(map.values());
+}
 
 /** Which built-in customer field a custom field sits next to (customer section only) */
 export const CF_ANCHORS: { id: string; label: string }[] = [
