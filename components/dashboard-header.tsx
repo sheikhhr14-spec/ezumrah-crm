@@ -12,10 +12,7 @@ export default function DashboardHeader({ userName, userRole, notifications = []
   return (
     <header className="sticky top-0 z-40 -mx-2 mb-6 flex h-14 flex-wrap items-center gap-3 rounded-xl border border-slate-200 bg-white/90 px-3 shadow-sm backdrop-blur">
       <form action="/dashboard/search" className="relative min-w-[180px] flex-1 md:max-w-md">
-        <span className="pointer-events-none absolute left-3 top-0 flex h-9 w-4 items-center justify-center text-slate-400">
-          <svg viewBox="0 0 20 20" fill="none" className="h-4 w-4"><circle cx="9" cy="9" r="6.5" stroke="currentColor" strokeWidth="1.6" /><path d="M14.5 14.5 18 18" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" /></svg>
-        </span>
-        <input name="q" placeholder="Search customers, bookings, invoices, sales…" className="input h-9 pl-9" autoComplete="off" />
+        <input name="q" placeholder="Search customers, bookings, invoices, sales…" className="input h-9" autoComplete="off" />
       </form>
       <div className="ml-auto flex items-center gap-2">
         <QuickAddMenu />
