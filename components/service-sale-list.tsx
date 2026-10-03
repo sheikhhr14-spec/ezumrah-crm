@@ -46,7 +46,7 @@ export default async function ServiceSaleList({ table, searchParams }: { table: 
       </PageHeader>
 
       <AddPanel label={`New sale (customer + details + payment in one form)`}>
-        <ServiceSaleForm table={table} fields={cfg.fields} customers={customers || []} currency={cur} customFields={cfDefs} />
+        <ServiceSaleForm table={table} fields={cfg.fields} customers={customers || []} currency={cur} taxRate={Number(ag.tax_rate || 0)} customFields={cfDefs} />
       </AddPanel>
       <CustomFieldsManager module={table} revalidate={cfg.route} />
 

@@ -56,7 +56,7 @@ export default function ServiceSaleForm({
   const n = (v: string) => Number(v) || 0;
   const extrasPrice = extras.reduce((sm, x) => sm + n(x.sale_price), 0);
   const extrasCost = extras.reduce((sm, x) => sm + n(x.cost), 0);
-  const taxAuto = (n(money.sale_price) + n(money.admin_fee) - n(money.discount)) * (taxRate || 0) / 100;
+  const taxAuto = (n(money.sale_price) + extrasPrice + n(money.admin_fee) - n(money.discount)) * (taxRate || 0) / 100;
 
   const cfAdj = cfFields.reduce((s, f) => {
     const v = Number(cf[f.id]) || 0;
