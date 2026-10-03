@@ -285,6 +285,23 @@ ins('hotel_sales', [
     hotel('sa',3,'HS-SA-002','Anwar Al Madinah Mövenpick','Madinah','2026-10-18',4,1,'Quad','Half board',3400,2800,1700,'partial','confirmed',due='2026-10-15',guests=[('Nora Al Shehri','P4151952'),('Waleed Al Harbi','P4152203')]),
     hotel('sa',7,'HS-SA-003','Jeddah Hilton','Jeddah','2026-11-01',2,1,'Double','Room only',1400,1150,1400,'paid','completed','JED-55014',guests=[('Reem Al Ghamdi','P4177881'),('Saud Al Ghamdi','P4177900')]),
 ])
+# multi-hotel demo: extra stays (Makkah + Madinah combos) via hotel_sale_stays
+_hs = {r['ref']: r['id'] for r in q("select id, ref from hotel_sales;")}
+ins('hotel_sale_stays', [
+    {'id': U(), 'agency_id': AG['sa'], 'hotel_sale_id': _hs['HS-SA-001'], 'city': 'Madinah',
+     'hotel_name': 'Anwar Al Madinah Movenpick', 'check_in': '2026-10-15', 'check_out': '2026-10-18', 'nights': 3,
+     'room_type': 'Double', 'rooms_count': 2, 'meal_plan': 'Half board', 'sale_price': 2400, 'cost': 1950, 'created_at': 'now()'},
+    {'id': U(), 'agency_id': AG['pk'], 'hotel_sale_id': _hs['HS-PK-002'], 'city': 'Makkah',
+     'hotel_name': 'Elaf Ajyad Hotel', 'check_in': '2026-10-20', 'check_out': '2026-10-24', 'nights': 4,
+     'room_type': 'Triple', 'rooms_count': 2, 'meal_plan': 'Breakfast', 'sale_price': 240000, 'cost': 200000, 'created_at': 'now()'},
+    {'id': U(), 'agency_id': AG['ae'], 'hotel_sale_id': _hs['HS-AE-001'], 'city': 'Madinah',
+     'hotel_name': 'Anwar Al Madinah Movenpick', 'check_in': '2026-10-20', 'check_out': '2026-10-23', 'nights': 3,
+     'room_type': 'Quad', 'rooms_count': 1, 'meal_plan': 'Half board', 'sale_price': 4600, 'cost': 3800, 'created_at': 'now()'},
+])
+# keep the two fully-paid sales fully paid after adding stays
+q("update hotel_sales set amount_paid = sale_price + 2400 where ref='HS-SA-001' and payment_status='full';")
+q("update hotel_sales set amount_paid = sale_price + 4600 where ref='HS-AE-001' and payment_status='full';")
+print('hotel stays done')
 print('hotel_sales done')
 
 def transport(ag, i, ref, ttype, frm, to, tdate, veh, pax, sale, cost, paid, pay_status, status, due=None, ret=None, flight_no=None):
