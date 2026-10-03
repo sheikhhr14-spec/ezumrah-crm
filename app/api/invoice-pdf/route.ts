@@ -2,6 +2,7 @@ import { PDFDocument, StandardFonts, rgb } from 'pdf-lib';
 import { getCurrentUser } from '@/lib/data';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { moneyAscii, COUNTRIES } from '@/lib/format';
+import { getCustomFields, customAdjustment } from '@/lib/custom-fields';
 
 // Helvetica (WinAnsi) can't encode arrows/unicode — sanitize every string we draw
 const clean = (t: string) => (t || '')
@@ -118,7 +119,14 @@ export async function GET(req: Request) {
     if (Number(row.supplement)) items.push({ desc: 'Separate room supplement', qty: '1', unit: '', amount: Number(row.supplement) });
     if (Number(row.admin_fee)) items.push({ desc: 'Admin / service fee', qty: '1', unit: '', amount: Number(row.admin_fee) });
     if (Number(row.discount)) items.push({ desc: 'Discount', qty: '1', unit: '', amount: -Number(row.discount) });
-    total = Number(row.sale_price) + Number(row.supplement || 0) + Number(row.admin_fee || 0) - (Number(row.discount) || 0);
+    const cfDefsP = await getCustomFields(db, aid, `${(row.package_category || 'umrah')}_sales`);
+    const cfAdjP = customAdjustment(row.custom_data, cfDefsP);
+    for (const d of cfDefsP) {
+      const v = row.custom_data?.[d.id];
+      if (v === undefined || v === null || v === '') continue;
+      if (d.field_type === 'plus' || d.field_type === 'minus') items.push({ desc: d.label, qty: '1', unit: '', amount: d.field_type === 'plus' ? Number(v) : -Number(v) });
+    }
+    total = Number(row.sale_price) + Number(row.supplement || 0) + Number(row.admin_fee || 0) - (Number(row.discount) || 0) + cfAdjP;
     paid = Number(row.amount_paid) || 0;
   } else if (type === 'hotel_sale' || type === 'visa_sale' || type === 'transport_sale') {
     const table = type.replace('_sale', '_sales');
@@ -136,7 +144,14 @@ export async function GET(req: Request) {
     items.push({ desc: descMap[type], qty: '1', unit: '', amount: Number(row.sale_price) || 0 });
     if (Number(row.admin_fee)) items.push({ desc: 'Admin / service fee', qty: '1', unit: '', amount: Number(row.admin_fee) });
     if (Number(row.discount)) items.push({ desc: 'Discount', qty: '1', unit: '', amount: -Number(row.discount) });
-    total = Number(row.sale_price) + Number(row.admin_fee) - (Number(row.discount) || 0);
+    const cfDefsS = await getCustomFields(db, aid, table);
+    const cfAdjS = customAdjustment(row.custom_data, cfDefsS);
+    for (const d of cfDefsS) {
+      const v = row.custom_data?.[d.id];
+      if (v === undefined || v === null || v === '') continue;
+      if (d.field_type === 'plus' || d.field_type === 'minus') items.push({ desc: d.label, qty: '1', unit: '', amount: d.field_type === 'plus' ? Number(v) : -Number(v) });
+    }
+    total = Number(row.sale_price) + Number(row.admin_fee) - (Number(row.discount) || 0) + cfAdjS;
     paid = Number(row.amount_paid) || 0;
   } else if (type === 'flightsale') {
     const fs = await one('flight_sales');
@@ -159,7 +174,14 @@ export async function GET(req: Request) {
     if (Number(fs.admin_fee)) items.push({ desc: 'Admin / service fee', qty: '1', unit: '', amount: Number(fs.admin_fee) });
     if (Number(fs.tax)) items.push({ desc: 'Tax / VAT', qty: '1', unit: '', amount: Number(fs.tax) });
     if (Number(fs.discount)) items.push({ desc: 'Discount', qty: '1', unit: '', amount: -Number(fs.discount) });
-    total = Number(fs.sale_total) + Number(fs.admin_fee || 0) + Number(fs.tax || 0) - (Number(fs.discount) || 0);
+    const cfDefsF = await getCustomFields(db, aid, 'flight_sales');
+    const cfAdjF = customAdjustment(fs.custom_data, cfDefsF);
+    for (const d of cfDefsF) {
+      const v = fs.custom_data?.[d.id];
+      if (v === undefined || v === null || v === '') continue;
+      if (d.field_type === 'plus' || d.field_type === 'minus') items.push({ desc: d.label, qty: '1', unit: '', amount: d.field_type === 'plus' ? Number(v) : -Number(v) });
+    }
+    total = Number(fs.sale_total) + Number(fs.admin_fee || 0) + Number(fs.tax || 0) - (Number(fs.discount) || 0) + cfAdjF;
     paid = Number(fs.amount_paid) || 0;
   } else if (type === 'payslip') {
     const p = await one('payroll');

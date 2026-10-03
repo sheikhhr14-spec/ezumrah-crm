@@ -23,11 +23,13 @@ const MODES = ['bus', 'van', 'private_car', 'train', 'taxi', 'other'];
 
 const SECT = "mb-2 mt-6 text-xs font-bold uppercase tracking-wide text-slate-500 border-b border-slate-100 pb-1";
 
-export default function PackageSaleForm({ category, customers, currency, taxRate }: {
+export default function PackageSaleForm({ category, customers, currency, taxRate, customFields }: {
   category: 'umrah' | 'hajj' | 'tour';
   customers: { id: string; full_name: string }[];
   currency?: string | null; taxRate?: number;
+  customFields?: { id: string; label: string; field_type: string }[];
 }) {
+  const cfFields = customFields || [];
   const sym = curSym(currency);
   const symPad = sym.length <= 1 ? '2rem' : sym.length === 2 ? '2.6rem' : sym.length === 3 ? '3.3rem' : '3.8rem';
   const cur = currency;
@@ -47,7 +49,13 @@ export default function PackageSaleForm({ category, customers, currency, taxRate
   const travelers = pax.length;
   const base = n(money.perPerson) * travelers;
   const taxAuto = (base + n(money.supp) + n(money.fee) - n(money.discount)) * (taxRate || 0) / 100;
-  const grand = base + n(money.supp) + n(money.fee) - n(money.discount) + (money.tax !== '' ? n(money.tax) : Math.round(taxAuto * 100) / 100);
+  const [cf, setCf] = useState<Record<string, string>>({});
+
+  const cfAdj = cfFields.reduce((s, f) => {
+    const v = Number(cf[f.id]) || 0;
+    return s + (f.field_type === 'plus' ? v : f.field_type === 'minus' ? -v : 0);
+  }, 0);
+  const grand = base + n(money.supp) + n(money.fee) - n(money.discount) + (money.tax !== '' ? n(money.tax) : Math.round(taxAuto * 100) / 100) + cfAdj;
   const profit = grand + n(money.commission) - n(money.cost);
   const balance = grand - n(money.paid);
   const rooms = ROOM_TYPES.map((rt) => ({ rt, count: pax.filter((p) => p.room_type === rt).length })).filter((r) => r.count);
@@ -256,6 +264,27 @@ export default function PackageSaleForm({ category, customers, currency, taxRate
         📎 After saving, open the sale and upload passports, tickets, vouchers and receipts in its <b>Documents</b> section — every document stays attached to this booking.
       </p>
 
+
+      {/* custom fields (owner-defined) */}
+      {cfFields.length > 0 && (
+        <div className="rounded-xl border border-gold/30 bg-gold/5 p-4">
+          <p className="mb-3 text-xs font-bold uppercase tracking-wide text-slate-500">Additional details</p>
+          <div className="grid gap-3 sm:grid-cols-3">
+            {cfFields.map((f) => (
+              <div key={f.id}>
+                <label className="label" htmlFor={`cf-${f.id}`}>{f.label}{f.field_type === 'plus' ? ' (adds to total)' : f.field_type === 'minus' ? ' (deducts)' : ''}</label>
+                {f.field_type === 'date' ? (
+                  <input className="input" id={`cf-${f.id}`} name={`cf_${f.id}`} type="date" onChange={(e) => setCf({ ...cf, [f.id]: e.target.value })} value={cf[f.id] || ''} />
+                ) : f.field_type === 'text' ? (
+                  <input className="input" id={`cf-${f.id}`} name={`cf_${f.id}`} onChange={(e) => setCf({ ...cf, [f.id]: e.target.value })} value={cf[f.id] || ''} />
+                ) : (
+                  <input className="input" id={`cf-${f.id}`} name={`cf_${f.id}`} type="number" step="0.01" onChange={(e) => setCf({ ...cf, [f.id]: e.target.value })} value={cf[f.id] || ''} />
+                )}
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
       <SubmitButton pendingText="Saving booking…">Save {category} booking</SubmitButton>
     </form>
   );

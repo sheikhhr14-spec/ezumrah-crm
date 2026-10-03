@@ -34,7 +34,8 @@ function PaxMoneyField({ label, ph, name, value, onChange, sym, symPad, readOnly
   );
 }
 
-export default function FlightSaleForm({ customers, currency, taxRate }: { customers: { id: string; full_name: string }[]; currency?: string | null; taxRate?: number }) {
+export default function FlightSaleForm({ customers, currency, taxRate, customFields }: { customers: { id: string; full_name: string }[]; currency?: string | null; taxRate?: number; customFields?: { id: string; label: string; field_type: string }[] }) {
+  const cfFields = customFields || [];
   const sym = curSym(currency);
   const symPad = sym.length <= 1 ? '2rem' : sym.length === 2 ? '2.6rem' : sym.length === 3 ? '3.3rem' : '3.8rem';
   const cur = currency;
@@ -60,7 +61,13 @@ export default function FlightSaleForm({ customers, currency, taxRate }: { custo
   const saleTotal = paxRows.reduce((s, p) => s + (n(p.samt) || paxCost(p)), 0);
   const costTotal = paxRows.reduce((s, p) => s + paxCost(p), 0);
   const taxAuto = (saleTotal + n(adminFee) - n(discount)) * (taxRate || 0) / 100;
-  const grand = saleTotal + n(adminFee) - n(discount) + n(tax);
+  const [cf, setCf] = useState<Record<string, string>>({});
+
+  const cfAdj = cfFields.reduce((s, f) => {
+    const v = Number(cf[f.id]) || 0;
+    return s + (f.field_type === 'plus' ? v : f.field_type === 'minus' ? -v : 0);
+  }, 0);
+  const grand = saleTotal + n(adminFee) - n(discount) + n(tax) + cfAdj;
   const profit = grand + n(commission) - costTotal;
   const balance = grand - n(paid);
   const pStatus = n(paid) <= 0 ? 'Unpaid' : n(paid) >= grand ? 'Fully paid' : 'Partial';
@@ -253,6 +260,27 @@ export default function FlightSaleForm({ customers, currency, taxRate }: { custo
         <p className="mt-2 text-xs font-semibold text-slate-500">Payment status: <span className="accent">{pStatus}</span></p>
       </div>
 
+
+      {/* custom fields (owner-defined) */}
+      {cfFields.length > 0 && (
+        <div className="rounded-xl border border-gold/30 bg-gold/5 p-4">
+          <p className="mb-3 text-xs font-bold uppercase tracking-wide text-slate-500">Additional details</p>
+          <div className="grid gap-3 sm:grid-cols-3">
+            {cfFields.map((f) => (
+              <div key={f.id}>
+                <label className="label" htmlFor={`cf-${f.id}`}>{f.label}{f.field_type === 'plus' ? ' (adds to total)' : f.field_type === 'minus' ? ' (deducts)' : ''}</label>
+                {f.field_type === 'date' ? (
+                  <input className="input" id={`cf-${f.id}`} name={`cf_${f.id}`} type="date" onChange={(e) => setCf({ ...cf, [f.id]: e.target.value })} value={cf[f.id] || ''} />
+                ) : f.field_type === 'text' ? (
+                  <input className="input" id={`cf-${f.id}`} name={`cf_${f.id}`} onChange={(e) => setCf({ ...cf, [f.id]: e.target.value })} value={cf[f.id] || ''} />
+                ) : (
+                  <input className="input" id={`cf-${f.id}`} name={`cf_${f.id}`} type="number" step="0.01" onChange={(e) => setCf({ ...cf, [f.id]: e.target.value })} value={cf[f.id] || ''} />
+                )}
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
       <SubmitButton pendingText="Saving flight sale…">Save flight sale</SubmitButton>
     </form>
   );

@@ -4,6 +4,7 @@ import { money } from '@/lib/format';
 import { requireModule } from '@/lib/data';
 import { StatusBadge } from '@/components/ui';
 import { updateServiceSale, deleteRecord, sendSaleInvoiceEmail, submitVisaToNusuk, syncNusukVisaStatus } from '@/lib/crm-actions';
+import { getCustomFields, customAdjustment } from '@/lib/custom-fields';
 import { SERVICE_SALES, SALE_PAYMENT_FIELDS } from '@/lib/service-sales';
 import Link from 'next/link';
 import SaleDocuments from '@/components/sale-documents';
@@ -40,14 +41,17 @@ export default async function ServiceSaleView({ table, id, emailFlag }: { table:
     const r2 = await db.from('transport_sale_legs').select('*').eq('transport_sale_id', rec.id).order('leg_no');
     legs = r2.data || [];
   }
-  const [{ data: customers }, { data: docs }] = await Promise.all([
+  const [{ data: customers }, { data: docs }, cfDefs] = await Promise.all([
     db.from('customers').select('id, full_name').eq('agency_id', aid).order('full_name').limit(500),
     db.from('sale_documents').select('*').eq('sale_table', table).eq('sale_id', rec.id).order('created_at'),
+    getCustomFields(db, aid, table),
   ]);
+  const cfVals: any[] = (cfDefs || []).filter((d) => rec.custom_data?.[d.id] !== undefined && rec.custom_data?.[d.id] !== null && rec.custom_data?.[d.id] !== '');
 
   const discount = Number(rec.discount || 0);
   const commission = Number(rec.commission || 0);
-  const grand = Number(rec.sale_price) + Number(rec.admin_fee) + Number(rec.tax || 0) - discount;
+  const cfAdj = customAdjustment(rec.custom_data, cfDefs);
+  const grand = Number(rec.sale_price) + Number(rec.admin_fee) + Number(rec.tax || 0) - discount + cfAdj;
   const paid = Number(rec.amount_paid);
   const balance = grand - paid;
   const profit = grand + commission - Number(rec.cost);
@@ -95,6 +99,20 @@ export default async function ServiceSaleView({ table, id, emailFlag }: { table:
                 <form action={syncNusukVisaStatus}><input type="hidden" name="id" value={rec.id} /><button className="btn-secondary text-xs" type="submit">↻ Sync status</button></form>
               )}
             </div>
+          </div>
+        </div>
+      )}
+
+      {cfVals.length > 0 && (
+        <div className="card mb-6 p-4">
+          <h3 className="mb-2 text-sm font-bold text-slate-900">📋 Additional details</h3>
+          <div className="grid gap-3 sm:grid-cols-3">
+            {cfVals.map((d) => (
+              <div key={d.id} className="rounded-lg bg-slate-50 p-2.5">
+                <p className="text-[11px] text-slate-400">{d.label}</p>
+                <p className="text-sm font-semibold">{['plus','minus','number'].includes(d.field_type) ? `${cur || ''} ${Number((rec as any).custom_data[d.id]).toLocaleString()}` : String((rec as any).custom_data[d.id])}</p>
+              </div>
+            ))}
           </div>
         </div>
       )}

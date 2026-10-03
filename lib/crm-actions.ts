@@ -1,6 +1,7 @@
 'use server';
 
 import { logActivity, actor } from '@/lib/activity';
+import { getCustomFields, parseCustomValues, customAdjustment, type CustomFieldDef } from '@/lib/custom-fields';
 
 import { createAdminClient } from '@/lib/supabase/admin';
 import { requireActiveAgency } from '@/lib/data';
@@ -44,13 +45,15 @@ export async function createCustomer(fd: FormData) {
 // ---------- PACKAGES ----------
 export async function createPackage(fd: FormData) {
   const db = createAdminClient();
+  const ctx = await requireActiveAgency();
   await db.from('packages').insert({
-    agency_id: await agencyId(),
+    agency_id: ctx.profile.agency_id,
     name: str(fd, 'name'),
     service_type: str(fd, 'service_type') || 'umrah',
     duration_days: num(fd, 'duration_days'),
     description: str(fd, 'description'),
     price_from: num(fd, 'price_from'),
+    is_public: ctx.profile.role === 'owner' && fd.get('is_public') === 'on',
   });
   revalidatePath('/dashboard/packages');
 }
@@ -911,12 +914,15 @@ export async function createFlightSale(fd: FormData) {
   const saleTotal = paxList.reduce((s, p) => s + Number(p.sale_amount || 0), 0);
   const costTotal = paxList.reduce((s, p) => s + Number(p.ticket_amount || 0), 0);
   const taxV = num(fd, 'tax');
-  const grand = saleTotal + adminFee - discount + taxV;
+  const cfDefs = await getCustomFields(db, aid, 'flight_sales');
+  const cfData = parseCustomValues(fd, cfDefs);
+  const cfAdj = cfData ? customAdjustment(cfData, cfDefs) : 0;
+  const grand = saleTotal + adminFee - discount + taxV + cfAdj;
   const paymentStatus = amountPaid <= 0 ? 'unpaid' : amountPaid >= grand ? 'full' : 'partial';
   const { count } = await db.from('flight_sales').select('id', { count: 'exact', head: true }).eq('agency_id', aid);
   const ref = `FS-${new Date().getFullYear()}-${String((count || 0) + 1).padStart(4, '0')}`;
   const { data: sale } = await db.from('flight_sales').insert({
-    agency_id: aid, customer_id: customerId || null, ref,
+    agency_id: aid, customer_id: customerId || null, ref, custom_data: cfData,
     trip_kind: str(fd, 'trip_kind') || 'oneway', pax: paxList.length || num(fd, 'pax', 1),
     pnr: str(fd, 'pnr'), ticket_numbers: str(fd, 'ticket_numbers') || paxTicketJoin,
     supplier: str(fd, 'supplier'), issue_date: str(fd, 'issue_date') || null,
@@ -1093,11 +1099,14 @@ export async function createServiceSale(fd: FormData) {
     }
   }
   const taxV = num(fd, 'tax');
-  const grand = salePrice + extrasPrice + adminFee - discount + taxV;
+  const cfDefs = await getCustomFields(db, aid, table);
+  const cfData = parseCustomValues(fd, cfDefs);
+  const cfAdj = cfData ? customAdjustment(cfData, cfDefs) : 0;
+  const grand = salePrice + extrasPrice + adminFee - discount + taxV + cfAdj;
   const { count } = await db.from(table).select('id', { count: 'exact', head: true }).eq('agency_id', aid);
   const ref = `${cfg.prefix}-${new Date().getFullYear()}-${String((count || 0) + 1).padStart(4, '0')}`;
   const { data: rec2 } = await db.from(table).insert({
-    ...patch, agency_id: aid, customer_id: customerId || null, ref,
+    ...patch, agency_id: aid, customer_id: customerId || null, ref, custom_data: cfData,
     sale_price: salePrice + extrasPrice, cost: cost + extrasCost, admin_fee: adminFee, tax: taxV,
     discount: discount, commission: commission,
     sold_by: ctx.profile.full_name || null,
@@ -1310,10 +1319,13 @@ export async function createPackageSale(fd: FormData) {
     }
     if (warns.length) rec.notes = `${rec.notes ? rec.notes + ' ' : ''}[⚠ ${warns.join(' | ')}]`;
   }
-  const grand = packageGrand(rec as any);
+  const cfDefs = await getCustomFields(db, aid, `${category}_sales`);
+  const cfData = parseCustomValues(fd, cfDefs);
+  const cfAdj = cfData ? customAdjustment(cfData, cfDefs) : 0;
+  const grand = packageGrand(rec as any) + cfAdj;
   const paid = Number(rec.amount_paid);
   const { data: sale } = await db.from('package_sales').insert({
-    ...rec,
+    ...rec, custom_data: cfData,
     payment_status: saleStatus(grand, paid),
     balance: grand - paid,
     profit: grand + Number(rec.commission) - Number(rec.cost),
@@ -1820,4 +1832,97 @@ export async function deleteFlightPassenger(fd: FormData) {
   await db.from('flight_sale_passengers').delete().eq('id', p.id);
   await recomputeSale(db, aid, p.flight_sale_id);
   revalidatePath(`/dashboard/flight-sales/${p.flight_sale_id}`);
+}
+
+
+/* ============ Custom fields (owner-managed, per-agency, per-module) ============ */
+export async function addCustomField(fd: FormData) {
+  const ctx = await requireActiveAgency();
+  if (ctx.profile.role !== 'owner') throw new Error('Only the agency owner can manage custom fields.');
+  const db = createAdminClient();
+  const module = String(fd.get('module') || '');
+  const label = String(fd.get('label') || '').trim();
+  const field_type = String(fd.get('field_type') || 'text');
+  const position = Number(fd.get('position')) || 0;
+  if (!module || !label) throw new Error('Label is required.');
+  const { count } = await db.from('custom_field_defs').select('id', { count: 'exact', head: true })
+    .eq('agency_id', ctx.profile.agency_id).eq('module', module);
+  if ((count || 0) >= 15) throw new Error('Maximum of 15 custom fields per module.');
+  await db.from('custom_field_defs').insert({
+    agency_id: ctx.profile.agency_id, module, label, field_type, position,
+  });
+  revalidatePath('/dashboard/' + (fd.get('revalidate') || ''));
+}
+
+export async function toggleCustomField(fd: FormData) {
+  const ctx = await requireActiveAgency();
+  if (ctx.profile.role !== 'owner') throw new Error('Only the agency owner can manage custom fields.');
+  const db = createAdminClient();
+  const id = String(fd.get('id'));
+  const { data: rec } = await db.from('custom_field_defs').select('id, active, agency_id').eq('id', id).single();
+  if (!rec || rec.agency_id !== ctx.profile.agency_id) throw new Error('Field not found.');
+  await db.from('custom_field_defs').update({ active: !rec.active }).eq('id', id);
+  revalidatePath('/dashboard/' + (fd.get('revalidate') || ''));
+}
+
+export async function deleteCustomField(fd: FormData) {
+  const ctx = await requireActiveAgency();
+  if (ctx.profile.role !== 'owner') throw new Error('Only the agency owner can manage custom fields.');
+  const db = createAdminClient();
+  const id = String(fd.get('id'));
+  const { data: rec } = await db.from('custom_field_defs').select('id, agency_id').eq('id', id).single();
+  if (!rec || rec.agency_id !== ctx.profile.agency_id) throw new Error('Field not found.');
+  await db.from('custom_field_defs').delete().eq('id', id);
+  revalidatePath('/dashboard/' + (fd.get('revalidate') || ''));
+}
+
+/* ============ Public website package showcase ============ */
+export async function togglePackagePublic(fd: FormData) {
+  const ctx = await requireActiveAgency();
+  if (ctx.profile.role !== 'owner') throw new Error('Only the agency owner can publish packages.');
+  const db = createAdminClient();
+  const id = String(fd.get('id'));
+  const { data: rec } = await db.from('packages').select('id, is_public, agency_id').eq('id', id).single();
+  if (!rec || rec.agency_id !== ctx.profile.agency_id) throw new Error('Package not found.');
+  await db.from('packages').update({ is_public: !rec.is_public }).eq('id', id);
+  revalidatePath('/dashboard/packages');
+  revalidatePath('/packages');
+}
+
+/** Public enquiry from the marketing website -> lead in the tenant's CRM */
+export async function submitPackageEnquiry(fd: FormData) {
+  const db = createAdminClient();
+  const packageId = String(fd.get('package_id') || '');
+  if (String(fd.get('website') || '') !== '') return; // honeypot — silently drop bots
+  const { data: pkg } = await db.from('packages').select('id, name, agency_id, agencies(name, contact_email)').eq('id', packageId).eq('is_public', true).eq('is_active', true).single();
+  if (!pkg) redirect('/packages?error=notfound');
+  const full_name = String(fd.get('full_name') || '').trim();
+  const phone = String(fd.get('phone') || '').trim();
+  const email = String(fd.get('email') || '').trim();
+  if (!full_name || (!phone && !email)) redirect(`/packages/${packageId}?error=missing`);
+  await db.from('leads').insert({
+    agency_id: pkg.agency_id,
+    full_name,
+    phone: phone || null,
+    whatsapp: String(fd.get('whatsapp') || '').trim() || null,
+    email: email || null,
+    country: String(fd.get('country') || '').trim() || null,
+    source: 'website',
+    interest: `Package enquiry: ${pkg.name}`,
+    notes: String(fd.get('message') || '').trim() || null,
+    status: 'new',
+  });
+  try {
+    const { sendAgencyEmail } = await import('@/lib/email');
+    await sendAgencyEmail(pkg.agency_id, {
+      to: (pkg.agencies as any)?.contact_email || undefined,
+      subject: `New package enquiry — ${pkg.name}`,
+      html: `<h3>New enquiry from the EzUmrah package showcase</h3>
+        <p><b>${full_name}</b> enquired about <b>${pkg.name}</b>.</p>
+        <p>Phone: ${phone || '—'}<br/>WhatsApp: ${String(fd.get('whatsapp') || '—')}<br/>Email: ${email || '—'}<br/>Country: ${String(fd.get('country') || '—')}</p>
+        <p>Message: ${String(fd.get('message') || '—')}</p>
+        <p>The enquiry was also added to your Leads module.</p>`,
+    });
+  } catch { /* email is best-effort; the lead is stored */ }
+  redirect(`/packages/${packageId}?sent=1`);
 }

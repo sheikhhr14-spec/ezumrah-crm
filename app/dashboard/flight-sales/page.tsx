@@ -5,23 +5,27 @@ import { deleteRecord } from '@/lib/crm-actions';
 import FlightSaleForm from '@/components/flight-sale-form';
 import Link from 'next/link';
 import { money } from '@/lib/format';
+import { getCustomFields, customAdjustment } from '@/lib/custom-fields';
+import CustomFieldsManager from '@/components/custom-fields-manager';
 
 export default async function FlightSalesPage({ searchParams }: { searchParams?: { q?: string } }) {
   const ctx = await requireModule('flightsales');
   const ag: any = (ctx as any).agency || (ctx.profile as any)?.agencies || {};
   const cur = ag.currency;
   const db = createAdminClient();
-  const [{ data: sales }, { data: customers }] = await Promise.all([
+  const [{ data: sales }, { data: customers }, cfDefs] = await Promise.all([
     db.from('flight_sales').select('*, customers(full_name, phone), flight_sale_legs(from_airport, to_airport)')
       .eq('agency_id', ctx.profile.agency_id).order('created_at', { ascending: false }).limit(200),
     db.from('customers').select('id, full_name, phone').eq('agency_id', ctx.profile.agency_id).order('full_name').limit(500),
+    getCustomFields(db, ctx.profile.agency_id, 'flight_sales'),
   ]);
+  const cfAdj = (r: any) => customAdjustment(r.custom_data, cfDefs);
 
   const q = (searchParams?.q || '').toLowerCase();
   const list = (sales || []).filter((r: any) =>
     !q || JSON.stringify(r).toLowerCase().includes(q));
 
-  const tot = (r: any) => Number(r.sale_total) + Number(r.admin_fee) - Number(r.discount || 0);
+  const tot = (r: any) => Number(r.sale_total) + Number(r.admin_fee) - Number(r.discount || 0) + cfAdj(r);
   const profit = (r: any) => tot(r) + Number(r.commission || 0) - Number(r.cost_total);
 
   return (
@@ -31,8 +35,9 @@ export default async function FlightSalesPage({ searchParams }: { searchParams?:
       </PageHeader>
 
       <AddPanel label="New flight sale (customer + legs + payment in one form)">
-        <FlightSaleForm customers={customers || []} currency={cur} taxRate={Number((ctx as any).agency?.tax_rate || 0)} />
+        <FlightSaleForm customers={customers || []} currency={cur} taxRate={Number((ctx as any).agency?.tax_rate || 0)} customFields={cfDefs} />
       </AddPanel>
+      <CustomFieldsManager module="flight_sales" revalidate="flight-sales" />
 
       <Table head={['Ref', 'Customer', 'Route', 'Trip', 'Pax', 'Grand total', 'Paid', 'Balance', 'Profit', 'Status', 'Actions']}>
         {list.length ? list.map((r: any) => {

@@ -2,6 +2,8 @@ import { createAdminClient } from '@/lib/supabase/admin';
 import { requireModule } from '@/lib/data';
 import PackageSaleForm from '@/components/package-sale-form';
 import PackageSalesList from '@/components/package-sales-list';
+import { getCustomFields } from '@/lib/custom-fields';
+import CustomFieldsManager from '@/components/custom-fields-manager';
 import { PageHeader } from '@/components/ui';
 
 export default async function Umrah_SalesPage() {
@@ -11,14 +13,16 @@ export default async function Umrah_SalesPage() {
     .select('id, ref, package_name, pax, departure_date, return_date, sale_price, supplement, admin_fee, discount, amount_paid, balance, profit, payment_status, status, due_date, customers(full_name)')
     .eq('package_category', 'umrah').order('created_at', { ascending: false });
   const { data: customers } = await db.from('customers').select('id, full_name, phone').eq('agency_id', agctx.profile.agency_id).order('full_name');
+  const cfDefs = await getCustomFields(db, agctx.profile.agency_id, 'umrah_sales');
 
   return (
     <div>
       <PageHeader title="Umrah Sales" subtitle="Umrah package bookings — families, group flights, buses, hotels & ziyarat" />
       <div className="card mb-6 p-5">
         <h2 className="mb-4 text-lg font-semibold">➕ New Umrah booking</h2>
-        <PackageSaleForm category="umrah" customers={(customers || []).map((c: any) => ({ id: c.id, full_name: c.full_name }))}  currency={(agctx.agency || {}).currency} taxRate={Number((agctx.agency || {}).tax_rate || 0)} />
+        <PackageSaleForm category="umrah" customFields={cfDefs} customers={(customers || []).map((c: any) => ({ id: c.id, full_name: c.full_name }))}  currency={(agctx.agency || {}).currency} taxRate={Number((agctx.agency || {}).tax_rate || 0)} />
       </div>
+      <CustomFieldsManager module="umrah_sales" revalidate="umrah-sales" />
       <PackageSalesList list={(data || []) as any[]} currency={(agctx.agency || {}).currency} />
     </div>
   );

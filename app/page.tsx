@@ -128,6 +128,7 @@ export default function LandingPage() {
           </Link>
           <div className="hidden items-center gap-6 text-sm font-medium text-slate-600 md:flex">
             <a href="#modules" className="hover:text-gold">Modules</a>
+            <Link href="/packages" className="hover:text-gold">Find Packages</Link>
             <a href="#platform" className="hover:text-gold">Platform</a>
             <a href="#integrations" className="hover:text-gold">Integrations</a>
             <a href="#pricing" className="hover:text-gold">Pricing</a>
@@ -395,6 +396,7 @@ export default function LandingPage() {
           </p>
           <div className="flex items-center gap-6">
             <a href="#modules" className="hover:text-gold">Modules</a>
+            <Link href="/packages" className="hover:text-gold">Find Packages</Link>
             <a href="#integrations" className="hover:text-gold">Integrations</a>
             <a href="#pricing" className="hover:text-gold">Pricing</a>
             <Link href="/login" className="hover:text-gold">Sign in</Link>

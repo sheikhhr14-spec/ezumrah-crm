@@ -1,4 +1,5 @@
 import RecordActivity from '@/components/record-activity';
+import { getCustomFields, customAdjustment } from '@/lib/custom-fields';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { money } from '@/lib/format';
 import { requireModule } from '@/lib/data';
@@ -35,7 +36,10 @@ export default async function FlightSaleDetail({ params, searchParams }: { param
 
   const discount = Number(sale.discount || 0);
   const commission = Number(sale.commission || 0);
-  const grand = Number(sale.sale_total) + Number(sale.admin_fee) - discount;
+  const cfDefs = await getCustomFields(db, aid, 'flight_sales');
+  const cfAdj = customAdjustment((sale as any).custom_data, cfDefs);
+  const cfVals = (cfDefs || []).filter((d) => (sale as any).custom_data?.[d.id] !== undefined && (sale as any).custom_data?.[d.id] !== null && (sale as any).custom_data?.[d.id] !== '');
+  const grand = Number(sale.sale_total) + Number(sale.admin_fee) - discount + cfAdj;
   const paid = Number(sale.amount_paid);
   const balance = grand - paid;
   const profit = grand + commission - Number(sale.cost_total);
@@ -68,6 +72,20 @@ export default async function FlightSaleDetail({ params, searchParams }: { param
           </form>
         </div>
       </div>
+
+      {cfVals.length > 0 && (
+        <div className="card mb-6 p-4">
+          <h3 className="mb-2 text-sm font-bold text-slate-900">📋 Additional details</h3>
+          <div className="grid gap-3 sm:grid-cols-3">
+            {cfVals.map((d) => (
+              <div key={d.id} className="rounded-lg bg-slate-50 p-2.5">
+                <p className="text-[11px] text-slate-400">{d.label}</p>
+                <p className="text-sm font-semibold">{['plus','minus','number'].includes(d.field_type) ? `${cur || ''} ${Number((sale as any).custom_data[d.id]).toLocaleString()}` : String((sale as any).custom_data[d.id])}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* money summary */}
       <div className="mb-8 grid gap-4 sm:grid-cols-3 lg:grid-cols-6">

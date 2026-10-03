@@ -1,4 +1,5 @@
 import RecordActivity from '@/components/record-activity';
+import { getCustomFields, customAdjustment } from '@/lib/custom-fields';
 import { sendSaleInvoiceEmail } from '@/lib/crm-actions';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { money } from '@/lib/format';
@@ -31,7 +32,10 @@ export default async function PackageSaleDetail({ params, searchParams }: { para
     .eq('package_sale_id', s.id).order('leg_date', { ascending: true });
 
   const { data: customers } = await db.from('customers').select('id, full_name').eq('agency_id', aid).order('full_name');
-  const grand = Number(s.sale_price) + Number(s.supplement || 0) + Number(s.admin_fee || 0) - Number(s.discount || 0);
+  const cfDefs = await getCustomFields(db, s.agency_id || (mctx.profile as any).agency_id, `${(s as any).package_category || 'umrah'}_sales`);
+  const cfAdj = customAdjustment((s as any).custom_data, cfDefs);
+  const cfVals = (cfDefs || []).filter((d) => (s as any).custom_data?.[d.id] !== undefined && (s as any).custom_data?.[d.id] !== null && (s as any).custom_data?.[d.id] !== '');
+  const grand = Number(s.sale_price) + Number(s.supplement || 0) + Number(s.admin_fee || 0) - Number(s.discount || 0) + cfAdj;
   const paid = Number(s.amount_paid);
   const balance = grand - paid;
   const profit = grand + Number(s.commission || 0) - Number(s.cost || 0);
@@ -73,7 +77,21 @@ export default async function PackageSaleDetail({ params, searchParams }: { para
         ))}
       </div>
 
-      {/* passengers */}
+      {cfVals.length > 0 && (
+        <div className="card mb-6 p-4">
+          <h3 className="mb-2 text-sm font-bold text-slate-900">📋 Additional details</h3>
+          <div className="grid gap-3 sm:grid-cols-3">
+            {cfVals.map((d) => (
+              <div key={d.id} className="rounded-lg bg-slate-50 p-2.5">
+                <p className="text-[11px] text-slate-400">{d.label}</p>
+                <p className="text-sm font-semibold">{['plus','minus','number'].includes(d.field_type) ? `${cur || ''} ${Number((s as any).custom_data[d.id]).toLocaleString()}` : String((s as any).custom_data[d.id])}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+
       <div className="card mb-6 p-5">
         <h2 className="mb-1 text-lg font-semibold">🧍 Passengers — {passengers?.length || 0} on this booking</h2>
         <p className="mb-4 text-xs text-slate-400">Room sharing and bus seats per passenger. Lead passenger is the customer.</p>
