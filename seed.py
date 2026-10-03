@@ -570,8 +570,12 @@ ins('custom_field_defs', [
 ])
 print('custom fields done')
 
+# ============ 15b. TOUR MODULE (packages, itineraries, departures, ops) ============
+import seed_tours
+seed_tours.run(AG, q, ins, U)
+
 # ============ VERIFY ============
-for t in ('agencies','profiles','customers','packages','leads','flight_sales','visa_sales','hotel_sales','transport_sales','package_sales','bookings','invoices','invoice_items','payments','quotations','quotation_items','tasks','submitted','employees','payroll','leaves','attendance','expenses','chat_conversations','chat_messages','custom_field_defs'):
+for t in ('agencies','profiles','customers','packages','leads','flight_sales','visa_sales','hotel_sales','transport_sales','package_sales','bookings','invoices','invoice_items','payments','quotations','quotation_items','tasks','submitted','employees','payroll','leaves','attendance','expenses','chat_conversations','chat_messages','custom_field_defs','tour_packages','tour_departures','tour_bookings','tour_passengers'):
     n = q(f"select count(*) c from {t};")[0]['c']
     print(f"{t}: {n}")
 print('SEED COMPLETE')
