@@ -227,7 +227,7 @@ export default function ServiceSaleForm({
           </div>
         )}
         <div className="mt-4 grid gap-3 text-sm sm:grid-cols-4">
-          <div className="rounded-lg bg-slate-50 p-3"><p className="text-xs text-slate-400">Tax / VAT</p><p className="font-bold">{fmtMoney(grand - n(money.sale_price) - n(money.admin_fee) + n(money.discount), cur)}</p></div>
+          <div className="rounded-lg bg-slate-50 p-3"><p className="text-xs text-slate-400">Tax / VAT</p><p className="font-bold">{fmtMoney(money.tax !== '' ? n(money.tax) : Math.round(taxAuto * 100) / 100, cur)}</p></div>
           <div className="rounded-lg bg-slate-50 p-3"><p className="text-xs text-slate-400">{isHotel ? 'More hotels' : 'More trips'}</p><p className="font-bold">{fmtMoney(extrasPrice, cur)}</p></div>
           <div className="rounded-lg bg-slate-50 p-3"><p className="text-xs text-slate-400">Grand total (incl. extras + tax)</p><p className="font-bold">{fmtMoney(grand, cur)}</p></div>
           <div className="rounded-lg bg-slate-50 p-3"><p className="text-xs text-slate-400">Balance</p><p className={`font-bold ${balance > 0 ? 'text-red-500' : 'text-emerald-600'}`}>{fmtMoney(balance, cur)}</p></div>
