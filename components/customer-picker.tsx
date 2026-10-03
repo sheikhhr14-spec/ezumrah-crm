@@ -3,11 +3,12 @@ import { useMemo, useRef, useState } from 'react';
 
 type C = { id: string; full_name: string; phone?: string | null };
 
-export default function CustomerPicker({ customers, onPick, label = 'Existing customer' }: {
-  customers: C[]; onPick?: (id: string, name: string) => void; label?: string;
+export default function CustomerPicker({ customers, onPick, label = 'Existing customer', initialId }: {
+  customers: C[]; onPick?: (id: string, name: string) => void; label?: string; initialId?: string;
 }) {
-  const [q, setQ] = useState('');
-  const [selId, setSelId] = useState('');
+  const initCust = initialId ? customers.find((c) => c.id === initialId) : undefined;
+  const [q, setQ] = useState(initCust?.full_name || '');
+  const [selId, setSelId] = useState(initCust?.id || '');
   const [open, setOpen] = useState(false);
   const boxRef = useRef<HTMLDivElement>(null);
 

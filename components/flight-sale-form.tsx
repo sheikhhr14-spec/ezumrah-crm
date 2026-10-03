@@ -1,6 +1,6 @@
 'use client';
 import { useState } from 'react';
-import { createFlightSale } from '@/lib/crm-actions';
+import { createFlightSale, updateFlightSale } from '@/lib/crm-actions';
 import SubmitButton from '@/components/submit-button';
 import { money } from '@/lib/format';
 import CustomFieldInputs from '@/components/custom-field-inputs';
@@ -14,7 +14,7 @@ const curSym = (c?: string | null) => {
   try { return new Intl.NumberFormat('en', { style: 'currency', currency: code, currencyDisplay: 'narrowSymbol' }).formatToParts(0).find((p) => p.type === 'currency')?.value || code; } catch { return code; }
 };
 
-type Leg = {};
+type Leg = Record<string, string>;
 type Pax = { title: string; first: string; last: string; passport: string; nat: string; ticket: string; type: string; gender: string; dob: string; pnr: string; fare: string; ptax: string; tamt: string; oc: string; samt: string; pft: string };
 const ageFrom = (d: string) => { if (!d) return ''; return Math.max(0, Math.floor((Date.now() - new Date(d).getTime()) / (365.25 * 86400000))); };
 const emptyPax = () => ({ title: 'Mr', first: '', last: '', passport: '', nat: '', ticket: '', type: 'ADT', gender: '', dob: '', pnr: '', fare: '', ptax: '', tamt: '', oc: '', samt: '', pft: '' });
@@ -38,20 +38,41 @@ function PaxMoneyField({ label, ph, name, value, onChange, sym, symPad, readOnly
   );
 }
 
-export default function FlightSaleForm({ customers, currency, taxRate, customFields }: { customers: { id: string; full_name: string }[]; currency?: string | null; taxRate?: number; customFields?: { id: string; label: string; field_type: string; section?: string; anchor?: string }[] }) {
+export default function FlightSaleForm({ customers, currency, taxRate, customFields, sale, saleLegs, salePassengers }: {
+  customers: { id: string; full_name: string }[]; currency?: string | null; taxRate?: number;
+  customFields?: { id: string; label: string; field_type: string; section?: string; anchor?: string }[];
+  sale?: any; saleLegs?: any[]; salePassengers?: any[];
+}) {
   const cfFields = customFields || [];
   const sym = curSym(currency);
   const symPad = sym.length <= 1 ? '2rem' : sym.length === 2 ? '2.6rem' : sym.length === 3 ? '3.3rem' : '3.8rem';
   const cur = currency;
-  const [kind, setKind] = useState('oneway');
-  const [legs, setLegs] = useState<Leg[]>([emptyLeg()]);
-  const [adminFee, setAdminFee] = useState('');
-  const [discount, setDiscount] = useState('');
-  const [tax, setTax] = useState('');
-  const [commission, setCommission] = useState('');
-  const [paid, setPaid] = useState('');
-  const [useExisting, setUseExisting] = useState(false);
-  const [paxRows, setPaxRows] = useState<Pax[]>([emptyPax()]);
+  const edit = !!sale?.id;
+  const s2 = (v: any) => v === null || v === undefined ? '' : String(v);
+  const dtv = (v: any) => v ? new Date(v).toISOString().slice(0, 16) : '';
+  const dv = (v: any) => v ? String(v).slice(0, 10) : '';
+  const toPax = (p: any): Pax => ({
+    title: p.title || 'Mr',
+    first: p.first_name || (p.full_name || '').split(' ')[0] || '',
+    last: p.last_name !== undefined && p.last_name !== null ? p.last_name : (p.full_name || '').split(' ').slice(1).join(' '),
+    passport: p.passport_no || '', nat: p.nationality || '', ticket: p.ticket_no || '',
+    type: p.pax_type || 'ADT', gender: p.gender || '', dob: p.dob ? String(p.dob).slice(0, 10) : '',
+    pnr: p.pnr || '', fare: s2(p.fare), ptax: s2(p.tax), oc: s2(p.other_charges),
+    samt: s2(p.sale_amount), tamt: '', pft: '',
+  });
+  const [kind, setKind] = useState(edit ? (sale.trip_kind || 'oneway') : 'oneway');
+  const [legs, setLegs] = useState<Leg[]>(
+    edit && (saleLegs || []).length
+      ? (saleLegs as any[]).map((l) => ({ airline: l.airline || '', flight: l.flight_no || '', from: l.from_airport || '', to: l.to_airport || '', depart: dtv(l.depart_at), arrive: dtv(l.arrive_at), cabin: l.cabin || '', baggage: l.baggage || '' }))
+      : [emptyLeg()]);
+  const [adminFee, setAdminFee] = useState(edit ? s2(sale.admin_fee) : '');
+  const [discount, setDiscount] = useState(edit ? s2(sale.discount) : '');
+  const [tax, setTax] = useState(edit ? s2(sale.tax) : '');
+  const [commission, setCommission] = useState(edit ? s2(sale.commission) : '');
+  const [paid, setPaid] = useState(edit ? s2(sale.amount_paid) : '');
+  const [useExisting, setUseExisting] = useState(!!edit);
+  const [paxRows, setPaxRows] = useState<Pax[]>(
+    edit && (salePassengers || []).length ? (salePassengers as any[]).map(toPax) : [emptyPax()]);
 
   const setLegCount = (k: string) => {
     setKind(k);
@@ -65,7 +86,7 @@ export default function FlightSaleForm({ customers, currency, taxRate, customFie
   const saleTotal = paxRows.reduce((s, p) => s + (n(p.samt) || paxCost(p)), 0);
   const costTotal = paxRows.reduce((s, p) => s + paxCost(p), 0);
   const taxAuto = (saleTotal + n(adminFee) - n(discount)) * (taxRate || 0) / 100;
-  const [cf, setCf] = useState<Record<string, string>>({});
+  const [cf, setCf] = useState<Record<string, string>>(edit ? ((sale.custom_data as any) || {}) : {});
   const sec = (s: string) => cfFields.filter((f) => (f.section || 'general') === s);
   const cfa = (a: string) => sec('customer').filter((f) => (f.anchor || 'bottom') === a);
   const custBottom = sec('customer').filter((f) => { const a = f.anchor || 'bottom'; return a === 'bottom' || !ANCHORS.includes(a); });
@@ -80,30 +101,31 @@ export default function FlightSaleForm({ customers, currency, taxRate, customFie
   const balance = grand - n(paid);
   const pStatus = n(paid) <= 0 ? 'Unpaid' : n(paid) >= grand ? 'Fully paid' : 'Partial';
 
-  const L = ({ label, name, type = 'text', ph = '' }: { label: string; name: string; type?: string; ph?: string }) => (
+  const L = ({ label, name, type = 'text', ph = '', def }: { label: string; name: string; type?: string; ph?: string; def?: string }) => (
     <label className="block"><span className="text-xs text-slate-500">{label}</span>
-      <input className="input" name={name} type={type} placeholder={ph} />
+      <input className="input" name={name} type={type} placeholder={ph} defaultValue={def} />
     </label>
   );
 
   return (
-    <form action={createFlightSale} className="space-y-6">
+    <form action={edit ? updateFlightSale : createFlightSale} className="space-y-6">
+      {edit && <input type="hidden" name="id" value={sale.id} />}
 <p className={SECT}>1 · Customer</p>
       {/* customer */}
       <div className="grid gap-4 sm:grid-cols-3">
         <div className="sm:col-span-1">
-          <CustomerPicker customers={customers} onPick={(id) => { setUseExisting(!!id); const c = customers.find((x) => x.id === id); if (c) { const parts = c.full_name.split(' '); setPaxRows((rs) => rs.map((r, i) => i === 0 ? { ...r, first: parts[0] || '', last: parts.slice(1).join(' ') } : r)); } }} />
+          <CustomerPicker customers={customers} initialId={edit ? sale.customer_id : undefined} onPick={(id) => { setUseExisting(!!id); const c = customers.find((x) => x.id === id); if (c) { const parts = c.full_name.split(' '); setPaxRows((rs) => rs.map((r, i) => i === 0 ? { ...r, first: parts[0] || '', last: parts.slice(1).join(' ') } : r)); } }} />
           <p className="mt-1 text-[10px] text-slate-400">Booked under this customer (lead passenger)</p>
         </div>
         {!useExisting && (
           <>
-            <L label="Customer name *" name="customer_name" />
+            <L label="Customer name *" name="customer_name" def={edit ? sale.customers?.full_name : ''} />
             {cfa('customer').length > 0 && <CustomFieldInputs fields={cfa('customer')} cf={cf} setCf={setCf} />}
-            <L label="Phone" name="phone" />
+            <L label="Phone" name="phone" def={edit ? sale.customers?.phone : ''} />
             {cfa('phone').length > 0 && <CustomFieldInputs fields={cfa('phone')} cf={cf} setCf={setCf} />}
-            <L label="WhatsApp" name="whatsapp" />
+            <L label="WhatsApp" name="whatsapp" def={edit ? sale.customers?.whatsapp : ''} />
             {cfa('whatsapp').length > 0 && <CustomFieldInputs fields={cfa('whatsapp')} cf={cf} setCf={setCf} />}
-            <L label="Country" name="country" />
+            <L label="Country" name="country" def={edit ? sale.customers?.country : ''} />
             {cfa('country').length > 0 && <CustomFieldInputs fields={cfa('country')} cf={cf} setCf={setCf} />}
 
           </>
@@ -179,21 +201,21 @@ export default function FlightSaleForm({ customers, currency, taxRate, customFie
           </select>
         </label>
         <input type="hidden" name="pax" value={paxRows.length} />
-        <L label="PNR / airline booking ref" name="pnr" ph="XYZ123" />
-        <L label="Supplier / consolidator" name="supplier" ph="GDS / consolidator name" />
-        <L label="Ticket issue date" name="issue_date" type="date" />
+        <L label="PNR / airline booking ref" name="pnr" ph="XYZ123" def={edit ? sale.pnr : ''} />
+        <L label="Supplier / consolidator" name="supplier" ph="GDS / consolidator name" def={edit ? sale.supplier : ''} />
+        <L label="Ticket issue date" name="issue_date" type="date" def={edit ? dv(sale.issue_date) : ''} />
         <label className="block"><span className="text-xs font-semibold text-slate-600">Refundable?</span>
-          <select className="input" name="refundable" defaultValue="non-refundable">
+          <select className="input" name="refundable" defaultValue={edit ? (sale.refundable || 'non-refundable') : 'non-refundable'}>
             <option value="non-refundable">Non-refundable</option>
             <option value="refundable">Refundable</option>
             <option value="partially refundable">Partially refundable</option>
           </select>
         </label>
-<label className="block"><span className="text-xs font-semibold text-slate-600">Fare basis</span><input className="input" name="fare_basis" placeholder="Y class / LXR7" /></label>
-<label className="block"><span className="text-xs font-semibold text-slate-600">Source / referral</span><input className="input" name="source" placeholder="website / referral" /></label>
-<label className="block"><span className="text-xs font-semibold text-slate-600">Tags</span><input className="input" name="tags" placeholder="vip, group" /></label>
-<label className="block"><span className="text-xs font-semibold text-slate-600">Follow-up date</span><input className="input" name="follow_up_date" type="date" /></label>
-        <L label="Payment due date" name="due_date" type="date" />
+<label className="block"><span className="text-xs font-semibold text-slate-600">Fare basis</span><input className="input" name="fare_basis" placeholder="Y class / LXR7" defaultValue={edit ? sale.fare_basis || '' : ''} /></label>
+<label className="block"><span className="text-xs font-semibold text-slate-600">Source / referral</span><input className="input" name="source" placeholder="website / referral" defaultValue={edit ? sale.source || '' : ''} /></label>
+<label className="block"><span className="text-xs font-semibold text-slate-600">Tags</span><input className="input" name="tags" placeholder="vip, group" defaultValue={edit ? sale.tags || '' : ''} /></label>
+<label className="block"><span className="text-xs font-semibold text-slate-600">Follow-up date</span><input className="input" name="follow_up_date" type="date" defaultValue={edit ? dv(sale.follow_up_date) : ''} /></label>
+        <L label="Payment due date" name="due_date" type="date" def={edit ? dv(sale.due_date) : ''} />
       </div>
 
       {/* legs */}
@@ -207,14 +229,14 @@ export default function FlightSaleForm({ customers, currency, taxRate, customFie
             )}
           </p>
           <div className="grid gap-3 sm:grid-cols-4">
-            <L label="Airline *" name={`leg_airline_${i}`} />
-            <L label="Flight no." name={`leg_flight_${i}`} />
-            <L label="From *" name={`leg_from_${i}`} ph="JED" />
-            <L label="To *" name={`leg_to_${i}`} ph="MED" />
-            <L label="Departure" name={`leg_depart_${i}`} type="datetime-local" />
-            <L label="Arrival" name={`leg_arrive_${i}`} type="datetime-local" />
-            <L label="Cabin" name={`leg_cabin_${i}`} ph="economy" />
-                        <L label="Baggage" name={`leg_baggage_${i}`} ph="2 x 23kg" />
+            <L label="Airline *" name={`leg_airline_${i}`} def={l.airline} />
+            <L label="Flight no." name={`leg_flight_${i}`} def={l.flight} />
+            <L label="From *" name={`leg_from_${i}`} ph="JED" def={l.from} />
+            <L label="To *" name={`leg_to_${i}`} ph="MED" def={l.to} />
+            <L label="Departure" name={`leg_depart_${i}`} type="datetime-local" def={l.depart} />
+            <L label="Arrival" name={`leg_arrive_${i}`} type="datetime-local" def={l.arrive} />
+            <L label="Cabin" name={`leg_cabin_${i}`} ph="economy" def={l.cabin} />
+                        <L label="Baggage" name={`leg_baggage_${i}`} ph="2 x 23kg" def={l.baggage} />
             
           </div>
         </div>
@@ -247,7 +269,7 @@ export default function FlightSaleForm({ customers, currency, taxRate, customFie
               onChange={(e) => setPaid(e.target.value)} /></div>
           </label>
           <label className="block"><span className="text-xs font-semibold text-slate-600">Payment method</span>
-            <select className="input" name="payment_method">
+            <select className="input" name="payment_method" defaultValue={edit ? sale.payment_method || '' : ''}>
               <option value="">— none yet —</option>
               <option value="cash">Cash</option>
               <option value="bank">Bank transfer</option>
@@ -255,9 +277,9 @@ export default function FlightSaleForm({ customers, currency, taxRate, customFie
               <option value="online">Online</option>
             </select>
           </label>
-          <L label="Notes" name="notes" />
+          <L label="Notes" name="notes" def={edit ? sale.notes || '' : ''} />
           <label className="block"><span className="text-xs font-semibold text-slate-600">Sale status</span>
-            <select className="input" name="status" defaultValue="confirmed">
+            <select className="input" name="status" defaultValue={edit ? (sale.status || 'confirmed') : 'confirmed'}>
               <option value="confirmed">Confirmed</option>
               <option value="pending">Pending</option>
               <option value="completed">Completed</option>
@@ -292,7 +314,7 @@ export default function FlightSaleForm({ customers, currency, taxRate, customFie
           </div>
         </div>
       ))}
-      <SubmitButton pendingText="Saving flight sale…">Save flight sale</SubmitButton>
+      <SubmitButton pendingText={edit ? "Updating flight sale…" : "Saving flight sale…"}>{edit ? "Update flight sale" : "Save flight sale"}</SubmitButton>
     </form>
   );
 }

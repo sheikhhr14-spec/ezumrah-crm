@@ -952,6 +952,111 @@ export async function createFlightSale(fd: FormData) {
   revalidatePath('/dashboard/flight-sales');
 }
 
+// Full-form edit for a flight sale — same shape as createFlightSale, applied to an existing record.
+export async function updateFlightSale(fd: FormData) {
+  const db = createAdminClient();
+  const ctx = await requireActiveAgency();
+  const aid = ctx.profile.agency_id!;
+  const id = String(fd.get('id') || '');
+  const { data: existing } = await db.from('flight_sales').select('id, customer_id').eq('id', id).eq('agency_id', aid).maybeSingle();
+  if (!existing) redirect('/dashboard/flight-sales');
+
+  // customer: pick existing, or create a new one by name, or keep the current link
+  let customerId = String(fd.get('existing_customer_id') || '');
+  if (!customerId) {
+    const name = str(fd, 'customer_name');
+    if (name) {
+      const { data: c } = await db.from('customers').insert({
+        agency_id: aid, full_name: name, phone: str(fd, 'phone'), whatsapp: str(fd, 'whatsapp'),
+        country: str(fd, 'country'), passport_no: str(fd, 'pax_passport_0') || str(fd, 'passport_no'),
+      }).select('id').single();
+      customerId = c?.id || '';
+    }
+  }
+  if (!customerId) customerId = existing.customer_id || '';
+
+  const adminFee = num(fd, 'admin_fee');
+  const discount = num(fd, 'discount');
+  const commission = num(fd, 'commission');
+  const amountPaid = num(fd, 'amount_paid');
+
+  const legs: Record<string, unknown>[] = [];
+  for (let i = 0; i < 20; i++) {
+    if (fd.get(`leg_airline_${i}`) === null && fd.get(`leg_from_${i}`) === null) continue;
+    if (!str(fd, `leg_airline_${i}`) && !str(fd, `leg_from_${i}`)) continue;
+    legs.push({
+      leg_no: legs.length + 1,
+      airline: str(fd, `leg_airline_${i}`), flight_no: str(fd, `leg_flight_${i}`),
+      from_airport: str(fd, `leg_from_${i}`), to_airport: str(fd, `leg_to_${i}`),
+      depart_at: str(fd, `leg_depart_${i}`) || null, arrive_at: str(fd, `leg_arrive_${i}`) || null,
+      cabin: str(fd, `leg_cabin_${i}`), baggage: str(fd, `leg_baggage_${i}`),
+    });
+  }
+
+  const paxList: Record<string, unknown>[] = [];
+  for (let i = 0; i < 20; i++) {
+    const first = str(fd, `pax_first_${i}`); const last = str(fd, `pax_last_${i}`);
+    if (!first && !last) continue;
+    const nm = `${first} ${last}`.trim();
+    const dobV = str(fd, `pax_dob_${i}`);
+    const ageV = dobV ? Math.max(0, Math.floor((Date.now() - new Date(dobV).getTime()) / (365.25 * 86400000))) : null;
+    paxList.push({
+      agency_id: aid, flight_sale_id: id, title: str(fd, `pax_title_${i}`), full_name: nm,
+      first_name: first, last_name: last,
+      passport_no: str(fd, `pax_passport_${i}`), age: ageV,
+      nationality: str(fd, `pax_nat_${i}`), ticket_no: str(fd, `pax_ticket_${i}`), is_lead: i === 0,
+      pax_type: str(fd, `pax_type_${i}`), gender: str(fd, `pax_gender_${i}`),
+      dob: dobV || null, pnr: str(fd, `pax_pnr_${i}`),
+      fare: num(fd, `pax_fare_${i}`) || null, tax: num(fd, `pax_ptax_${i}`) || null, other_charges: num(fd, `pax_oc_${i}`) || null,
+      ticket_amount: (num(fd, `pax_fare_${i}`) + num(fd, `pax_ptax_${i}`) + num(fd, `pax_oc_${i}`)) || null,
+      sale_amount: (num(fd, `pax_samt_${i}`) || (num(fd, `pax_fare_${i}`) + num(fd, `pax_ptax_${i}`) + num(fd, `pax_oc_${i}`))) || null,
+      profit: ((num(fd, `pax_samt_${i}`) || (num(fd, `pax_fare_${i}`) + num(fd, `pax_ptax_${i}`) + num(fd, `pax_oc_${i}`))) - (num(fd, `pax_fare_${i}`) + num(fd, `pax_ptax_${i}`) + num(fd, `pax_oc_${i}`))) || null,
+    });
+  }
+
+  const paxTicketJoin = paxList.map((p) => p.ticket_no).filter(Boolean).join(', ');
+  const saleTotal = paxList.reduce((s, p) => s + Number(p.sale_amount || 0), 0);
+  const costTotal = paxList.reduce((s, p) => s + Number(p.ticket_amount || 0), 0);
+  const taxV = num(fd, 'tax');
+  const cfDefs = await getCustomFields(db, aid, 'flight_sales');
+  const cfData = parseCustomValues(fd, cfDefs);
+  const cfAdj = cfData ? customAdjustment(cfData, cfDefs) : 0;
+  const grand = saleTotal + adminFee - discount + taxV + cfAdj;
+  const paymentStatus = amountPaid <= 0 ? 'unpaid' : amountPaid >= grand ? 'full' : 'partial';
+
+  await db.from('flight_sales').update({
+    customer_id: customerId || null, custom_data: cfData,
+    trip_kind: str(fd, 'trip_kind') || 'oneway', pax: paxList.length || num(fd, 'pax', 1),
+    pnr: str(fd, 'pnr'), ticket_numbers: str(fd, 'ticket_numbers') || paxTicketJoin,
+    supplier: str(fd, 'supplier'), issue_date: str(fd, 'issue_date') || null,
+    refundable: str(fd, 'refundable'), due_date: str(fd, 'due_date') || null,
+    sale_total: saleTotal, cost_total: costTotal, admin_fee: adminFee, tax: taxV,
+    discount: discount, commission: commission,
+    amount_paid: amountPaid, payment_method: str(fd, 'payment_method'),
+    payment_status: paymentStatus, fare_basis: str(fd, 'fare_basis'), source: str(fd, 'source'), tags: str(fd, 'tags'), follow_up_date: str(fd, 'follow_up_date') || null,
+    notes: str(fd, 'notes'),
+    status: str(fd, 'status') || 'confirmed',
+    balance: grand - amountPaid, profit: grand + commission - costTotal,
+  }).eq('id', id).eq('agency_id', aid);
+
+  // replace passengers (keep a lead placeholder if the form had none)
+  await db.from('flight_sale_passengers').delete().eq('flight_sale_id', id);
+  if (paxList.length) {
+    await db.from('flight_sale_passengers').insert(paxList);
+  } else {
+    const { data: cust } = customerId ? await db.from('customers').select('full_name').eq('id', customerId).maybeSingle() : { data: null };
+    await db.from('flight_sale_passengers').insert({ agency_id: aid, flight_sale_id: id, title: str(fd, 'pax_title_0'), full_name: str(fd, 'customer_name') || (cust as any)?.full_name || 'Lead passenger', is_lead: true });
+  }
+
+  // replace legs
+  await db.from('flight_sale_legs').delete().eq('flight_sale_id', id);
+  if (legs.length) await db.from('flight_sale_legs').insert(legs.map((l) => ({ ...l, agency_id: aid, flight_sale_id: id })));
+
+  revalidatePath('/dashboard/flight-sales');
+  revalidatePath(`/dashboard/flight-sales/${id}`);
+  redirect(`/dashboard/flight-sales/${id}`);
+}
+
 export async function updateSale(fd: FormData) {
   const db = createAdminClient();
   const aid = await agencyId();

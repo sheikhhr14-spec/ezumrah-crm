@@ -4,7 +4,8 @@ import { createAdminClient } from '@/lib/supabase/admin';
 import { money } from '@/lib/format';
 import { requireModule } from '@/lib/data';
 import { Table, Empty, StatusBadge } from '@/components/ui';
-import { updateSale, updateSaleLeg, addSaleLeg, deleteSaleLeg, deleteRecord, sendSaleInvoiceEmail, addFlightPassenger, deleteFlightPassenger } from '@/lib/crm-actions';
+import { deleteRecord, sendSaleInvoiceEmail, addFlightPassenger, deleteFlightPassenger } from '@/lib/crm-actions';
+import FlightSaleForm from '@/components/flight-sale-form';
 import RowEdit from '@/components/row-edit';
 import Link from 'next/link';
 import SaleDocuments from '@/components/sale-documents';
@@ -17,7 +18,7 @@ const L = ({ label, name, def, type = 'text', ph = '' }: { label: string; name: 
   </label>
 );
 
-export default async function FlightSaleDetail({ params, searchParams }: { params: { id: string }; searchParams?: { emailed?: string } }) {
+export default async function FlightSaleDetail({ params, searchParams }: { params: { id: string }; searchParams?: { emailed?: string; edit?: string } }) {
   const ctx = await requireModule('flightsales');
   const cur = (ctx as any).agency?.currency;
   const aid = ctx.profile.agency_id;
@@ -106,6 +107,19 @@ export default async function FlightSaleDetail({ params, searchParams }: { param
         ))}
       </div>
 
+      {/* full edit form — same as add-new, prefilled */}
+      <details className="card mb-8 p-5" open={searchParams?.edit === '1'}>
+        <summary className="cursor-pointer select-none text-sm font-bold accent">✏️ Edit this sale — full form (customer, passengers, legs, payment)</summary>
+        <div className="mt-4 border-t border-slate-100 pt-4">
+          <FlightSaleForm
+            customers={customers || []} currency={cur}
+            taxRate={Number((ctx as any).agency?.tax_rate || 0)}
+            customFields={cfDefs}
+            sale={sale} saleLegs={legs || []} salePassengers={passengers || []}
+          />
+        </div>
+      </details>
+
       {/* customer */}
       <div className="card mb-8 p-5">
         <h2 className="mb-3 text-lg font-semibold">Customer</h2>
@@ -118,97 +132,41 @@ export default async function FlightSaleDetail({ params, searchParams }: { param
         </div>
       </div>
 
-      {/* legs */}
+      {/* legs — read-only; edit via the full form above */}
       <h2 className="mb-3 text-lg font-semibold">Itinerary — {(sale.trip_kind || '').replace('multicity', 'multi-city')}</h2>
-      <div className="space-y-4">
-        {(legs || []).map((l: any) => (
-          <form key={l.id} action={updateSaleLeg} className="card p-4">
-            <input type="hidden" name="leg_id" value={l.id} />
-            <input type="hidden" name="sale_id" value={sale.id} />
-            <p className="mb-3 text-xs font-bold uppercase tracking-wide text-slate-500">Leg {l.leg_no}</p>
-            <div className="grid gap-3 sm:grid-cols-4">
-              <L label="Airline" name="airline" def={l.airline} />
-              <L label="Flight no." name="flight_no" def={l.flight_no} />
-              <L label="From" name="from_airport" def={l.from_airport} />
-              <L label="To" name="to_airport" def={l.to_airport} />
-              <L label="Departure" name="depart_at" def={dt(l.depart_at)} type="datetime-local" />
-              <L label="Arrival" name="arrive_at" def={dt(l.arrive_at)} type="datetime-local" />
-              <L label="Cabin" name="cabin" def={l.cabin} />
-              <div className="flex items-end gap-3">
-                <SubmitButton className="btn-primary px-4 py-2 text-xs">Save leg</SubmitButton>
-              </div>
-              <div className="flex items-end">
-              </div>
+      <div className="space-y-3">
+        {(legs || []).length ? (legs || []).map((l: any) => (
+          <div key={l.id} className="card p-4">
+            <p className="mb-2 text-xs font-bold uppercase tracking-wide text-slate-500">Leg {l.leg_no}</p>
+            <div className="grid gap-3 text-sm sm:grid-cols-4">
+              <p><span className="text-slate-400">Airline:</span> <b>{l.airline || '—'}</b> {l.flight_no ? <span className="text-slate-500">({l.flight_no})</span> : null}</p>
+              <p><span className="text-slate-400">Route:</span> {l.from_airport || '?'} → {l.to_airport || '?'}</p>
+              <p><span className="text-slate-400">Cabin:</span> {l.cabin || '—'}</p>
+              <p><span className="text-slate-400">Baggage:</span> {l.baggage || '—'}</p>
+              <p><span className="text-slate-400">Departs:</span> {l.depart_at ? new Date(l.depart_at).toLocaleString() : '—'}</p>
+              <p><span className="text-slate-400">Arrives:</span> {l.arrive_at ? new Date(l.arrive_at).toLocaleString() : '—'}</p>
             </div>
-            <div className="mt-2">
-              <button className="text-xs font-semibold text-red-500 hover:underline" type="submit"
-                formAction={deleteSaleLeg} formNoValidate>Remove leg</button>
-            </div>
-          </form>
-        ))}
+          </div>
+        )) : <p className="text-sm text-slate-400">No legs recorded — open the edit form above to add the itinerary.</p>}
       </div>
 
-      {/* add leg */}
-      <details className="mt-4">
-        <summary className="cursor-pointer select-none text-sm font-semibold accent hover:underline">+ Add another leg</summary>
-        <form action={addSaleLeg} className="card mt-2 grid gap-3 p-4 sm:grid-cols-4">
-          <input type="hidden" name="sale_id" value={sale.id} />
-          <L label="Airline" name="airline" />
-          <L label="Flight no." name="flight_no" />
-          <L label="From" name="from_airport" />
-          <L label="To" name="to_airport" />
-          <L label="Departure" name="depart_at" type="datetime-local" />
-          <L label="Arrival" name="arrive_at" type="datetime-local" />
-          <L label="Cabin" name="cabin" />
-          <div className="flex items-end"><SubmitButton className="btn-primary px-4 py-2 text-xs">Add leg</SubmitButton></div>
-        </form>
-      </details>
-
-      {/* payment */}
-      <h2 className="mb-3 mt-8 text-lg font-semibold">Payment</h2>
-      <form action={updateSale} className="card grid gap-4 p-5 sm:grid-cols-4">
-        <input type="hidden" name="id" value={sale.id} />
-        <L label="Admin fee" name="admin_fee" def={sale.admin_fee} type="number" />
-        <L label="Discount" name="discount" def={sale.discount} type="number" />
-        <L label="Commission (from supplier)" name="commission" def={sale.commission} type="number" />
-        <L label="Amount paid" name="amount_paid" def={sale.amount_paid} type="number" />
-        <L label="Payment due date" name="due_date" def={sale.due_date ? String(sale.due_date).slice(0, 10) : ''} type="date" />
-        <label className="block"><span className="text-xs text-slate-500">Payment method</span>
-          <select className="input" name="payment_method" defaultValue={sale.payment_method || ''}>
-            <option value="">— none —</option>
-            <option value="cash">Cash</option>
-            <option value="bank">Bank transfer</option>
-            <option value="card">Card</option>
-            <option value="online">Online</option>
-          </select>
-        </label>
-        <label className="block"><span className="text-xs text-slate-500">Payment status</span>
-          <select className="input" name="payment_status" defaultValue={sale.payment_status}>
-            <option value="unpaid">Unpaid</option>
-            <option value="partial">Partial</option>
-            <option value="full">Full</option>
-          </select>
-        </label>
-        <label className="block"><span className="text-xs text-slate-500">Sale status</span>
-          <select className="input" name="status" defaultValue={sale.status}>
-            <option value="confirmed">Confirmed</option>
-            <option value="cancelled">Cancelled</option>
-          </select>
-        </label>
-        <label className="block"><span className="text-xs text-slate-500">Customer (re-link)</span>
-          <select className="input" name="customer_id" defaultValue={sale.customer_id || ''}>
-            <option value="">— none —</option>
-            {(customers || []).map((c: any) => <option key={c.id} value={c.id}>{c.full_name}</option>)}
-          </select>
-        </label>
-        <L label="Notes" name="notes" def={sale.notes} />
-            <L label="Fare basis" name="fare_basis" def={sale.fare_basis} />
-            <L label="Source / referral" name="source" def={sale.source} />
-            <L label="Tags" name="tags" def={sale.tags} />
-            <L label="Follow-up date" name="follow_up_date" def={sale.follow_up_date} type="date" />
-        <div className="flex items-end"><SubmitButton className="btn-primary px-4 py-2 text-xs">Save payment</SubmitButton></div>
-        <div className="flex items-end"><span className="text-xs"><StatusBadge status={sale.payment_status} /> · Profit <b className="accent">{money(profit, cur)}</b></span></div>
-      </form>
+      {/* payment & details — read-only; edit via the full form above */}
+      <h2 className="mb-3 mt-8 text-lg font-semibold">Payment & sale details</h2>
+      <div className="card grid gap-4 p-5 sm:grid-cols-4">
+        <p><span className="text-xs text-slate-400 block">PNR</span> {sale.pnr || '—'}</p>
+        <p><span className="text-xs text-slate-400 block">Supplier</span> {sale.supplier || '—'}</p>
+        <p><span className="text-xs text-slate-400 block">Fare basis</span> {sale.fare_basis || '—'}</p>
+        <p><span className="text-xs text-slate-400 block">Refundable</span> {sale.refundable || '—'}</p>
+        <p><span className="text-xs text-slate-400 block">Issue date</span> {sale.issue_date ? String(sale.issue_date).slice(0, 10) : '—'}</p>
+        <p><span className="text-xs text-slate-400 block">Payment method</span> {sale.payment_method || '—'}</p>
+        <p><span className="text-xs text-slate-400 block">Due date</span> {sale.due_date ? String(sale.due_date).slice(0, 10) : '—'}</p>
+        <p><span className="text-xs text-slate-400 block">Follow-up</span> {sale.follow_up_date ? String(sale.follow_up_date).slice(0, 10) : '—'}</p>
+        <p><span className="text-xs text-slate-400 block">Source</span> {sale.source || '—'}</p>
+        <p><span className="text-xs text-slate-400 block">Tags</span> {sale.tags || '—'}</p>
+        <p><span className="text-xs text-slate-400 block">Sold by</span> {sale.sold_by || '—'}</p>
+        <p className="flex flex-wrap items-center gap-2"><span className="text-xs text-slate-400">Status</span> <StatusBadge status={sale.payment_status} /> <StatusBadge status={sale.status} /></p>
+        {sale.notes ? <p className="sm:col-span-4"><span className="text-xs text-slate-400 block">Notes</span> {sale.notes}</p> : null}
+      </div>
 
       <SaleDocuments table="flight_sales" saleId={sale.id} docs={docs || []} />
       <div className="card mt-6 p-5">

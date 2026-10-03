@@ -59,7 +59,7 @@ export default async function FlightSalesPage({ searchParams }: { searchParams?:
               <td className="px-4 py-2 font-semibold accent">{money(profit(r), cur)}</td>
               <td className="px-4 py-2"><StatusBadge status={r.payment_status} /></td>
               <td className="px-4 py-2"><div className="flex items-center gap-2">
-                <Link className="text-xs font-semibold accent hover:underline" href={`/dashboard/flight-sales/${r.id}`}>Edit</Link>
+                <Link className="text-xs font-semibold accent hover:underline" href={`/dashboard/flight-sales/${r.id}?edit=1`}>Edit</Link>
                 <a className="text-xs font-semibold accent hover:underline" href={`/api/invoice-pdf?type=flightsale&id=${r.id}`}>PDF</a>
                 <form action={deleteRecord}>
                   <input type="hidden" name="table" value="flight_sales" />
