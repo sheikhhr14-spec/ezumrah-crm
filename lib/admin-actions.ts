@@ -387,6 +387,7 @@ export async function saveKelviqSettings(fd: FormData) {
     kelviq_env: fd.get('kelviq_env') === 'production' ? 'production' : 'sandbox',
     kelviq_server_key: String(fd.get('kelviq_server_key') || '').trim(),
     kelviq_webhook_secret: String(fd.get('kelviq_webhook_secret') || '').trim(),
+    kelviq_plan_standard: String(fd.get('kelviq_plan_standard') || 'standard').trim(),
     kelviq_plan_professional: String(fd.get('kelviq_plan_professional') || 'professional').trim(),
     kelviq_plan_enterprise: String(fd.get('kelviq_plan_enterprise') || 'enterprise').trim(),
     kelviq_checkout_url: String(fd.get('kelviq_checkout_url') || '').trim(),

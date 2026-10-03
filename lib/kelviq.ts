@@ -14,6 +14,7 @@ export type KelviqConfig = {
   env: KelviqEnv;
   serverKey: string;
   webhookSecret: string;
+  planStandard: string;
   planProfessional: string;
   planEnterprise: string;
   checkoutUrl?: string; // static checkout link (fallback when session API fails)
@@ -28,6 +29,7 @@ export async function getKelviqConfig(): Promise<KelviqConfig> {
     env,
     serverKey: s.kelviq_server_key || process.env.KELVIQ_SERVER_API_KEY || '',
     webhookSecret: s.kelviq_webhook_secret || process.env.KELVIQ_WEBHOOK_SECRET || '',
+    planStandard: s.kelviq_plan_standard || 'standard',
     planProfessional: s.kelviq_plan_professional || 'professional',
     planEnterprise: s.kelviq_plan_enterprise || 'enterprise',
     checkoutUrl: s.kelviq_checkout_url || '',
@@ -40,14 +42,17 @@ export function kelviqBaseUrl(env: KelviqEnv) {
 
 /** Plan identifier in Kelviq for an internal plan id */
 export function kelviqPlanId(cfg: KelviqConfig, plan: string) {
-  return plan === 'enterprise' ? cfg.planEnterprise : cfg.planProfessional;
+  if (plan === 'enterprise') return cfg.planEnterprise;
+  if (plan === 'professional') return cfg.planProfessional;
+  return cfg.planStandard;
 }
 
 /** Reverse map: Kelviq planIdentifier -> internal plan id ('professional' default) */
 export function internalPlanFromKelviq(cfg: KelviqConfig, planIdentifier?: string | null) {
   if (!planIdentifier) return null;
-  if (planIdentifier === cfg.planEnterprise && planIdentifier !== cfg.planProfessional) return 'enterprise';
-  return 'professional';
+  if (planIdentifier === cfg.planEnterprise) return 'enterprise';
+  if (planIdentifier === cfg.planProfessional) return 'professional';
+  return 'standard';
 }
 
 /**

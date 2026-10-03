@@ -63,6 +63,7 @@ export default async function SettingsPage({ searchParams }: { searchParams?: { 
           <Field label="Enabled"><select className="input" name="kelviq_enabled" defaultValue={String(smtp.kelviq_enabled === true)}><option value="false">false — use Stripe</option><option value="true">true — use Kelviq</option></select></Field>
           <Field label="Server API key"><input className="input" name="kelviq_server_key" type="password" defaultValue={smtp.kelviq_server_key || ''} placeholder="server-xxxxxxxx" /></Field>
           <Field label="Webhook signing secret"><input className="input" name="kelviq_webhook_secret" type="password" defaultValue={smtp.kelviq_webhook_secret || ''} placeholder="kq_whsec_…" /></Field>
+          <Field label="Plan identifier — Standard"><input className="input" name="kelviq_plan_standard" defaultValue={smtp.kelviq_plan_standard || 'standard'} /></Field>
           <Field label="Plan identifier — Professional"><input className="input" name="kelviq_plan_professional" defaultValue={smtp.kelviq_plan_professional || 'professional'} /></Field>
           <Field label="Plan identifier — Enterprise"><input className="input" name="kelviq_plan_enterprise" defaultValue={smtp.kelviq_plan_enterprise || 'enterprise'} /></Field>
           <Field label="Static checkout link (fallback)"><input className="input" name="kelviq_checkout_url" defaultValue={smtp.kelviq_checkout_url || ''} placeholder="https://www.kelviq.com/buy/…" /></Field>

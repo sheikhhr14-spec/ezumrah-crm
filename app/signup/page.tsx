@@ -4,13 +4,13 @@ import Link from 'next/link';
 import SubmitButton from '@/components/submit-button';
 
 export default function SignupPage({ searchParams }: { searchParams: { error?: string; plan?: string } }) {
-  const selected = searchParams?.plan || 'professional';
+  const selected = searchParams?.plan || 'standard';
   return (
     <main className="flex min-h-screen items-center justify-center bg-slate-50 px-4 py-10">
       <div className="w-full max-w-2xl">
         <div className="mb-8 text-center">
           <h1 className="text-2xl font-bold text-slate-900">Create your agency account</h1>
-          <p className="mt-1 text-sm text-slate-500">Professional: billed after secure checkout · Enterprise: our team contacts you</p>
+          <p className="mt-1 text-sm text-slate-500">Standard &amp; Professional: billed after secure checkout · Enterprise: our team contacts you</p>
         </div>
         <form action={signup} className="card space-y-4 p-6">
           {searchParams?.error && (
@@ -37,7 +37,7 @@ export default function SignupPage({ searchParams }: { searchParams: { error?: s
 
           <div>
             <span className="label">Choose plan</span>
-            <div className="grid gap-3 sm:grid-cols-2">
+            <div className="grid gap-3 sm:grid-cols-3">
               {PLAN_IDS.map((id) => {
                 const p: any = (PLANS as any)[id];
                 const custom = p.price_monthly === null;
@@ -55,7 +55,7 @@ export default function SignupPage({ searchParams }: { searchParams: { error?: s
                 );
               })}
             </div>
-            <p className="mt-2 text-xs text-slate-400">Professional includes 2 users (+$50/month per extra user). Enterprise pricing is arranged with our team after signup.</p>
+            <p className="mt-2 text-xs text-slate-400">Standard includes 2 users, Professional includes 5 (+$50/month per extra user). Enterprise pricing is arranged with our team after signup.</p>
           </div>
 
           <SubmitButton className="btn-primary w-full" >Continue →</SubmitButton>

@@ -2,7 +2,7 @@ import { createAdminClient } from '@/lib/supabase/admin';
 import { PageHeader, Empty } from '@/components/ui';
 import Link from 'next/link';
 
-const PLANS: Record<string, number> = { starter: 79, professional: 100, enterprise: 0 }; // legacy starter billed at old price; enterprise custom
+const PLANS: Record<string, number> = { starter: 79, standard: 100, professional: 200, enterprise: 0 }; // legacy starter billed at old price; enterprise custom
 
 function monthKey(d: string) { return d.slice(0, 7); }
 

@@ -2,7 +2,7 @@ import { requireModule, requireActiveAgency } from '@/lib/data';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { PageHeader, Table, Empty, StatusBadge } from '@/components/ui';
 
-const PLAN_PRICE: Record<string, number> = { starter: 29, professional: 79, enterprise: 199 };
+const PLAN_PRICE: Record<string, number> = { starter: 29, standard: 100, professional: 200 }; // enterprise custom-priced
 
 export default async function BillingPage() {
   await requireModule('billing');

@@ -1,17 +1,30 @@
 // Subscription plans shown at signup / billing
 export const PLANS = {
-  professional: {
-    name: 'Professional',
+  standard: {
+    name: 'Standard',
     price_monthly: 100,
     users_included: 2,
     extra_user_price: 50,
     features: [
       'All sales & operations modules',
-      'HR & payroll + team chat',
-      'Quotations, reports & accounts',
+      'Invoices, quotations & reports',
       'Built-in support ticket system',
-      'Agency branding & own SMTP',
+      'Agency branding & colors',
       '2 users included — +$50 per extra user',
+    ],
+  },
+  professional: {
+    name: 'Professional',
+    price_monthly: 200,
+    users_included: 5,
+    extra_user_price: 50,
+    features: [
+      'Everything in Standard',
+      'HR & payroll + team chat',
+      'Accounts module',
+      'Public package showcase & website leads',
+      'Agency SMTP email delivery',
+      '5 users included — +$50 per extra user',
     ],
   },
   enterprise: {

@@ -7,6 +7,7 @@ function serverConfigured() {
 }
 import { createAdminClient } from '@/lib/supabase/admin';
 import { redirect } from 'next/navigation';
+import { PLANS } from '@/lib/billing';
 
 export async function login(formData: FormData) {
   const supabase = await createClient();
@@ -37,9 +38,10 @@ export async function signup(formData: FormData) {
   // Create the agency + link the profile
   const db = createAdminClient();
   const isEnterprise = plan === 'enterprise';
+  const seats = isEnterprise ? null : (Number((PLANS as any)[plan]?.users_included) || 2);
   const { data: agency } = await db
     .from('agencies')
-    .insert({ name: agencyName, plan, subscription_status: 'incomplete', seats: isEnterprise ? null : 2 })
+    .insert({ name: agencyName, plan, subscription_status: 'incomplete', seats })
     .select()
     .single();
 
