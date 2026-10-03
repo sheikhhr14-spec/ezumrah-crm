@@ -21,13 +21,20 @@ export default async function ServiceSaleList({ table, searchParams }: { table: 
   const ag: any = (ctx as any).agency || (ctx.profile as any)?.agencies || {};
   const cur = ag.currency;
   const db = createAdminClient();
-  const [{ data: sales }, { data: customers }, cfDefs] = await Promise.all([
+  const [{ data: sales }, { data: customers }, cfDefs, { data: extras }] = await Promise.all([
     db.from(table).select('*, customers(full_name)').eq('agency_id', ctx.profile.agency_id)
       .order('created_at', { ascending: false }).limit(200),
     db.from('customers').select('id, full_name, phone').eq('agency_id', ctx.profile.agency_id).order('full_name').limit(500),
     getCustomFields(db, ctx.profile.agency_id, table),
+    table === 'hotel_sales'
+      ? db.from('hotel_sale_stays').select('hotel_sale_id, sale_price, cost').eq('agency_id', ctx.profile.agency_id)
+      : db.from('transport_sale_legs').select('transport_sale_id, sale_price, cost').eq('agency_id', ctx.profile.agency_id),
   ]);
   const cfAdj = (r: any) => customAdjustment(r.custom_data, cfDefs);
+  const exKey = table === 'hotel_sales' ? 'hotel_sale_id' : 'transport_sale_id';
+  const exOf = (r: any) => (extras || []).filter((x: any) => x[exKey] === r.id);
+  const exSum = (r: any) => exOf(r).reduce((sm: number, x: any) => sm + Number(x.sale_price || 0), 0);
+  const exCost = (r: any) => exOf(r).reduce((sm: number, x: any) => sm + Number(x.cost || 0), 0);
 
   const q = (searchParams?.q || '').toLowerCase();
   const list = (sales || []).filter((r: any) => !q || JSON.stringify(r).toLowerCase().includes(q));
@@ -45,7 +52,7 @@ export default async function ServiceSaleList({ table, searchParams }: { table: 
 
       <Table head={['Ref', 'Customer', 'Details', 'Grand total', 'Paid', 'Balance', 'Profit', 'Status', 'Actions']}>
         {list.length ? list.map((r: any) => {
-          const grand = Number(r.sale_price) + Number(r.admin_fee) - Number(r.discount || 0) + cfAdj(r);
+          const grand = Number(r.sale_price) + Number(r.admin_fee) + Number(r.tax || 0) - Number(r.discount || 0) + cfAdj(r) + exSum(r);
           const bal = grand - Number(r.amount_paid);
           const overdue = bal > 0 && r.due_date && new Date(r.due_date) < new Date();
           return (
@@ -58,7 +65,7 @@ export default async function ServiceSaleList({ table, searchParams }: { table: 
               <td className="px-4 py-2 font-semibold">{money(grand, cur)}</td>
               <td className="px-4 py-2">{money(Number(r.amount_paid), cur)}</td>
               <td className={`px-4 py-2 ${bal > 0 ? 'text-red-500' : 'text-emerald-600'}`}>{money(bal, cur)}{overdue ? ' ⚠' : ''}</td>
-              <td className="px-4 py-2 font-semibold accent">{money((grand - Number(r.cost)), cur)}</td>
+              <td className="px-4 py-2 font-semibold accent">{money((grand - Number(r.cost) - exCost(r)), cur)}</td>
               <td className="px-4 py-2"><StatusBadge status={r.payment_status} /></td>
               <td className="px-4 py-2"><div className="flex items-center gap-2">
                 <Link className="text-xs font-semibold accent hover:underline" href={`/dashboard/${cfg.route}/${r.id}/edit`}>Edit</Link>

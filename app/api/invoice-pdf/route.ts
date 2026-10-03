@@ -142,6 +142,20 @@ export async function GET(req: Request) {
       transport_sale: `Transport (${(row.transport_type || '').replace(/_/g, ' ')}): ${row.from_location || ''} -> ${row.to_location || ''}${row.transport_date ? ' on ' + row.transport_date : ''}`,
     };
     items.push({ desc: descMap[type], qty: '1', unit: '', amount: Number(row.sale_price) || 0 });
+    // extra hotels / trips as their own invoice lines
+    const legTable = type === 'hotel_sale' ? 'hotel_sale_stays' : 'transport_sale_legs';
+    const legKey = type === 'hotel_sale' ? 'hotel_sale_id' : 'transport_sale_id';
+    const { data: extraRows } = await db.from(legTable).select('*').eq('agency_id', aid).eq(legKey, row.id).order('created_at');
+    for (const x of extraRows || []) {
+      if (!Number(x.sale_price)) continue;
+      items.push({
+        desc: type === 'hotel_sale'
+          ? `Extra stay: ${x.hotel_name || 'Hotel'}${x.city ? ', ' + String(x.city).toUpperCase() : ''} - ${x.nights || 0} night(s)${x.room_type ? ', ' + x.room_type : ''}`
+          : `Extra trip: ${x.from_location || ''} -> ${x.to_location || ''}${x.transport_date ? ' on ' + x.transport_date : ''}`,
+        qty: '1', unit: '', amount: Number(x.sale_price) || 0,
+      });
+    }
+    if (Number(row.tax)) items.push({ desc: 'Tax / VAT', qty: '1', unit: '', amount: Number(row.tax) });
     if (Number(row.admin_fee)) items.push({ desc: 'Admin / service fee', qty: '1', unit: '', amount: Number(row.admin_fee) });
     if (Number(row.discount)) items.push({ desc: 'Discount', qty: '1', unit: '', amount: -Number(row.discount) });
     const cfDefsS = await getCustomFields(db, aid, table);
@@ -151,7 +165,8 @@ export async function GET(req: Request) {
       if (v === undefined || v === null || v === '') continue;
       if (d.field_type === 'plus' || d.field_type === 'minus') items.push({ desc: d.label, qty: '1', unit: '', amount: d.field_type === 'plus' ? Number(v) : -Number(v) });
     }
-    total = Number(row.sale_price) + Number(row.admin_fee) - (Number(row.discount) || 0) + cfAdjS;
+    const extrasSum = (extraRows || []).reduce((sm: number, x: any) => sm + (Number(x.sale_price) || 0), 0);
+    total = Number(row.sale_price) + Number(row.admin_fee) + Number(row.tax || 0) - (Number(row.discount) || 0) + cfAdjS + extrasSum;
     paid = Number(row.amount_paid) || 0;
   } else if (type === 'flightsale') {
     const fs = await one('flight_sales');

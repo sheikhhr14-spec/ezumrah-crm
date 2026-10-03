@@ -50,10 +50,13 @@ export default async function ServiceSaleView({ table, id, emailFlag, editFlag }
   const discount = Number(rec.discount || 0);
   const commission = Number(rec.commission || 0);
   const cfAdj = customAdjustment(rec.custom_data, cfDefs);
-  const grand = Number(rec.sale_price) + Number(rec.admin_fee) + Number(rec.tax || 0) - discount + cfAdj;
+  // extra hotels / trips add to the grand total (and their cost lowers profit)
+  const extrasSum = legs.reduce((sm: number, l: any) => sm + Number(l.sale_price || 0), 0);
+  const extrasCost = legs.reduce((sm: number, l: any) => sm + Number(l.cost || 0), 0);
+  const grand = Number(rec.sale_price) + Number(rec.admin_fee) + Number(rec.tax || 0) - discount + cfAdj + extrasSum;
   const paid = Number(rec.amount_paid);
   const balance = grand - paid;
-  const profit = grand + commission - Number(rec.cost);
+  const profit = grand + commission - Number(rec.cost) - extrasCost;
 
   return (
     <div>

@@ -1987,14 +1987,24 @@ export async function sendSaleInvoiceEmail(fd: FormData) {
   }
   const rows: [string, string][] = [[ 'Customer', cust.full_name || '' ]];
   if (r.due_date) rows.push(['Payment due', r.due_date]);
+  const exRows: any[] = [];
+  if (table === 'hotel_sales') {
+    const { data: st } = await db.from('hotel_sale_stays').select('sale_price, cost').eq('hotel_sale_id', id);
+    exRows.push(...(st || []));
+  } else if (table === 'transport_sales') {
+    const { data: lg } = await db.from('transport_sale_legs').select('sale_price, cost').eq('transport_sale_id', id);
+    exRows.push(...(lg || []));
+  }
+  const exSum = exRows.reduce((sm, x) => sm + Number(x.sale_price || 0), 0);
   const totals: [string, string][] = [
     ['Sale amount', money2(r.sale_price ?? r.amount ?? r.sale_total ?? 0)],
   ];
   if (Number(r.tax)) totals.push(['Tax', money2(r.tax)]);
   if (Number(r.admin_fee)) totals.push(['Admin fee', money2(r.admin_fee)]);
   if (Number(r.discount)) totals.push(['Discount', '-' + money2(r.discount)]);
+  if (exSum) totals.push([table === 'hotel_sales' ? 'More hotels' : 'More trips', money2(exSum)]);
   if (Number(r.amount_paid)) totals.push(['Amount received', money2(r.amount_paid)]);
-  totals.push(['Balance due', money2(r.balance ?? (Number(r.sale_price ?? r.amount ?? 0) + Number(r.tax || 0) + Number(r.admin_fee || 0) - Number(r.discount || 0) - Number(r.amount_paid || 0)))]);
+  totals.push(['Balance due', money2(r.balance ?? (Number(r.sale_price ?? r.amount ?? 0) + Number(r.tax || 0) + Number(r.admin_fee || 0) - Number(r.discount || 0) + exSum - Number(r.amount_paid || 0)))]);
   try {
     await sendAgencyEmail(aid, {
       to: cust.email,
