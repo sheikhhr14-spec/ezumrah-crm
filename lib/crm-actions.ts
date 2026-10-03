@@ -1228,6 +1228,92 @@ export async function createServiceSale(fd: FormData) {
   revalidatePath(`/dashboard/${cfg.route}`);
 }
 
+// Full-form edit for a service sale (hotel / visa / transport) — same shape as createServiceSale, applied to an existing record.
+export async function updateServiceSaleFull(fd: FormData) {
+  const { SERVICE_SALES } = await import('@/lib/service-sales');
+  const table = String(fd.get('table'));
+  const cfg = SERVICE_SALES[table];
+  if (!cfg) throw new Error('Unknown service type.');
+  const db = createAdminClient();
+  const ctx = await requireActiveAgency();
+  const aid = ctx.profile.agency_id!;
+  const id = String(fd.get('id') || '');
+  const { data: existing } = await db.from(table).select('id, customer_id').eq('id', id).eq('agency_id', aid).maybeSingle();
+  if (!existing) redirect(`/dashboard/${cfg.route}`);
+
+  // customer: pick existing, create by name, or keep current link
+  let customerId = await saleCustomer(db, aid, fd);
+  if (!customerId) customerId = existing.customer_id || '';
+
+  const patch: Record<string, unknown> = {};
+  for (const f of cfg.fields) patch[f.name] = f.type === 'number' ? num(fd, f.name) : (str(fd, f.name) || null);
+  if (table === 'hotel_sales' && patch.check_in && patch.check_out) {
+    const n = Math.round((new Date(String(patch.check_out)).getTime() - new Date(String(patch.check_in)).getTime()) / 86400000);
+    if (n > 0) patch.nights = n;
+  }
+  const adminFee = num(fd, 'admin_fee');
+  const discount = num(fd, 'discount');
+  const commission = num(fd, 'commission');
+  const amountPaid = num(fd, 'amount_paid');
+  let salePrice = num(fd, 'sale_price');
+  if (table === 'hotel_sales' && !salePrice && num(fd, 'rate_per_night') && Number(patch.nights || 0) > 0) {
+    salePrice = num(fd, 'rate_per_night') * Number(patch.nights) * Math.max(num(fd, 'rooms_count'), 1);
+  }
+  const cost = num(fd, 'cost');
+  const extras: Record<string, unknown>[] = [];
+  let extrasPrice = 0, extrasCost = 0;
+  for (let i = 0; i < 10; i++) {
+    const price = num(fd, `extra_sale_price_${i}`);
+    const ecost = num(fd, `extra_cost_${i}`);
+    if (!price && !ecost) continue;
+    extrasPrice += price; extrasCost += ecost;
+    if (table === 'hotel_sales') {
+      const ci = str(fd, `extra_checkin_${i}`) || null;
+      const co = str(fd, `extra_checkout_${i}`) || null;
+      let en: number | null = null;
+      if (ci && co) { const d = Math.round((new Date(co).getTime() - new Date(ci).getTime()) / 86400000); if (d > 0) en = d; }
+      extras.push({ agency_id: aid, city: str(fd, `extra_city_${i}`) || null, hotel_name: str(fd, `extra_hotel_${i}`) || null,
+        check_in: ci, check_out: co, nights: en, room_type: str(fd, `extra_roomtype_${i}`) || null,
+        rooms_count: num(fd, `extra_rooms_${i}`), meal_plan: str(fd, `extra_meal_${i}`) || null, sale_price: price, cost: ecost });
+    } else if (table === 'transport_sales') {
+      extras.push({ agency_id: aid, leg_no: extras.length + 1,
+        from_location: str(fd, `extra_from_${i}`) || null, to_location: str(fd, `extra_to_${i}`) || null,
+        transport_date: str(fd, `extra_date_${i}`) || null, transport_time: str(fd, `extra_time_${i}`) || null,
+        vehicle_type: str(fd, `extra_vehicle_${i}`) || null, seats: num(fd, `extra_seats_${i}`),
+        driver_name: str(fd, `extra_driver_${i}`) || null, driver_phone: str(fd, `extra_phone_${i}`) || null,
+        sale_price: price, cost: ecost });
+    }
+  }
+  const taxV = num(fd, 'tax');
+  const cfDefs = await getCustomFields(db, aid, table);
+  const cfData = parseCustomValues(fd, cfDefs);
+  const cfAdj = cfData ? customAdjustment(cfData, cfDefs) : 0;
+  const grand = salePrice + extrasPrice + adminFee - discount + taxV + cfAdj;
+
+  await db.from(table).update({
+    ...patch, customer_id: customerId || null, custom_data: cfData,
+    sale_price: salePrice + extrasPrice, cost: cost + extrasCost, admin_fee: adminFee, tax: taxV,
+    discount: discount, commission: commission,
+    amount_paid: amountPaid, payment_method: str(fd, 'payment_method'),
+    payment_status: saleStatus(grand, amountPaid), notes: str(fd, 'notes'),
+    status: str(fd, 'status') || 'confirmed',
+    balance: grand - amountPaid, profit: grand + commission - (cost + extrasCost),
+    updated_at: new Date().toISOString(),
+  }).eq('id', id).eq('agency_id', aid);
+
+  // replace extras (stays / legs)
+  if (table === 'hotel_sales' || table === 'transport_sales') {
+    const legTable = table === 'hotel_sales' ? 'hotel_sale_stays' : 'transport_sale_legs';
+    const fk = table === 'hotel_sales' ? 'hotel_sale_id' : 'transport_sale_id';
+    await db.from(legTable).delete().eq(fk, id);
+    if (extras.length) await db.from(legTable).insert(extras.map((e) => ({ ...e, [fk]: id })));
+  }
+
+  revalidatePath(`/dashboard/${cfg.route}`);
+  revalidatePath(`/dashboard/${cfg.route}/${id}`);
+  redirect(`/dashboard/${cfg.route}/${id}`);
+}
+
 export async function updateServiceSale(fd: FormData) {
   const { SERVICE_SALES } = await import('@/lib/service-sales');
   const table = String(fd.get('table'));

@@ -3,7 +3,7 @@ import CustomFieldInputs from '@/components/custom-field-inputs';
 import { groupCustomSections } from '@/lib/custom-fields';
 import CustomerPicker from '@/components/customer-picker';
 import { useState } from 'react';
-import { createServiceSale } from '@/lib/crm-actions';
+import { createServiceSale, updateServiceSaleFull } from '@/lib/crm-actions';
 import SubmitButton from '@/components/submit-button';
 import { money as fmtMoney } from '@/lib/format';
 import type { SvcField } from '@/lib/service-sales';
@@ -16,18 +16,26 @@ const curSym = (c?: string | null) => {
 };
 
 export default function ServiceSaleForm({
-  table, fields, customers, currency, taxRate, customFields,
-}: { table: string; fields: SvcField[]; customers: { id: string; full_name: string }[]; currency?: string | null; taxRate?: number; customFields?: { id: string; label: string; field_type: string; section?: string; anchor?: string }[] }) {
+  table, fields, customers, currency, taxRate, customFields, sale, saleExtras,
+}: { table: string; fields: SvcField[]; customers: { id: string; full_name: string }[]; currency?: string | null; taxRate?: number; customFields?: { id: string; label: string; field_type: string; section?: string; anchor?: string }[]; sale?: any; saleExtras?: any[] }) {
   const cfFields = customFields || [];
   const cur = currency;
   const sym = curSym(currency);
   const symPad = sym.length <= 1 ? '2rem' : sym.length === 2 ? '2.6rem' : sym.length === 3 ? '3.3rem' : '3.8rem';
-  const [useExisting, setUseExisting] = useState(false);
-  const [dates, setDates] = useState({ ci: '', co: '' });
+  const edit = !!sale?.id;
+  const s2 = (v: any) => v === null || v === undefined ? '' : String(v);
+  // stored sale_price/cost include extras — recover the main item's amounts for the form
+  const extrasSum = (k: string) => (saleExtras || []).reduce((sm: number, x: any) => sm + Number(x[k] || 0), 0);
+  const mainPrice = edit ? String(Math.round((Number(sale.sale_price) - extrasSum('sale_price')) * 100) / 100) : '';
+  const mainCost = edit ? String(Math.round((Number(sale.cost) - extrasSum('cost')) * 100) / 100) : '';
+  const [useExisting, setUseExisting] = useState(!!edit);
+  const [dates, setDates] = useState(edit ? { ci: s2(sale.check_in), co: s2(sale.check_out) } : { ci: '', co: '' });
   const hasStay = fields.some((f) => f.name === 'check_in') && fields.some((f) => f.name === 'check_out');
   const nights = dates.ci && dates.co ? Math.round((new Date(dates.co).getTime() - new Date(dates.ci).getTime()) / 86400000) : null;
-  const [money, setMoney] = useState({ sale_price: '', cost: '', admin_fee: '', discount: '', tax: '', commission: '', paid: '' });
-  const [cf, setCf] = useState<Record<string, string>>({});
+  const [money, setMoney] = useState(edit
+    ? { sale_price: mainPrice, cost: mainCost, admin_fee: s2(sale.admin_fee), discount: s2(sale.discount), tax: s2(sale.tax), commission: s2(sale.commission), paid: s2(sale.amount_paid) }
+    : { sale_price: '', cost: '', admin_fee: '', discount: '', tax: '', commission: '', paid: '' });
+  const [cf, setCf] = useState<Record<string, string>>(edit ? ((sale.custom_data as any) || {}) : {});
   const sec = (s: string) => cfFields.filter((f) => (f.section || 'general') === s);
   const cfa = (a: string) => sec('customer').filter((f) => (f.anchor || 'bottom') === a);
   const custBottom = sec('customer').filter((f) => { const a = f.anchor || 'bottom'; return a === 'bottom' || !ANCHORS.includes(a); });
@@ -36,7 +44,10 @@ export default function ServiceSaleForm({
   const isTransport = table === 'transport_sales';
   const HOTEL_EXTRA = () => ({ city: '', hotel_name: '', check_in: '', check_out: '', room_type: '', rooms_count: '', meal_plan: '', sale_price: '', cost: '' });
   const TRANS_EXTRA = () => ({ from_location: '', to_location: '', transport_date: '', transport_time: '', vehicle_type: '', seats: '', driver_name: '', driver_phone: '', sale_price: '', cost: '' });
-  const [extras, setExtras] = useState<Record<string, string>[]>([]);
+  const extraFrom = (x: any): Record<string, string> => table === 'hotel_sales'
+    ? { hotel_name: s2(x.hotel_name), city: s2(x.city), check_in: s2(x.check_in), check_out: s2(x.check_out), room_type: s2(x.room_type), rooms_count: s2(x.rooms_count), meal_plan: s2(x.meal_plan), sale_price: s2(x.sale_price), cost: s2(x.cost) }
+    : { from_location: s2(x.from_location), to_location: s2(x.to_location), transport_date: s2(x.transport_date), transport_time: s2(x.transport_time), vehicle_type: s2(x.vehicle_type), seats: s2(x.seats), driver_name: s2(x.driver_name), driver_phone: s2(x.driver_phone), sale_price: s2(x.sale_price), cost: s2(x.cost) };
+  const [extras, setExtras] = useState<Record<string, string>[]>(edit ? (saleExtras || []).map(extraFrom) : []);
   const up = (i: number, k: string) => (e: any) => setExtras(extras.map((x, j) => (j === i ? { ...x, [k]: e.target.value } : x)));
   const extrasPrice = extras.reduce((sm, x) => sm + n(x.sale_price), 0);
   const extrasCost = extras.reduce((sm, x) => sm + n(x.cost), 0);
@@ -55,14 +66,15 @@ export default function ServiceSaleForm({
   const set = (k: string, v: string) => setMoney({ ...money, [k]: v });
 
   return (
-    <form action={createServiceSale} className="space-y-6">
+    <form action={edit ? updateServiceSaleFull : createServiceSale} className="space-y-6">
       <input type="hidden" name="table" value={table} />
+      {edit && <input type="hidden" name="id" value={sale.id} />}
 
 <p className={SECT}>1 · Customer</p>
       {/* customer */}
       <div className="grid gap-4 sm:grid-cols-3">
         <div>
-          <CustomerPicker customers={customers} onPick={(id) => setUseExisting(!!id)} />
+          <CustomerPicker customers={customers} initialId={edit ? sale.customer_id : undefined} onPick={(id) => setUseExisting(!!id)} />
         </div>
         {!useExisting && (
           <>
@@ -89,15 +101,15 @@ export default function ServiceSaleForm({
         {fields.map((f) => (
           <label key={f.name} className="block"><span className="text-xs font-semibold text-slate-600">{f.label}</span>
             {hasStay && (f.name === 'check_in' || f.name === 'check_out') ? (
-              <input className="input" name={f.name} type="date" value={f.name === 'check_in' ? dates.ci : dates.co}
+              <input className="input" name={f.name} type="date" required={f.req} value={f.name === 'check_in' ? dates.ci : dates.co}
                 onChange={(e) => setDates({ ...dates, [f.name === 'check_in' ? 'ci' : 'co']: e.target.value })} />
             ) : f.type === 'select' ? (
-              <select className="input" name={f.name} defaultValue="">
+              <select className="input" name={f.name} required={f.req} defaultValue={edit ? ((sale as any)[f.name] || '') : ''}>
                 {(f.options || []).map((o) => <option key={o} value={o}>{o}</option>)}
               </select>
             ) : (
-              <input className="input" name={f.name} type={f.type === 'number' ? 'number' : f.type === 'date' ? 'date' : 'text'}
-                step={f.type === 'number' ? '0.01' : undefined} placeholder={f.ph || ''} />
+              <input className="input" name={f.name} required={f.req} type={f.type === 'number' ? 'number' : f.type === 'date' ? 'date' : 'text'}
+                step={f.type === 'number' ? '0.01' : undefined} placeholder={f.ph || ''} defaultValue={edit ? s2((sale as any)[f.name]) : ''} />
             )}
           </label>
         ))}
@@ -118,7 +130,7 @@ export default function ServiceSaleForm({
           <M label="Commission (from supplier, +)" k="commission" money={money} set={set} sym={sym} />
           <M label="Amount paid" k="paid" money={money} set={set} sym={sym} />
           <label className="block"><span className="text-xs font-semibold text-slate-600">Payment method</span>
-            <select className="input" name="payment_method">
+            <select className="input" name="payment_method" defaultValue={edit ? (sale.payment_method || '') : ''}>
               <option value="">— none yet —</option>
               <option value="cash">Cash</option>
               <option value="bank">Bank transfer</option>
@@ -137,9 +149,9 @@ export default function ServiceSaleForm({
         </div>
       ))}
           <CustomFieldInputs fields={[...sec('money'), ...sec('payment')]} cf={cf} setCf={setCf} />
-          <L label="Notes" name="notes" />
+          <L label="Notes" name="notes" def={edit ? sale.notes || '' : ''} />
           <label className="block"><span className="text-xs font-semibold text-slate-600">Sale status</span>
-            <select className="input" name="status" defaultValue="confirmed">
+            <select className="input" name="status" defaultValue={edit ? (sale.status || 'confirmed') : 'confirmed'}>
               <option value="confirmed">Confirmed</option>
               <option value="pending">Pending</option>
               <option value="completed">Completed</option>
@@ -153,7 +165,7 @@ export default function ServiceSaleForm({
             {extras.map((x, i) => (
               <div key={i} className="rounded-lg border border-slate-200 p-3">
                 <div className="mb-2 flex items-center justify-between">
-                  <p className="text-xs font-bold text-slate-500">{isHotel ? `Hotel ${i + 2}` : `Trip / Ziyarat ${i + 2}`}</p>
+                  <p className="text-xs font-bold text-slate-500">{isHotel ? `Hotel ${i + 2}` : `Trip / Ziyarat ${i + 2}`}{edit ? ' (saved)' : ''}</p>
                   <button type="button" onClick={() => setExtras(extras.filter((_, j) => j !== i))} className="text-xs text-red-400 hover:text-red-600">✕ remove</button>
                 </div>
                 <div className="grid gap-2 sm:grid-cols-3">
@@ -189,22 +201,22 @@ export default function ServiceSaleForm({
         <div className="mt-4 grid gap-3 text-sm sm:grid-cols-4">
           <div className="rounded-lg bg-slate-50 p-3"><p className="text-xs text-slate-400">Tax / VAT</p><p className="font-bold">{fmtMoney(grand - n(money.sale_price) - n(money.admin_fee) + n(money.discount), cur)}</p></div>
           <div className="rounded-lg bg-slate-50 p-3"><p className="text-xs text-slate-400">{isHotel ? 'More hotels' : 'More trips'}</p><p className="font-bold">{fmtMoney(extrasPrice, cur)}</p></div>
-          <div className="rounded-lg bg-slate-50 p-3"><p className="text-xs text-slate-400">Grand total (incl. extras + tax)</p><p className="font-bold">${fmtMoney(grand, cur)}</p></div>
-          <div className="rounded-lg bg-slate-50 p-3"><p className="text-xs text-slate-400">Balance</p><p className={`font-bold ${balance > 0 ? 'text-red-500' : 'text-emerald-600'}`}>${fmtMoney(balance, cur)}</p></div>
-          <div className="rounded-lg bg-slate-50 p-3"><p className="text-xs text-slate-400">Profit</p><p className="font-bold accent">${fmtMoney(profit, cur)}</p></div>
+          <div className="rounded-lg bg-slate-50 p-3"><p className="text-xs text-slate-400">Grand total (incl. extras + tax)</p><p className="font-bold">{fmtMoney(grand, cur)}</p></div>
+          <div className="rounded-lg bg-slate-50 p-3"><p className="text-xs text-slate-400">Balance</p><p className={`font-bold ${balance > 0 ? 'text-red-500' : 'text-emerald-600'}`}>{fmtMoney(balance, cur)}</p></div>
+          <div className="rounded-lg bg-slate-50 p-3"><p className="text-xs text-slate-400">Profit</p><p className="font-bold accent">{fmtMoney(profit, cur)}</p></div>
           <div className="rounded-lg bg-slate-50 p-3"><p className="text-xs text-slate-400">Status</p><p className="font-semibold accent">{pStatus}</p></div>
         </div>
       </div>
 
-      <SubmitButton pendingText="Saving sale…">Save sale</SubmitButton>
+      <SubmitButton pendingText={edit ? "Updating sale…" : "Saving sale…"}>{edit ? "Update sale" : "Save sale"}</SubmitButton>
     </form>
   );
 }
 
-function L({ label, name }: { label: string; name: string }) {
+function L({ label, name, def }: { label: string; name: string; def?: string }) {
   return (
     <label className="block"><span className="text-xs font-semibold text-slate-600">{label}</span>
-      <input className="input" name={name} />
+      <input className="input" name={name} defaultValue={def} />
     </label>
   );
 }

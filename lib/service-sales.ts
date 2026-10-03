@@ -6,6 +6,7 @@ export type SvcField = {
   type?: 'text' | 'date' | 'number' | 'select';
   ph?: string;
   options?: string[];
+  req?: boolean;
 };
 
 export type SvcConfig = {
@@ -26,7 +27,7 @@ export const SERVICE_SALES: Record<string, SvcConfig> = {
     subtitle: 'Standalone hotel bookings — no package or booking needed.',
     prefix: 'HS',
     fields: [
-      { name: 'hotel_name', label: 'Hotel name *' },
+      { name: 'hotel_name', label: 'Hotel name *', req: true },
       { name: 'hotel_phone', label: 'Hotel contact phone' },
       { name: 'city', label: 'City', ph: 'Makkah / Madinah' },
       { name: 'check_in', label: 'Check-in', type: 'date' },
@@ -57,7 +58,7 @@ export const SERVICE_SALES: Record<string, SvcConfig> = {
     subtitle: 'Standalone visa processing — no package or booking needed.',
     prefix: 'VS',
     fields: [
-      { name: 'visa_type', label: 'Visa type *', ph: 'umrah / visit / work' },
+      { name: 'visa_type', label: 'Visa type *', ph: 'umrah / visit / work', req: true },
       { name: 'application_date', label: 'Application date', type: 'date' },
       { name: 'visa_no', label: 'Visa no.' },
       { name: 'processing_status', label: 'Processing status', type: 'select', options: ['submitted', 'processing', 'issued', 'rejected', 'expired'] },
@@ -85,8 +86,8 @@ export const SERVICE_SALES: Record<string, SvcConfig> = {
     prefix: 'TR',
     fields: [
       { name: 'transport_type', label: 'Type', type: 'select', options: ['airport pickup', 'airport drop', 'ziyarah', 'intercity', 'private driver', 'bus tour'] },
-      { name: 'from_location', label: 'From *', ph: 'Jeddah Airport' },
-      { name: 'to_location', label: 'To *', ph: 'Hotel in Makkah' },
+      { name: 'from_location', label: 'From *', ph: 'Jeddah Airport', req: true },
+      { name: 'to_location', label: 'To *', ph: 'Hotel in Makkah', req: true },
       { name: 'transport_date', label: 'Date', type: 'date' },
       { name: 'transport_time', label: 'Time', ph: '14:00' },
       { name: 'vehicle_type', label: 'Vehicle', ph: 'GMC / bus / sedan' },

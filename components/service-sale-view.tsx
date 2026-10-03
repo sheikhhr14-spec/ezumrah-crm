@@ -3,12 +3,12 @@ import { createAdminClient } from '@/lib/supabase/admin';
 import { money } from '@/lib/format';
 import { requireModule } from '@/lib/data';
 import { StatusBadge } from '@/components/ui';
-import { updateServiceSale, deleteRecord, sendSaleInvoiceEmail, submitVisaToNusuk, syncNusukVisaStatus } from '@/lib/crm-actions';
+import { deleteRecord, sendSaleInvoiceEmail, submitVisaToNusuk, syncNusukVisaStatus } from '@/lib/crm-actions';
 import { getCustomFields, customAdjustment } from '@/lib/custom-fields';
-import { SERVICE_SALES, SALE_PAYMENT_FIELDS } from '@/lib/service-sales';
+import { SERVICE_SALES } from '@/lib/service-sales';
+import ServiceSaleForm from '@/components/service-sale-form';
 import Link from 'next/link';
 import SaleDocuments from '@/components/sale-documents';
-import SubmitButton from '@/components/submit-button';
 import { notFound } from 'next/navigation';
 
 const MODULE_KEY: Record<string, string> = {
@@ -23,7 +23,7 @@ const PDF_TYPE: Record<string, string> = {
   transport_sales: 'transport_sale',
 };
 
-export default async function ServiceSaleView({ table, id, emailFlag }: { table: string; id: string; emailFlag?: string }) {
+export default async function ServiceSaleView({ table, id, emailFlag, editFlag }: { table: string; id: string; emailFlag?: string; editFlag?: string }) {
   const cfg = SERVICE_SALES[table];
   const ctx = await requireModule(MODULE_KEY[table]);
   const cur = (ctx as any).agency?.currency;
@@ -148,65 +148,31 @@ export default async function ServiceSaleView({ table, id, emailFlag }: { table:
         </div>
       </div>
 
-      {/* everything editable in one form */}
-      <form action={updateServiceSale} className="card p-5">
-        <input type="hidden" name="table" value={table} />
-        <input type="hidden" name="id" value={rec.id} />
-        <h2 className="mb-4 text-lg font-semibold">Edit sale</h2>
-        <div className="grid gap-3 sm:grid-cols-3">
-          {cfg.fields.map((f) => (
-            <label key={f.name} className="block"><span className="text-xs text-slate-500">{f.label}</span>
-              {f.type === 'select' ? (
-                <select className="input" name={f.name} defaultValue={(rec as any)[f.name] || ''}>
-                  <option value="">—</option>
-                  {(f.options || []).map((o) => <option key={o} value={o}>{o}</option>)}
-                </select>
-              ) : (
-                <input className="input" name={f.name} type={f.type === 'number' ? 'number' : f.type === 'date' ? 'date' : 'text'}
-                  step={f.type === 'number' ? '0.01' : undefined} defaultValue={(rec as any)[f.name] ?? ''} />
-              )}
-            </label>
-          ))}
+      {/* full edit form — same as add-new, prefilled */}
+      <details className="card mb-8 p-5" open={editFlag === '1'}>
+        <summary className="cursor-pointer select-none text-sm font-bold accent">✏️ Edit this sale — full form (customer, details, pricing & payment)</summary>
+        <div className="mt-4 border-t border-slate-100 pt-4">
+          <ServiceSaleForm
+            table={table} fields={cfg.fields} customers={customers || []}
+            currency={cur} taxRate={Number((ctx as any).agency?.tax_rate || 0)}
+            customFields={cfDefs} sale={rec} saleExtras={legs || []}
+          />
         </div>
+      </details>
 
-        <h2 className="mb-3 mt-6 text-lg font-semibold">Pricing & payment</h2>
-        <div className="grid gap-3 sm:grid-cols-4">
-          {SALE_PAYMENT_FIELDS.map((f) => (
-            <label key={f.name} className="block"><span className="text-xs text-slate-500">{f.label}</span>
-              <input className="input" name={f.name} type="number" step="0.01" defaultValue={(rec as any)[f.name] ?? ''} />
-            </label>
-          ))}
-          <label className="block"><span className="text-xs text-slate-500">Payment method</span>
-            <select className="input" name="payment_method" defaultValue={rec.payment_method || ''}>
-              <option value="">— none —</option>
-              <option value="cash">Cash</option>
-              <option value="bank">Bank transfer</option>
-              <option value="card">Card</option>
-              <option value="online">Online</option>
-            </select>
-          </label>
-          <label className="block"><span className="text-xs text-slate-500">Sale status</span>
-            <select className="input" name="status" defaultValue={rec.status}>
-              <option value="confirmed">Confirmed</option>
-              <option value="pending">Pending</option>
-              <option value="completed">Completed</option>
-              <option value="cancelled">Cancelled</option>
-            </select>
-          </label>
-          <p className="text-xs text-slate-400 sm:col-span-1">Payment status (unpaid / partial / full) is calculated automatically from the amounts.</p>
-          <label className="block"><span className="text-xs text-slate-500">Customer (re-link)</span>
-            <select className="input" name="customer_id" defaultValue={rec.customer_id || ''}>
-              <option value="">— none —</option>
-              {(customers || []).map((c: any) => <option key={c.id} value={c.id}>{c.full_name}</option>)}
-            </select>
-          </label>
-          <label className="block"><span className="text-xs text-slate-500">Notes</span>
-            <input className="input" name="notes" defaultValue={rec.notes || ''} />
-          </label>
-          <div className="flex items-end"><SubmitButton className="btn-primary px-4 py-2 text-xs">Save changes</SubmitButton></div>
-          <div className="flex items-end"><span className="text-xs"><StatusBadge status={rec.payment_status} /> · Profit <b className="accent">{money(profit, cur)}</b></span></div>
+      {/* details at a glance */}
+      <div className="card mb-8 p-5">
+        <h2 className="mb-3 text-lg font-semibold">Details</h2>
+        <div className="grid gap-3 text-sm sm:grid-cols-4">
+          {cfg.fields.map((f) => {
+            const v = (rec as any)[f.name];
+            return v === null || v === undefined || v === '' ? null : (
+              <p key={f.name}><span className="text-xs text-slate-400 block">{f.label.replace(/ \*$/, '')}</span> <b>{String(v)}</b></p>
+            );
+          })}
+          {rec.notes ? <p className="sm:col-span-4"><span className="text-xs text-slate-400 block">Notes</span> {rec.notes}</p> : null}
         </div>
-      </form>
+      </div>
 
       <SaleDocuments table={table} saleId={rec.id} docs={docs || []} />
       {legs && legs.length > 0 && (
