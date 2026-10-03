@@ -6,6 +6,8 @@ import { money } from '@/lib/format';
 import CustomFieldInputs from '@/components/custom-field-inputs';
 import CustomerPicker from '@/components/customer-picker';
 
+const SECT = "mb-2 mt-2 text-xs font-bold uppercase tracking-wide text-slate-500 border-b border-slate-100 pb-1";
+const ANCHORS = ['top', 'customer', 'phone', 'whatsapp', 'country', 'passport', 'bottom'];
 const curSym = (c?: string | null) => {
   const code = (c || 'USD').toUpperCase();
   try { return new Intl.NumberFormat('en', { style: 'currency', currency: code, currencyDisplay: 'narrowSymbol' }).formatToParts(0).find((p) => p.type === 'currency')?.value || code; } catch { return code; }
@@ -35,7 +37,7 @@ function PaxMoneyField({ label, ph, name, value, onChange, sym, symPad, readOnly
   );
 }
 
-export default function FlightSaleForm({ customers, currency, taxRate, customFields }: { customers: { id: string; full_name: string }[]; currency?: string | null; taxRate?: number; customFields?: { id: string; label: string; field_type: string; section?: string }[] }) {
+export default function FlightSaleForm({ customers, currency, taxRate, customFields }: { customers: { id: string; full_name: string }[]; currency?: string | null; taxRate?: number; customFields?: { id: string; label: string; field_type: string; section?: string; anchor?: string }[] }) {
   const cfFields = customFields || [];
   const sym = curSym(currency);
   const symPad = sym.length <= 1 ? '2rem' : sym.length === 2 ? '2.6rem' : sym.length === 3 ? '3.3rem' : '3.8rem';
@@ -64,6 +66,8 @@ export default function FlightSaleForm({ customers, currency, taxRate, customFie
   const taxAuto = (saleTotal + n(adminFee) - n(discount)) * (taxRate || 0) / 100;
   const [cf, setCf] = useState<Record<string, string>>({});
   const sec = (s: string) => cfFields.filter((f) => (f.section || 'general') === s);
+  const cfa = (a: string) => sec('customer').filter((f) => (f.anchor || 'bottom') === a);
+  const custBottom = sec('customer').filter((f) => { const a = f.anchor || 'bottom'; return a === 'bottom' || !ANCHORS.includes(a); });
 
 
   const cfAdj = cfFields.reduce((s, f) => {
@@ -83,6 +87,7 @@ export default function FlightSaleForm({ customers, currency, taxRate, customFie
 
   return (
     <form action={createFlightSale} className="space-y-6">
+<p className={SECT}>1 · Customer</p>
       {/* customer */}
       <div className="grid gap-4 sm:grid-cols-3">
         <div className="sm:col-span-1">
@@ -92,15 +97,20 @@ export default function FlightSaleForm({ customers, currency, taxRate, customFie
         {!useExisting && (
           <>
             <L label="Customer name *" name="customer_name" />
+            {cfa('customer').length > 0 && <CustomFieldInputs fields={cfa('customer')} cf={cf} setCf={setCf} />}
             <L label="Phone" name="phone" />
+            {cfa('phone').length > 0 && <CustomFieldInputs fields={cfa('phone')} cf={cf} setCf={setCf} />}
             <L label="WhatsApp" name="whatsapp" />
+            {cfa('whatsapp').length > 0 && <CustomFieldInputs fields={cfa('whatsapp')} cf={cf} setCf={setCf} />}
             <L label="Country" name="country" />
+            {cfa('country').length > 0 && <CustomFieldInputs fields={cfa('country')} cf={cf} setCf={setCf} />}
 
           </>
         )}
       </div>
 
-      {sec('customer').length > 0 && <div className="mt-4 grid gap-4 sm:grid-cols-3"><CustomFieldInputs fields={sec('customer')} cf={cf} setCf={setCf} /></div>}
+      {custBottom.length > 0 && <CustomFieldInputs fields={custBottom} cf={cf} setCf={setCf} />}
+      {cfa('top').length > 0 && <CustomFieldInputs fields={cfa('top')} cf={cf} setCf={setCf} />}
 
       {/* passengers */}
       <div className="rounded-xl border border-slate-200 p-4">
@@ -156,6 +166,7 @@ export default function FlightSaleForm({ customers, currency, taxRate, customFie
         </div>
       </div>
 
+<p className={SECT}>2 · Trip details</p>
       {/* trip */}
       <div className="grid gap-4 sm:grid-cols-3">
         <label className="block"><span className="text-xs font-semibold text-slate-600">Trip type</span>

@@ -6,6 +6,7 @@ import { createPackageSale } from '@/lib/crm-actions';
 import SubmitButton from '@/components/submit-button';
 import { money as fmtMoney } from '@/lib/format';
 
+const ANCHORS = ['top', 'customer', 'phone', 'whatsapp', 'country', 'passport', 'bottom'];
 const n = (v: string | number) => Number(v) || 0;
 const ROOM_TYPES = ['quint', 'quad', 'triple', 'double', 'single'];
 
@@ -28,7 +29,7 @@ export default function PackageSaleForm({ category, customers, currency, taxRate
   category: 'umrah' | 'hajj' | 'tour';
   customers: { id: string; full_name: string }[];
   currency?: string | null; taxRate?: number;
-  customFields?: { id: string; label: string; field_type: string; section?: string }[];
+  customFields?: { id: string; label: string; field_type: string; section?: string; anchor?: string }[];
 }) {
   const cfFields = customFields || [];
   const sym = curSym(currency);
@@ -52,6 +53,8 @@ export default function PackageSaleForm({ category, customers, currency, taxRate
   const taxAuto = (base + n(money.supp) + n(money.fee) - n(money.discount)) * (taxRate || 0) / 100;
   const [cf, setCf] = useState<Record<string, string>>({});
   const sec = (s: string) => cfFields.filter((f) => (f.section || 'general') === s);
+  const cfa = (a: string) => sec('customer').filter((f) => (f.anchor || 'bottom') === a);
+  const custBottom = sec('customer').filter((f) => { const a = f.anchor || 'bottom'; return a === 'bottom' || !ANCHORS.includes(a); });
 
 
   const cfAdj = cfFields.reduce((s, f) => {
@@ -84,13 +87,19 @@ export default function PackageSaleForm({ category, customers, currency, taxRate
             setPax(rows);
           }} />
         <L label="New customer name (if new)" name="customer_name" />
+        {cfa('customer').length > 0 && <CustomFieldInputs fields={cfa('customer')} cf={cf} setCf={setCf} />}
         <L label="Phone" name="phone" />
+        {cfa('phone').length > 0 && <CustomFieldInputs fields={cfa('phone')} cf={cf} setCf={setCf} />}
         <L label="WhatsApp" name="whatsapp" />
+        {cfa('whatsapp').length > 0 && <CustomFieldInputs fields={cfa('whatsapp')} cf={cf} setCf={setCf} />}
         <L label="Country" name="country" />
+        {cfa('country').length > 0 && <CustomFieldInputs fields={cfa('country')} cf={cf} setCf={setCf} />}
         <L label="Lead passport no." name="passport_no" />
+        {cfa('passport').length > 0 && <CustomFieldInputs fields={cfa('passport')} cf={cf} setCf={setCf} />}
       </div>
 
-      {sec('customer').length > 0 && <div className="mt-4 grid gap-4 sm:grid-cols-3"><CustomFieldInputs fields={sec('customer')} cf={cf} setCf={setCf} /></div>}
+      {custBottom.length > 0 && <CustomFieldInputs fields={custBottom} cf={cf} setCf={setCf} />}
+      {cfa('top').length > 0 && <CustomFieldInputs fields={cfa('top')} cf={cf} setCf={setCf} />}
 
       {/* 2 — PASSENGERS */}
       <p className={SECT}>2 · Passengers — {capacity} traveler{capacity === 1 ? '' : 's'} on this booking</p>

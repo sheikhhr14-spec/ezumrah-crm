@@ -7,6 +7,8 @@ import SubmitButton from '@/components/submit-button';
 import { money as fmtMoney } from '@/lib/format';
 import type { SvcField } from '@/lib/service-sales';
 
+const SECT = "mb-2 mt-2 text-xs font-bold uppercase tracking-wide text-slate-500 border-b border-slate-100 pb-1";
+const ANCHORS = ['top', 'customer', 'phone', 'whatsapp', 'country', 'passport', 'bottom'];
 const curSym = (c?: string | null) => {
   const code = (c || 'USD').toUpperCase();
   try { return new Intl.NumberFormat('en', { style: 'currency', currency: code, currencyDisplay: 'narrowSymbol' }).formatToParts(0).find((p) => p.type === 'currency')?.value || code; } catch { return code; }
@@ -14,7 +16,7 @@ const curSym = (c?: string | null) => {
 
 export default function ServiceSaleForm({
   table, fields, customers, currency, taxRate, customFields,
-}: { table: string; fields: SvcField[]; customers: { id: string; full_name: string }[]; currency?: string | null; taxRate?: number; customFields?: { id: string; label: string; field_type: string; section?: string }[] }) {
+}: { table: string; fields: SvcField[]; customers: { id: string; full_name: string }[]; currency?: string | null; taxRate?: number; customFields?: { id: string; label: string; field_type: string; section?: string; anchor?: string }[] }) {
   const cfFields = customFields || [];
   const cur = currency;
   const sym = curSym(currency);
@@ -26,6 +28,8 @@ export default function ServiceSaleForm({
   const [money, setMoney] = useState({ sale_price: '', cost: '', admin_fee: '', discount: '', tax: '', commission: '', paid: '' });
   const [cf, setCf] = useState<Record<string, string>>({});
   const sec = (s: string) => cfFields.filter((f) => (f.section || 'general') === s);
+  const cfa = (a: string) => sec('customer').filter((f) => (f.anchor || 'bottom') === a);
+  const custBottom = sec('customer').filter((f) => { const a = f.anchor || 'bottom'; return a === 'bottom' || !ANCHORS.includes(a); });
 
   const isHotel = table === 'hotel_sales';
   const isTransport = table === 'transport_sales';
@@ -53,6 +57,7 @@ export default function ServiceSaleForm({
     <form action={createServiceSale} className="space-y-6">
       <input type="hidden" name="table" value={table} />
 
+<p className={SECT}>1 · Customer</p>
       {/* customer */}
       <div className="grid gap-4 sm:grid-cols-3">
         <div>
@@ -61,16 +66,23 @@ export default function ServiceSaleForm({
         {!useExisting && (
           <>
             <L label="Customer name *" name="customer_name" />
+            {cfa('customer').length > 0 && <CustomFieldInputs fields={cfa('customer')} cf={cf} setCf={setCf} />}
             <L label="Phone" name="phone" />
+            {cfa('phone').length > 0 && <CustomFieldInputs fields={cfa('phone')} cf={cf} setCf={setCf} />}
             <L label="WhatsApp" name="whatsapp" />
+            {cfa('whatsapp').length > 0 && <CustomFieldInputs fields={cfa('whatsapp')} cf={cf} setCf={setCf} />}
             <L label="Country" name="country" />
+            {cfa('country').length > 0 && <CustomFieldInputs fields={cfa('country')} cf={cf} setCf={setCf} />}
             <L label="Passport no." name="passport_no" />
+            {cfa('passport').length > 0 && <CustomFieldInputs fields={cfa('passport')} cf={cf} setCf={setCf} />}
           </>
         )}
       </div>
 
-      {sec('customer').length > 0 && <div className="mt-4 grid gap-4 sm:grid-cols-3"><CustomFieldInputs fields={sec('customer')} cf={cf} setCf={setCf} /></div>}
+      {custBottom.length > 0 && <CustomFieldInputs fields={custBottom} cf={cf} setCf={setCf} />}
+      {cfa('top').length > 0 && <CustomFieldInputs fields={cfa('top')} cf={cf} setCf={setCf} />}
 
+<p className={SECT}>2 · Sale details</p>
       {/* service fields */}
       <div className="grid gap-4 sm:grid-cols-3">
         {fields.map((f) => (

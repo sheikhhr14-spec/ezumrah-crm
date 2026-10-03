@@ -11,6 +11,7 @@ export type CustomFieldDef = {
   field_type: CustomFieldType;
   position: number;
   section?: string;
+  anchor?: string;
 };
 
 /** Where a custom field renders inside a sale form */
@@ -21,9 +22,20 @@ export const CF_SECTIONS: { id: string; label: string }[] = [
   { id: 'payment', label: 'Payment section' },
 ];
 
+/** Which built-in customer field a custom field sits next to (customer section only) */
+export const CF_ANCHORS: { id: string; label: string }[] = [
+  { id: 'top', label: 'Top of the customer section' },
+  { id: 'customer', label: 'Next to Customer name' },
+  { id: 'phone', label: 'Next to Phone' },
+  { id: 'whatsapp', label: 'Next to WhatsApp' },
+  { id: 'country', label: 'Next to Country' },
+  { id: 'passport', label: 'Next to Passport no.' },
+  { id: 'bottom', label: 'End of the customer section' },
+];
+
 export async function getCustomFields(db: any, aid: string, module: string): Promise<CustomFieldDef[]> {
   const { data } = await db.from('custom_field_defs')
-    .select('id, label, field_type, position, section')
+    .select('id, label, field_type, position, section, anchor')
     .eq('agency_id', aid).eq('module', module).eq('active', true)
     .order('position').order('created_at');
   return (data || []) as CustomFieldDef[];

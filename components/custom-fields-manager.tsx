@@ -1,7 +1,7 @@
 import { createAdminClient } from '@/lib/supabase/admin';
 import { requireActiveAgency } from '@/lib/data';
 import { addCustomField, toggleCustomField, deleteCustomField } from '@/lib/crm-actions';
-import { CF_TYPE_LABEL, CF_SECTIONS, type CustomFieldType } from '@/lib/custom-fields';
+import { CF_TYPE_LABEL, CF_SECTIONS, CF_ANCHORS, type CustomFieldType } from '@/lib/custom-fields';
 import { AddPanel } from '@/components/ui';
 import SubmitButton from '@/components/submit-button';
 
@@ -39,6 +39,12 @@ export default async function CustomFieldsManager({ module, revalidate }: { modu
               <label className="label">Show in section</label>
               <select className="input" name="section" defaultValue="general">
                 {CF_SECTIONS.map((s) => <option key={s.id} value={s.id}>{s.label}</option>)}
+              </select>
+            </div>
+            <div>
+              <label className="label">Place next to (customer section only)</label>
+              <select className="input" name="anchor" defaultValue="bottom">
+                {CF_ANCHORS.map((x) => <option key={x.id} value={x.id}>{x.label}</option>)}
               </select>
             </div>
             <SubmitButton className="btn-primary" pendingText="Adding…">Add field</SubmitButton>
