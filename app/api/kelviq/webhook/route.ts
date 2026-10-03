@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/admin';
-import { getKelviqConfig, verifyKelviqSignature, internalPlanFromKelviq } from '@/lib/kelviq';
+import { getKelviqConfig, verifyKelviqEvent, internalPlanFromKelviq } from '@/lib/kelviq';
 
 // Kelviq webhook receiver. Register this URL in the Kelviq dashboard
 // (Settings → Webhooks) and subscribe to: checkout.completed,
@@ -32,20 +32,15 @@ function pickAgencyId(obj: any): string | null {
 
 export async function POST(request: NextRequest) {
   const rawBody = await request.text();
-  const signature = request.headers.get('webhook-signature');
-  const timestamp = request.headers.get('webhook-timestamp');
   const eventId = request.headers.get('webhook-id');
 
   const cfg = await getKelviqConfig();
-  if (!verifyKelviqSignature(rawBody, signature, timestamp, cfg.webhookSecret)) {
-    return NextResponse.json({ error: 'Invalid signature' }, { status: 400 });
-  }
-
-  let event: any;
-  try {
-    event = JSON.parse(rawBody);
-  } catch {
-    return NextResponse.json({ error: 'Invalid payload' }, { status: 400 });
+  // Standard Webhooks verification of the raw body via the SDK
+  const headers: Record<string, string | string[] | undefined> = {};
+  request.headers.forEach((v, k) => { headers[k] = v; });
+  const event: any = verifyKelviqEvent(rawBody, headers, cfg.webhookSecret);
+  if (!event) {
+    return NextResponse.json({ error: 'Invalid signature' }, { status: 403 });
   }
   if (!event?.type) return NextResponse.json({ error: 'Missing type' }, { status: 400 });
 
@@ -78,6 +73,11 @@ export async function POST(request: NextRequest) {
   const { data: agency } = await db.from('agencies').select('id, plan').eq('id', agencyId).maybeSingle();
   if (!agency) return NextResponse.json({ received: true, ignored: 'unknown agency' });
 
+  // Event TODOs (handled where noted):
+  // TODO checkout.completed: seat-count sync from subscription.features (per-seat billing)
+  // TODO invoice.payment_failed: dunning email to the agency owner
+  // TODO subscription.created/.updated/.plan_changed: re-sync entitlements (hasFeature)
+  // TODO subscription.cancelled: fires when the subscription actually ends (not when scheduled)
   switch (event.type) {
     case 'checkout.completed': {
       // payment collected; subscription object follows in subscription.created,

@@ -3,12 +3,12 @@ import { redirect } from 'next/navigation';
 
 import { PLANS, PLAN_IDS, type PlanId } from '@/lib/billing';
 import { logout } from '@/lib/auth-actions';
-import { startCheckout } from '@/lib/checkout-actions';
+import { startCheckout, openBillingPortal } from '@/lib/checkout-actions';
 import { getKelviqConfig, resolveKelviqSubscription, internalPlanFromKelviq } from '@/lib/kelviq';
 import { createAdminClient } from '@/lib/supabase/admin';
 import Link from 'next/link';
 
-export default async function BillingPage({ searchParams }: { searchParams?: { error?: string; enterprise?: string; kelviq?: string } }) {
+export default async function BillingPage({ searchParams }: { searchParams?: { error?: string; enterprise?: string; kelviq?: string; portal?: string } }) {
   const ctx = await requireUser();
   if (ctx.profile?.role !== 'owner' && ctx.profile?.role !== 'superadmin') redirect('/dashboard?denied=1');
   const agency = ctx?.profile?.agencies;
@@ -25,12 +25,12 @@ export default async function BillingPage({ searchParams }: { searchParams?: { e
   if (searchParams?.kelviq === 'success' && status !== 'active' && kelviq.enabled && kelviq.serverKey && agency?.id) {
     const { subscription, customerId } = await resolveKelviqSubscription(kelviq, agency.id, ctx.user?.email);
     if (subscription) {
-      const plan = internalPlanFromKelviq(kelviq, subscription.plan?.planIdentifier || subscription.plan_identifier) || 'professional';
+      const plan = internalPlanFromKelviq(kelviq, subscription.plan?.planIdentifier || subscription.plan_identifier) || 'standard';
       const patch: Record<string, any> = {
         subscription_status: 'active',
         plan,
         kelviq_customer_id: customerId,
-        current_period_end: subscription.billing_period_end_time || new Date(Date.now() + 30 * 24 * 3600 * 1000).toISOString(),
+        current_period_end: subscription.billingPeriodEndTime || new Date(Date.now() + 30 * 24 * 3600 * 1000).toISOString(),
       };
       if (subscription.id) patch.kelviq_subscription_id = subscription.id;
       await createAdminClient().from('agencies').update(patch).eq('id', agency.id);
@@ -51,6 +51,11 @@ export default async function BillingPage({ searchParams }: { searchParams?: { e
         {status !== 'active' ? (
           <>
             {searchParams?.error && <div className="mb-6 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-600">{searchParams.error}</div>}
+            {searchParams?.portal === 'unavailable' && (
+              <div className="mb-6 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-700">
+                The self-serve billing portal isn't available for your account yet. Contact support and we'll update your payment details for you.
+              </div>
+            )}
             {searchParams?.kelviq === 'success' && (
               <div className="mb-6 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-700">
                 ✓ Payment received. Your subscription is being activated — this page unlocks automatically within a minute. <a className="font-semibold underline" href="/billing">Refresh</a>
@@ -100,7 +105,10 @@ export default async function BillingPage({ searchParams }: { searchParams?: { e
           <div className="card p-6 text-center">
             <p className="text-lg font-semibold text-green-600">Subscription active ✓</p>
             <p className="mt-1 text-sm text-slate-500">{planInfo.name} — {planInfo.price_monthly ? `$${planInfo.price_monthly}/month` : 'custom pricing'}{agency?.current_period_end ? ` · next billing ${new Date(agency.current_period_end).toLocaleDateString()}` : ''}</p>
-            <Link className="btn-primary mt-4" href="/dashboard">Go to dashboard →</Link>
+            <div className="mt-4 flex flex-wrap items-center justify-center gap-3">
+              <Link className="btn-primary" href="/dashboard">Go to dashboard →</Link>
+              <form action={openBillingPortal}><button className="btn-secondary" type="submit">Manage card &amp; invoices</button></form>
+            </div>
           </div>
         )}
 

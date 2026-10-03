@@ -1,10 +1,10 @@
 // Kelviq — Merchant of Record platform (kelviq.com) used to sell EzUmrah CRM
-// subscriptions. Credentials are managed by the super-admin in
-// /admin/settings and stored in platform settings (storage bucket), with
-// environment variables as fallback.
-// API docs: https://docs.kelviq.com
+// subscriptions. Server-side only, via the official @kelviq/node-sdk.
+// Credentials: environment variables first (sandbox/CI), then the super-admin
+// card in /admin/settings (stored in platform settings bucket).
+// API docs: https://docs.kelviq.com  ·  SDK: https://docs.kelviq.com/backend-integration/node-sdk.md
 
-import crypto from 'crypto';
+import { Kelviq, environmentFromEnv, validateEvent, ApiError } from '@kelviq/node-sdk';
 import { getPlatformSettings } from '@/lib/platform-settings';
 
 export type KelviqEnv = 'sandbox' | 'production';
@@ -22,13 +22,20 @@ export type KelviqConfig = {
 
 export async function getKelviqConfig(): Promise<KelviqConfig> {
   const s = await getPlatformSettings();
-  const enabled = s.kelviq_enabled === true;
-  const env: KelviqEnv = s.kelviq_env === 'production' ? 'production' : 'sandbox';
+  // Environment variables win over the admin card: pasting the sandbox block
+  // from app.kelviq.com/settings/setup-with-ai into .env.local flips the whole
+  // app onto the sandbox without touching production settings.
+  const envKey = (process.env.KELVIQ_SERVER_API_KEY || '').trim();
+  const env: KelviqEnv = envKey
+    ? environmentFromEnv(process.env.KELVIQ_ENV) // sandbox when KELVIQ_ENV is unset
+    : s.kelviq_env === 'production'
+      ? 'production'
+      : 'sandbox';
   return {
-    enabled,
+    enabled: s.kelviq_enabled === true,
     env,
-    serverKey: s.kelviq_server_key || process.env.KELVIQ_SERVER_API_KEY || '',
-    webhookSecret: s.kelviq_webhook_secret || process.env.KELVIQ_WEBHOOK_SECRET || '',
+    serverKey: envKey || s.kelviq_server_key || '',
+    webhookSecret: (process.env.KELVIQ_WEBHOOK_SECRET || '').trim() || s.kelviq_webhook_secret || '',
     planStandard: s.kelviq_plan_standard || 'standard',
     planProfessional: s.kelviq_plan_professional || 'professional',
     planEnterprise: s.kelviq_plan_enterprise || 'enterprise',
@@ -36,8 +43,11 @@ export async function getKelviqConfig(): Promise<KelviqConfig> {
   };
 }
 
-export function kelviqBaseUrl(env: KelviqEnv) {
-  return env === 'production' ? 'https://api.kelviq.com/api/v1' : 'https://sandboxapi.kelviq.com/api/v1';
+/** One shared SDK client per call, keyed to the resolved environment. */
+export async function getKelviqClient(cfg?: KelviqConfig): Promise<Kelviq> {
+  const c = cfg || (await getKelviqConfig());
+  if (!c.serverKey) throw new Error('Kelviq is not configured (missing API key)');
+  return new Kelviq({ accessToken: c.serverKey, environment: c.env, logger: false });
 }
 
 /** Plan identifier in Kelviq for an internal plan id */
@@ -47,7 +57,7 @@ export function kelviqPlanId(cfg: KelviqConfig, plan: string) {
   return cfg.planStandard;
 }
 
-/** Reverse map: Kelviq planIdentifier -> internal plan id ('professional' default) */
+/** Reverse map: Kelviq planIdentifier -> internal plan id */
 export function internalPlanFromKelviq(cfg: KelviqConfig, planIdentifier?: string | null) {
   if (!planIdentifier) return null;
   if (planIdentifier === cfg.planEnterprise) return 'enterprise';
@@ -56,75 +66,85 @@ export function internalPlanFromKelviq(cfg: KelviqConfig, planIdentifier?: strin
 }
 
 /**
- * Creates a hosted checkout session. The customer is auto-created in Kelviq
- * with our agency_id as their customerId, so webhook events can be correlated.
+ * Ensures the Kelviq customer exists with an email — the billing portal
+ * returns 400 until it does. We use the agency id as customerId, so we create
+ * the record ourselves before checkout; ignore "already exists" and refresh
+ * the email instead.
  */
-export async function createKelviqCheckoutSession(cfg: KelviqConfig, opts: {
-  plan: string;
-  agencyId: string;
-  email?: string;
-  name?: string;
-  successUrl: string;
-}): Promise<{ checkoutUrl: string; checkoutSessionId: string }> {
-  const res = await fetch(`${kelviqBaseUrl(cfg.env)}/checkout/`, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      Authorization: `Bearer ${cfg.serverKey}`,
-    },
-    body: JSON.stringify({
-      planIdentifier: kelviqPlanId(cfg, opts.plan),
-      chargePeriod: 'MONTHLY',
-      customerId: opts.agencyId,
-      ...(opts.email ? { email: opts.email } : {}),
-      ...(opts.name ? { name: opts.name } : {}),
-      successUrl: opts.successUrl,
-      metadata: {
-        agency_id: opts.agencyId,
-        plan: opts.plan,
-        source: 'ezumrah_crm',
-      },
-    }),
-  });
-  const data = await res.json().catch(() => ({}));
-  if (!res.ok || !data.checkoutUrl) {
-    throw new Error(data?.message || data?.error || `Kelviq checkout failed (${res.status})`);
+export async function ensureKelviqCustomer(client: Kelviq, customerId: string, email?: string, name?: string) {
+  const params = {
+    customerId,
+    email: email || null,
+    name: name || null,
+    metadata: { agency_id: customerId, source: 'ezumrah_crm' },
+  };
+  try {
+    await client.customers.create(params);
+  } catch (e: any) {
+    if (e instanceof ApiError && (e.statusCode === 400 || e.statusCode === 409)) {
+      try { await client.customers.update(params); } catch { /* keep record as-is */ }
+    } else {
+      throw e;
+    }
   }
-  return { checkoutUrl: data.checkoutUrl, checkoutSessionId: data.checkoutSessionId || '' };
 }
 
 /**
- * Verifies a Kelviq webhook delivery (Standard Webhooks scheme).
- * Headers: webhook-id, webhook-timestamp, webhook-signature ("v1,<base64 hmac>").
- * Signature = base64(HMAC-SHA256(secret, `${timestamp}.${rawBody}`)).
+ * Creates a hosted checkout session for an allowed plan, monthly only.
+ * The customer record is created first (with the owner's email) so that
+ * portal sessions and webhook correlation both work from day one.
  */
-export function verifyKelviqSignature(rawBody: string, signature: string | null, timestamp: string | null, secret: string): boolean {
-  if (!signature || !timestamp || !secret) return false;
-  const m = signature.match(/^v1,(.+)$/);
-  if (!m) return false;
-  // reject deliveries older than 10 minutes
-  const ts = Number(timestamp);
-  if (!Number.isFinite(ts) || Math.abs(Date.now() / 1000 - ts) > 600) return false;
-  const given = Buffer.from(m[1], 'base64');
-  const key = Buffer.from(secret.replace(/^kq_whsec_/, ''), 'base64');
-  const expected = crypto.createHmac('sha256', key).update(`${timestamp}.${rawBody}`).digest();
-  return given.length === expected.length && crypto.timingSafeEqual(given, expected);
-}
-
-/** Lists subscriptions for a Kelviq customer (docs: GET /subscriptions/?customer_id=) */
-export async function listKelviqSubscriptions(cfg: KelviqConfig, customerId: string): Promise<any[]> {
-  const res = await fetch(`${kelviqBaseUrl(cfg.env)}/subscriptions/?customer_id=${encodeURIComponent(customerId)}`, {
-    headers: { Authorization: `Bearer ${cfg.serverKey}` },
-    cache: 'no-store',
+export async function createKelviqCheckoutSession(cfg: KelviqConfig, opts: {
+  plan: string;
+  agencyId: string; // Kelviq customerId — the tenant the subscription belongs to
+  email?: string;
+  name?: string;
+  successUrl: string; // absolute
+  trialDays?: number | null; // while the agency is on its 5-day trial, Kelviq charges when it ends
+}): Promise<{ checkoutUrl: string; checkoutSessionId: string }> {
+  const client = await getKelviqClient(cfg);
+  await ensureKelviqCustomer(client, opts.agencyId, opts.email, opts.name);
+  const session = await client.checkout.createSession({
+    planIdentifier: kelviqPlanId(cfg, opts.plan),
+    chargePeriod: 'MONTHLY',
+    customerId: opts.agencyId,
+    successUrl: opts.successUrl,
+    ...(opts.trialDays ? { trialPeriod: opts.trialDays } : {}),
   });
-  if (!res.ok) return [];
-  const data = await res.json().catch(() => ({}));
-  return Array.isArray(data?.results) ? data.results : Array.isArray(data) ? data : [];
+  return { checkoutUrl: session.checkoutUrl, checkoutSessionId: session.checkoutSessionId };
 }
 
-/** Finds a Kelviq customer record by email (docs: GET /customers/?search=) */
+/**
+ * Verifies a Kelviq webhook delivery using the SDK's Standard Webhooks
+ * verification. Returns the parsed event, or null when the signature is
+ * invalid (caller must answer 403).
+ */
+export function verifyKelviqEvent(
+  rawBody: string,
+  headers: Record<string, string | string[] | undefined>,
+  secret: string,
+): Record<string, unknown> | null {
+  if (!secret) return null;
+  try {
+    return validateEvent(rawBody, headers, secret);
+  } catch {
+    return null;
+  }
+}
+
+/** Lists subscriptions for a Kelviq customer (SDK camelCase shapes). */
+export async function listKelviqSubscriptions(client: Kelviq, customerId: string) {
+  const res = await client.subscriptions.list({ customerId, pageSize: 50 });
+  return res.results || [];
+}
+
+/**
+ * Finds a Kelviq customer record by email (GET /customers/?search=) —
+ * the SDK customer list has no search param, so raw HTTP here only.
+ */
 export async function findKelviqCustomerByEmail(cfg: KelviqConfig, email: string): Promise<any | null> {
-  const res = await fetch(`${kelviqBaseUrl(cfg.env)}/customers/?search=${encodeURIComponent(email)}&page_size=5`, {
+  const base = cfg.env === 'production' ? 'https://api.kelviq.com/api/v1' : 'https://sandboxapi.kelviq.com/api/v1';
+  const res = await fetch(`${base}/customers/?search=${encodeURIComponent(email)}&page_size=5`, {
     headers: { Authorization: `Bearer ${cfg.serverKey}` },
     cache: 'no-store',
   });
@@ -136,23 +156,39 @@ export async function findKelviqCustomerByEmail(cfg: KelviqConfig, email: string
 
 /**
  * Direct verification (no webhooks needed): finds the agency's active
- * subscription in Kelviq — first by our customerId (= agency_id, used on
- * API-created checkouts), then by the owner's email (static checkout link
- * buyers). Returns the active subscription and the matched customerId.
+ * subscription in Kelviq — first by our customerId (= agency_id), then by the
+ * owner's email (static checkout link buyers). Returns the active
+ * subscription (SDK SubscriptionData) and the matched customerId.
  */
 export async function resolveKelviqSubscription(cfg: KelviqConfig, agencyId: string, email?: string | null) {
   const active = (subs: any[]) => subs.find((s) => s.status === 'active' || s.status === 'trialing') || null;
-  const viaAgency = await listKelviqSubscriptions(cfg, agencyId);
+  const client = await getKelviqClient(cfg);
+  const viaAgency = await listKelviqSubscriptions(client, agencyId);
   const found = active(viaAgency);
   if (found) return { subscription: found, customerId: agencyId };
   if (email) {
     const cust = await findKelviqCustomerByEmail(cfg, email);
     const custId = cust?.customerId || cust?.id;
     if (custId) {
-      const subs = await listKelviqSubscriptions(cfg, custId);
+      const subs = await listKelviqSubscriptions(client, custId);
       const f = active(subs);
       if (f) return { subscription: f, customerId: custId };
     }
   }
   return { subscription: null, customerId: null };
+}
+
+/**
+ * Entitlement check via the Kelviq Edge API. Fails CLOSED on error: a
+ * customer with no subscription (or an outage) gets false. Not wired into any
+ * gate yet — say where to apply it (suggested: the Nusuk integration).
+ */
+export async function hasFeature(customerId: string, featureId: string): Promise<boolean> {
+  try {
+    const client = await getKelviqClient();
+    return await client.entitlements.hasAccess({ customerId, featureId });
+  } catch (e) {
+    console.error('kelviq: entitlement check failed, failing closed', e instanceof Error ? e.message : e);
+    return false;
+  }
 }

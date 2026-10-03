@@ -29,8 +29,8 @@ export async function GET(req: NextRequest) {
         : kelviqStatus === 'past_due' || kelviqStatus === 'incomplete'
           ? 'past_due'
           : 'cancelled';
-      const plan = internalPlanFromKelviq(cfg, subscription.plan?.planIdentifier || subscription.plan_identifier) || a.plan;
-      const periodEnd = subscription.billing_period_end_time || null;
+      const plan = internalPlanFromKelviq(cfg, subscription.plan?.planIdentifier) || a.plan;
+      const periodEnd = subscription.billingPeriodEndTime || null;
       const patch: Record<string, any> = { subscription_status: status, plan, kelviq_customer_id: customerId };
       if (periodEnd) patch.current_period_end = periodEnd;
       if (subscription.id) patch.kelviq_subscription_id = subscription.id;
