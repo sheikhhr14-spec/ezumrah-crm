@@ -294,7 +294,7 @@ def transport(ag, i, ref, ttype, frm, to, tdate, veh, pax, sale, cost, paid, pay
 ins('transport_sales', [
     transport('pk',0,'TS-PK-001','airport pickup','Jeddah Airport (JED)','Makkah hotel','2026-10-20','Toyota Hiace',6,38000,30000,38000,'paid','completed'),
     transport('pk',2,'TS-PK-002','intercity','Makkah hotel','Madinah hotel','2026-10-24','Coaster 30-seater',11,95000,78000,47500,'partial','confirmed',due='2026-10-22'),
-    transport('pk',4,'TS-PK-003','airport pickup','Madinah hotel','Madinah Airport (MED)','2026-11-01','Toyota Hiace',6,22000,17000,22000,'paid','completed'),
+    transport('pk',4,'TS-PK-003','airport drop','Madinah hotel','Madinah Airport (MED)','2026-11-01','Toyota Hiace',6,22000,17000,22000,'paid','completed'),
     transport('pk',6,'TS-PK-004','ziyarah','Makkah hotel','Ziyarat program','2026-11-22','GMC Suburban',6,45000,36000,0,'unpaid','pending',due='2026-10-30'),
     transport('ae',0,'TS-AE-001','airport pickup','Jeddah Airport (JED)','Makkah hotel','2026-10-15','GMC Yukon XL',6,750,550,750,'paid','completed',flight_no='EK1861'),
     transport('ae',1,'TS-AE-002','intercity','Makkah hotel','Madinah hotel','2026-10-19','GMC Yukon XL',5,950,700,950,'paid','completed'),
