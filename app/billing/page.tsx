@@ -4,7 +4,8 @@ import { redirect } from 'next/navigation';
 import { PLANS, PLAN_IDS, type PlanId } from '@/lib/billing';
 import { logout } from '@/lib/auth-actions';
 import { startCheckout } from '@/lib/checkout-actions';
-import { getKelviqConfig } from '@/lib/kelviq';
+import { getKelviqConfig, resolveKelviqSubscription, internalPlanFromKelviq } from '@/lib/kelviq';
+import { createAdminClient } from '@/lib/supabase/admin';
 import Link from 'next/link';
 
 export default async function BillingPage({ searchParams }: { searchParams?: { error?: string; enterprise?: string; kelviq?: string } }) {
@@ -13,8 +14,27 @@ export default async function BillingPage({ searchParams }: { searchParams?: { e
   const agency = ctx?.profile?.agencies;
   const currentPlan = (agency?.plan as PlanId) || 'professional';
   const planInfo = (PLANS as any)[currentPlan] || (PLANS as any).professional;
-  const status = agency?.subscription_status || 'incomplete';
+  let status = agency?.subscription_status || 'incomplete';
   const kelviq = await getKelviqConfig();
+
+  // Direct verification: after returning from Kelviq checkout, query Kelviq
+  // for this agency's subscription and activate instantly (works even
+  // before webhooks are configured).
+  if (searchParams?.kelviq === 'success' && status !== 'active' && kelviq.enabled && kelviq.serverKey && agency?.id) {
+    const { subscription, customerId } = await resolveKelviqSubscription(kelviq, agency.id, ctx.user?.email);
+    if (subscription) {
+      const plan = internalPlanFromKelviq(kelviq, subscription.plan?.planIdentifier || subscription.plan_identifier) || 'professional';
+      const patch: Record<string, any> = {
+        subscription_status: 'active',
+        plan,
+        kelviq_customer_id: customerId,
+        current_period_end: subscription.billing_period_end_time || new Date(Date.now() + 30 * 24 * 3600 * 1000).toISOString(),
+      };
+      if (subscription.id) patch.kelviq_subscription_id = subscription.id;
+      await createAdminClient().from('agencies').update(patch).eq('id', agency.id);
+      status = 'active';
+    }
+  }
 
   return (
     <main className="flex min-h-screen items-center justify-center bg-slate-50 px-4 py-10">

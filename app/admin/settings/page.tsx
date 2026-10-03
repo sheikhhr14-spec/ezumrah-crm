@@ -65,6 +65,7 @@ export default async function SettingsPage({ searchParams }: { searchParams?: { 
           <Field label="Webhook signing secret"><input className="input" name="kelviq_webhook_secret" type="password" defaultValue={smtp.kelviq_webhook_secret || ''} placeholder="kq_whsec_…" /></Field>
           <Field label="Plan identifier — Professional"><input className="input" name="kelviq_plan_professional" defaultValue={smtp.kelviq_plan_professional || 'professional'} /></Field>
           <Field label="Plan identifier — Enterprise"><input className="input" name="kelviq_plan_enterprise" defaultValue={smtp.kelviq_plan_enterprise || 'enterprise'} /></Field>
+          <Field label="Static checkout link (fallback)"><input className="input" name="kelviq_checkout_url" defaultValue={smtp.kelviq_checkout_url || ''} placeholder="https://www.kelviq.com/buy/…" /></Field>
           <div className="flex items-end"><button className="btn-primary" type="submit">Save Kelviq settings</button></div>
         </form>
       </div>

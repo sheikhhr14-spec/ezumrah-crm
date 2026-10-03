@@ -33,6 +33,7 @@ export async function startCheckout(formData: FormData) {
       });
       redirect(session.checkoutUrl);
     } catch (e: any) {
+      if (cfg.checkoutUrl) redirect(cfg.checkoutUrl); // static link fallback — payment still lands in Kelviq
       redirect('/billing?error=' + encodeURIComponent(e?.message || 'Kelviq checkout failed'));
     }
   }

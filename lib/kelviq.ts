@@ -16,6 +16,7 @@ export type KelviqConfig = {
   webhookSecret: string;
   planProfessional: string;
   planEnterprise: string;
+  checkoutUrl?: string; // static checkout link (fallback when session API fails)
 };
 
 export async function getKelviqConfig(): Promise<KelviqConfig> {
@@ -29,6 +30,7 @@ export async function getKelviqConfig(): Promise<KelviqConfig> {
     webhookSecret: s.kelviq_webhook_secret || process.env.KELVIQ_WEBHOOK_SECRET || '',
     planProfessional: s.kelviq_plan_professional || 'professional',
     planEnterprise: s.kelviq_plan_enterprise || 'enterprise',
+    checkoutUrl: s.kelviq_checkout_url || '',
   };
 }
 
@@ -102,4 +104,50 @@ export function verifyKelviqSignature(rawBody: string, signature: string | null,
   const key = Buffer.from(secret.replace(/^kq_whsec_/, ''), 'base64');
   const expected = crypto.createHmac('sha256', key).update(`${timestamp}.${rawBody}`).digest();
   return given.length === expected.length && crypto.timingSafeEqual(given, expected);
+}
+
+/** Lists subscriptions for a Kelviq customer (docs: GET /subscriptions/?customer_id=) */
+export async function listKelviqSubscriptions(cfg: KelviqConfig, customerId: string): Promise<any[]> {
+  const res = await fetch(`${kelviqBaseUrl(cfg.env)}/subscriptions/?customer_id=${encodeURIComponent(customerId)}`, {
+    headers: { Authorization: `Bearer ${cfg.serverKey}` },
+    cache: 'no-store',
+  });
+  if (!res.ok) return [];
+  const data = await res.json().catch(() => ({}));
+  return Array.isArray(data?.results) ? data.results : Array.isArray(data) ? data : [];
+}
+
+/** Finds a Kelviq customer record by email (docs: GET /customers/?search=) */
+export async function findKelviqCustomerByEmail(cfg: KelviqConfig, email: string): Promise<any | null> {
+  const res = await fetch(`${kelviqBaseUrl(cfg.env)}/customers/?search=${encodeURIComponent(email)}&page_size=5`, {
+    headers: { Authorization: `Bearer ${cfg.serverKey}` },
+    cache: 'no-store',
+  });
+  if (!res.ok) return null;
+  const data = await res.json().catch(() => ({}));
+  const exact = (data?.results || []).find((c: any) => (c.email || '').toLowerCase() === email.toLowerCase());
+  return exact || (data?.results || [])[0] || null;
+}
+
+/**
+ * Direct verification (no webhooks needed): finds the agency's active
+ * subscription in Kelviq — first by our customerId (= agency_id, used on
+ * API-created checkouts), then by the owner's email (static checkout link
+ * buyers). Returns the active subscription and the matched customerId.
+ */
+export async function resolveKelviqSubscription(cfg: KelviqConfig, agencyId: string, email?: string | null) {
+  const active = (subs: any[]) => subs.find((s) => s.status === 'active' || s.status === 'trialing') || null;
+  const viaAgency = await listKelviqSubscriptions(cfg, agencyId);
+  const found = active(viaAgency);
+  if (found) return { subscription: found, customerId: agencyId };
+  if (email) {
+    const cust = await findKelviqCustomerByEmail(cfg, email);
+    const custId = cust?.customerId || cust?.id;
+    if (custId) {
+      const subs = await listKelviqSubscriptions(cfg, custId);
+      const f = active(subs);
+      if (f) return { subscription: f, customerId: custId };
+    }
+  }
+  return { subscription: null, customerId: null };
 }

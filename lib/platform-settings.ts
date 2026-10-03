@@ -10,6 +10,7 @@ export type PlatformSettings = {
   kelviq_server_key?: string;
   kelviq_webhook_secret?: string;
   kelviq_plan_professional?: string;
+  kelviq_checkout_url?: string;
   kelviq_plan_enterprise?: string;
 };
 const BUCKET = 'platform-settings';
