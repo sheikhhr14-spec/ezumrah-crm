@@ -41,10 +41,10 @@ export default function ServiceSaleForm({
 
   const isHotel = table === 'hotel_sales';
   const isTransport = table === 'transport_sales';
-  const HOTEL_EXTRA = () => ({ city: '', hotel_name: '', check_in: '', check_out: '', room_type: '', rooms_count: '', meal_plan: '', sale_price: '', cost: '' });
+  const HOTEL_EXTRA = () => ({ ...Object.fromEntries(fields.filter((f) => f.name !== 'nights').map((f) => [f.name, ''])), sale_price: '', cost: '' });
   const TRANS_EXTRA = () => ({ from_location: '', to_location: '', transport_date: '', transport_time: '', vehicle_type: '', seats: '', driver_name: '', driver_phone: '', sale_price: '', cost: '' });
   const extraFrom = (x: any): Record<string, string> => table === 'hotel_sales'
-    ? { hotel_name: s2(x.hotel_name), city: s2(x.city), check_in: s2(x.check_in), check_out: s2(x.check_out), room_type: s2(x.room_type), rooms_count: s2(x.rooms_count), meal_plan: s2(x.meal_plan), sale_price: s2(x.sale_price), cost: s2(x.cost) }
+    ? { ...Object.fromEntries(fields.filter((f) => f.name !== 'nights').map((f) => [f.name, s2(x[f.name])])), sale_price: s2(x.sale_price), cost: s2(x.cost) }
     : { from_location: s2(x.from_location), to_location: s2(x.to_location), transport_date: s2(x.transport_date), transport_time: s2(x.transport_time), vehicle_type: s2(x.vehicle_type), seats: s2(x.seats), driver_name: s2(x.driver_name), driver_phone: s2(x.driver_phone), sale_price: s2(x.sale_price), cost: s2(x.cost) };
   const [extras, setExtras] = useState<Record<string, string>[]>(edit ? (saleExtras || []).map(extraFrom) : []);
   const GUEST = () => ({ name: '', passport_no: '' });
@@ -146,6 +146,43 @@ export default function ServiceSaleForm({
         </div>
       )}
 
+      {isHotel && (
+        <div className="space-y-3">
+          <p className="text-xs font-semibold text-slate-600">More hotels in this sale (Makkah + Madinah etc.) — complete details per hotel, same as Hotel 1.</p>
+          {extras.map((x, i) => {
+            const en = x.check_in && x.check_out ? Math.round((new Date(x.check_out).getTime() - new Date(x.check_in).getTime()) / 86400000) : 0;
+            return (
+              <div key={i} className="rounded-xl border border-slate-200 bg-white p-4">
+                <div className="mb-3 flex items-center justify-between">
+                  <h3 className="text-sm font-bold text-slate-900">Hotel {i + 2}{edit ? ' (saved)' : ''}</h3>
+                  <button type="button" onClick={() => setExtras(extras.filter((_, j) => j !== i))} className="text-xs text-red-400 hover:text-red-600">✕ remove</button>
+                </div>
+                <div className="grid gap-4 sm:grid-cols-3">
+                  {fields.filter((f) => f.name !== 'nights').map((f) => (
+                    <label key={f.name} className="block"><span className="text-xs font-semibold text-slate-600">{f.label}</span>
+                      <input className="input" name={`extra_${f.name}_${i}`}
+                        type={f.type === 'number' ? 'number' : f.type === 'date' ? 'date' : 'text'}
+                        step={f.type === 'number' ? '0.01' : undefined}
+                        placeholder={f.ph || ''} required={f.req}
+                        value={x[f.name] || ''} onChange={up(i, f.name)} />
+                    </label>
+                  ))}
+                </div>
+                {en > 0 && <p className="-mt-2 text-xs font-semibold accent">✓ Auto-calculated: {en} night(s)</p>}
+                <div className="mt-3 grid gap-4 sm:grid-cols-2">
+                  <div className="relative"><span className="pointer-events-none absolute left-2 top-1/2 -translate-y-1/2 whitespace-nowrap text-[10px] font-bold accent">{sym}</span><input className="input" style={{ paddingLeft: symPad }} type="number" step="0.01" placeholder={`Sale price${cur ? ' (' + cur + ')' : ''}`} value={x.sale_price} onChange={up(i, 'sale_price')} name={`extra_sale_price_${i}`} /></div>
+                  <div className="relative"><span className="pointer-events-none absolute left-2 top-1/2 -translate-y-1/2 whitespace-nowrap text-[10px] font-bold accent">{sym}</span><input className="input" style={{ paddingLeft: symPad }} type="number" step="0.01" placeholder="Our cost" value={x.cost} onChange={up(i, 'cost')} name={`extra_cost_${i}`} /></div>
+                </div>
+              </div>
+            );
+          })}
+          <div className="flex flex-wrap items-center gap-3">
+            <button type="button" className="btn-secondary text-xs" onClick={() => setExtras([...extras, HOTEL_EXTRA()])}>＋ Add another hotel</button>
+            {extras.length > 0 && <p className="text-xs text-slate-500">Adds {fmtMoney(extrasPrice, cur)} to the sale total automatically.</p>}
+          </div>
+        </div>
+      )}
+
       <p className={SECT}>3 · Pricing & payment</p>
       {/* payment */}
       <div className="rounded-xl border border-slate-200 bg-white p-4">
@@ -187,42 +224,30 @@ export default function ServiceSaleForm({
             </select>
           </label>
         </div>
-        {(isHotel || isTransport) && (
+        {isTransport && (
           <div className="space-y-2">
-            <p className="text-xs font-semibold text-slate-600">{isHotel ? 'Add more hotels to this sale (Makkah + Madinah etc.)' : 'Add more trips to this sale (Ziyarat, return transfers etc.)'}</p>
+            <p className="text-xs font-semibold text-slate-600">Add more trips to this sale (Ziyarat, return transfers etc.)</p>
             {extras.map((x, i) => (
               <div key={i} className="rounded-lg border border-slate-200 p-3">
                 <div className="mb-2 flex items-center justify-between">
-                  <p className="text-xs font-bold text-slate-500">{isHotel ? `Hotel ${i + 2}` : `Trip / Ziyarat ${i + 2}`}{edit ? ' (saved)' : ''}</p>
+                  <p className="text-xs font-bold text-slate-500">Trip / Ziyarat {i + 2}{edit ? ' (saved)' : ''}</p>
                   <button type="button" onClick={() => setExtras(extras.filter((_, j) => j !== i))} className="text-xs text-red-400 hover:text-red-600">✕ remove</button>
                 </div>
                 <div className="grid gap-2 sm:grid-cols-3">
-                  {isHotel ? (<>
-                    <input className="input" placeholder="Hotel name" value={x.hotel_name} onChange={up(i, 'hotel_name')} name={`extra_hotel_${i}`} />
-                    <input className="input" placeholder="City (Makkah / Madinah)" value={x.city} onChange={up(i, 'city')} name={`extra_city_${i}`} />
-                    <input className="input" type="date" title="Check-in" value={x.check_in} onChange={up(i, 'check_in')} name={`extra_checkin_${i}`} />
-                    <input className="input" type="date" title="Check-out" value={x.check_out} onChange={up(i, 'check_out')} name={`extra_checkout_${i}`} />
-                    <input className="input" placeholder="Room type" value={x.room_type} onChange={up(i, 'room_type')} name={`extra_roomtype_${i}`} />
-                    <input className="input" type="number" title="Rooms" placeholder="Rooms" value={x.rooms_count} onChange={up(i, 'rooms_count')} name={`extra_rooms_${i}`} />
-                    <input className="input" placeholder="Meal plan (BB/HB/FB)" value={x.meal_plan} onChange={up(i, 'meal_plan')} name={`extra_meal_${i}`} />
-                  </>) : (<>
-                    <input className="input" placeholder="From" value={x.from_location} onChange={up(i, 'from_location')} name={`extra_from_${i}`} />
-                    <input className="input" placeholder="To" value={x.to_location} onChange={up(i, 'to_location')} name={`extra_to_${i}`} />
-                    <input className="input" type="date" title="Date" value={x.transport_date} onChange={up(i, 'transport_date')} name={`extra_date_${i}`} />
-                    <input className="input" type="time" title="Time" value={x.transport_time} onChange={up(i, 'transport_time')} name={`extra_time_${i}`} />
-                    <input className="input" placeholder="Vehicle (Hiace / bus)" value={x.vehicle_type} onChange={up(i, 'vehicle_type')} name={`extra_vehicle_${i}`} />
-                    <input className="input" type="number" title="Seats" placeholder="Seats" value={x.seats} onChange={up(i, 'seats')} name={`extra_seats_${i}`} />
-                    <input className="input" placeholder="Driver name" value={x.driver_name} onChange={up(i, 'driver_name')} name={`extra_driver_${i}`} />
-                    <input className="input" placeholder="Driver phone" value={x.driver_phone} onChange={up(i, 'driver_phone')} name={`extra_phone_${i}`} />
-                  </>)}
+                  <input className="input" placeholder="From" value={x.from_location} onChange={up(i, 'from_location')} name={`extra_from_${i}`} />
+                  <input className="input" placeholder="To" value={x.to_location} onChange={up(i, 'to_location')} name={`extra_to_${i}`} />
+                  <input className="input" type="date" title="Date" value={x.transport_date} onChange={up(i, 'transport_date')} name={`extra_date_${i}`} />
+                  <input className="input" type="time" title="Time" value={x.transport_time} onChange={up(i, 'transport_time')} name={`extra_time_${i}`} />
+                  <input className="input" placeholder="Vehicle (Hiace / bus)" value={x.vehicle_type} onChange={up(i, 'vehicle_type')} name={`extra_vehicle_${i}`} />
+                  <input className="input" type="number" title="Seats" placeholder="Seats" value={x.seats} onChange={up(i, 'seats')} name={`extra_seats_${i}`} />
+                  <input className="input" placeholder="Driver name" value={x.driver_name} onChange={up(i, 'driver_name')} name={`extra_driver_${i}`} />
+                  <input className="input" placeholder="Driver phone" value={x.driver_phone} onChange={up(i, 'driver_phone')} name={`extra_phone_${i}`} />
                   <div className="relative"><span className="pointer-events-none absolute left-2 top-1/2 -translate-y-1/2 whitespace-nowrap text-[10px] font-bold accent">{sym}</span><input className="input" style={{ paddingLeft: symPad }} type="number" step="0.01" placeholder={`Sale price${cur ? ' (' + cur + ')' : ''}`} value={x.sale_price} onChange={up(i, 'sale_price')} name={`extra_sale_price_${i}`} /></div>
                   <div className="relative"><span className="pointer-events-none absolute left-2 top-1/2 -translate-y-1/2 whitespace-nowrap text-[10px] font-bold accent">{sym}</span><input className="input" style={{ paddingLeft: symPad }} type="number" step="0.01" placeholder="Our cost" value={x.cost} onChange={up(i, 'cost')} name={`extra_cost_${i}`} /></div>
                 </div>
               </div>
             ))}
-            <button type="button" className="btn-secondary text-xs" onClick={() => setExtras([...extras, isHotel ? HOTEL_EXTRA() : TRANS_EXTRA()])}>
-              {isHotel ? '＋ Add another hotel' : '＋ Add another trip / Ziyarat'}
-            </button>
+            <button type="button" className="btn-secondary text-xs" onClick={() => setExtras([...extras, TRANS_EXTRA()])}>＋ Add another trip / Ziyarat</button>
             {extras.length > 0 && <p className="text-xs text-slate-500">Adds {fmtMoney(extrasPrice, cur)} to the sale total automatically.</p>}
           </div>
         )}

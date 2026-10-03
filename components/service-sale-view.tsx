@@ -182,10 +182,28 @@ export default async function ServiceSaleView({ table, id, emailFlag, editFlag }
         <div className="card mt-4 p-4">
           <p className="mb-2 text-sm font-bold text-slate-900">{table === 'hotel_sales' ? `More hotels in this sale (${legs.length})` : `More trips / Ziyarat in this sale (${legs.length})`}</p>
           <div className="space-y-2">
-            {legs.map((l: any) => (
+            {legs.map((l: any, li: number) => (
               <div key={l.id} className="rounded-lg bg-slate-50 p-3 text-xs text-slate-600">
                 {table === 'hotel_sales' ? (
-                  <p><b className="text-slate-900">{l.hotel_name}</b>{l.city ? ` · ${l.city}` : ''}{l.nights ? ` · ${l.nights} night(s)` : ''}{l.check_in ? ` · ${l.check_in} → ${l.check_out}` : ''}{l.room_type ? ` · ${l.room_type}` : ''}{l.rooms_count ? ` · ${l.rooms_count} room(s)` : ''}{l.meal_plan ? ` · ${l.meal_plan}` : ''} · <b>{money(Number(l.sale_price), cur)}</b>{Number(l.cost) ? ` (cost ${money(Number(l.cost), cur)})` : ''}</p>
+                  <>
+                    <p className="mb-1 text-sm font-bold text-slate-900">Hotel {li + 2}: {l.hotel_name}{l.city ? ` · ${l.city}` : ''} · {money(Number(l.sale_price), cur)}{Number(l.cost) ? ` (cost ${money(Number(l.cost), cur)})` : ''}</p>
+                    <p className="flex flex-wrap gap-x-4 gap-y-1">
+                      {l.check_in ? <span>📅 {l.check_in} → {l.check_out}{l.nights ? ` · ${l.nights} night(s)` : ''}</span> : null}
+                      {l.room_type ? <span>🛏 {l.room_type}{l.rooms_count ? ` · ${l.rooms_count} room(s)` : ''}{l.meal_plan ? ` · ${l.meal_plan}` : ''}</span> : null}
+                      {(l.adults || l.children) ? <span>👥 {l.adults || 0} adult(s) + {l.children || 0} child(ren)</span> : null}
+                      {l.hotel_phone ? <span>📞 {l.hotel_phone}</span> : null}
+                      {l.confirmation_code ? <span>Confirmation: {l.confirmation_code}</span> : null}
+                      {l.rate_per_night ? <span>Rate/night: {money(Number(l.rate_per_night), cur)}</span> : null}
+                      {l.supplier ? <span>🏢 {l.supplier}</span> : null}
+                      {l.due_date ? <span>Payment due: {l.due_date}</span> : null}
+                      {l.source ? <span>Source: {l.source}</span> : null}
+                      {l.tags ? <span>🏷 {l.tags}</span> : null}
+                      {l.follow_up_date ? <span>Follow-up: {l.follow_up_date}</span> : null}
+                    </p>
+                    {(l.cancellation_policy || l.special_requests) ? (
+                      <p className="mt-1 text-slate-500">{l.cancellation_policy ? `⚠ ${l.cancellation_policy}` : ''}{l.cancellation_policy && l.special_requests ? ' · ' : ''}{l.special_requests ? `📝 ${l.special_requests}` : ''}</p>
+                    ) : null}
+                  </>
                 ) : (
                   <p><b className="text-slate-900">{l.from_location} → {l.to_location}</b>{l.transport_date ? ` · ${l.transport_date}${l.transport_time ? ' ' + l.transport_time : ''}` : ''}{l.vehicle_type ? ` · ${l.vehicle_type}` : ''}{l.seats ? ` · ${l.seats} seats` : ''}{l.driver_name ? ` · driver: ${l.driver_name}` : ''} · <b>{money(Number(l.sale_price), cur)}</b>{Number(l.cost) ? ` (cost ${money(Number(l.cost), cur)})` : ''}</p>
                 )}

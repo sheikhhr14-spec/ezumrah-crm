@@ -1164,6 +1164,48 @@ function parseGuests(fd: FormData) {
   return guests;
 }
 
+// parse extra hotel stays / transport legs from the sale form (full field set per extra row)
+function parseServiceExtras(fd: FormData, table: string, aid: string) {
+  const extras: Record<string, unknown>[] = [];
+  let extrasPrice = 0, extrasCost = 0;
+  for (let i = 0; i < 10; i++) {
+    const price = num(fd, `extra_sale_price_${i}`);
+    const ecost = num(fd, `extra_cost_${i}`);
+    if (table === 'hotel_sales') {
+      const hname = str(fd, `extra_hotel_name_${i}`);
+      if (!price && !ecost && !hname) continue;
+      const ci = str(fd, `extra_check_in_${i}`) || null;
+      const co = str(fd, `extra_check_out_${i}`) || null;
+      let en: number | null = null;
+      if (ci && co) { const d = Math.round((new Date(co).getTime() - new Date(ci).getTime()) / 86400000); if (d > 0) en = d; }
+      extras.push({ agency_id: aid, hotel_name: hname || null,
+        hotel_phone: str(fd, `extra_hotel_phone_${i}`) || null, city: str(fd, `extra_city_${i}`) || null,
+        check_in: ci, check_out: co, nights: en,
+        room_type: str(fd, `extra_room_type_${i}`) || null, rooms_count: num(fd, `extra_rooms_count_${i}`) || null,
+        meal_plan: str(fd, `extra_meal_plan_${i}`) || null,
+        confirmation_code: str(fd, `extra_confirmation_code_${i}`) || null,
+        adults: num(fd, `extra_adults_${i}`) || null, children: num(fd, `extra_children_${i}`) || null,
+        supplier: str(fd, `extra_supplier_${i}`) || null, rate_per_night: num(fd, `extra_rate_per_night_${i}`) || null,
+        cancellation_policy: str(fd, `extra_cancellation_policy_${i}`) || null,
+        special_requests: str(fd, `extra_special_requests_${i}`) || null,
+        due_date: str(fd, `extra_due_date_${i}`) || null, source: str(fd, `extra_source_${i}`) || null,
+        tags: str(fd, `extra_tags_${i}`) || null, follow_up_date: str(fd, `extra_follow_up_date_${i}`) || null,
+        sale_price: price, cost: ecost });
+      extrasPrice += price; extrasCost += ecost;
+    } else if (table === 'transport_sales') {
+      if (!price && !ecost) continue;
+      extras.push({ agency_id: aid, leg_no: extras.length + 1,
+        from_location: str(fd, `extra_from_${i}`) || null, to_location: str(fd, `extra_to_${i}`) || null,
+        transport_date: str(fd, `extra_date_${i}`) || null, transport_time: str(fd, `extra_time_${i}`) || null,
+        vehicle_type: str(fd, `extra_vehicle_${i}`) || null, seats: num(fd, `extra_seats_${i}`),
+        driver_name: str(fd, `extra_driver_${i}`) || null, driver_phone: str(fd, `extra_phone_${i}`) || null,
+        sale_price: price, cost: ecost });
+      extrasPrice += price; extrasCost += ecost;
+    }
+  }
+  return { extras, extrasPrice, extrasCost };
+}
+
 export async function createServiceSale(fd: FormData) {
   const { SERVICE_SALES } = await import('@/lib/service-sales');
   const table = String(fd.get('table'));
@@ -1194,30 +1236,7 @@ export async function createServiceSale(fd: FormData) {
   }
   const cost = num(fd, 'cost');
   // extra hotels (hotel_sales) / extra legs incl. ziyarat (transport_sales)
-  const extras: Record<string, unknown>[] = [];
-  let extrasPrice = 0, extrasCost = 0;
-  for (let i = 0; i < 10; i++) {
-    const price = num(fd, `extra_sale_price_${i}`);
-    const ecost = num(fd, `extra_cost_${i}`);
-    if (!price && !ecost) continue;
-    extrasPrice += price; extrasCost += ecost;
-    if (table === 'hotel_sales') {
-      const ci = str(fd, `extra_checkin_${i}`) || null;
-      const co = str(fd, `extra_checkout_${i}`) || null;
-      let en: number | null = null;
-      if (ci && co) { const d = Math.round((new Date(co).getTime() - new Date(ci).getTime()) / 86400000); if (d > 0) en = d; }
-      extras.push({ agency_id: aid, city: str(fd, `extra_city_${i}`) || null, hotel_name: str(fd, `extra_hotel_${i}`) || null,
-        check_in: ci, check_out: co, nights: en, room_type: str(fd, `extra_roomtype_${i}`) || null,
-        rooms_count: num(fd, `extra_rooms_${i}`), meal_plan: str(fd, `extra_meal_${i}`) || null, sale_price: price, cost: ecost });
-    } else if (table === 'transport_sales') {
-      extras.push({ agency_id: aid, leg_no: extras.length + 1,
-        from_location: str(fd, `extra_from_${i}`) || null, to_location: str(fd, `extra_to_${i}`) || null,
-        transport_date: str(fd, `extra_date_${i}`) || null, transport_time: str(fd, `extra_time_${i}`) || null,
-        vehicle_type: str(fd, `extra_vehicle_${i}`) || null, seats: num(fd, `extra_seats_${i}`),
-        driver_name: str(fd, `extra_driver_${i}`) || null, driver_phone: str(fd, `extra_phone_${i}`) || null,
-        sale_price: price, cost: ecost });
-    }
-  }
+  const { extras, extrasPrice, extrasCost } = parseServiceExtras(fd, table, aid);
   const taxV = num(fd, 'tax');
   const cfDefs = await getCustomFields(db, aid, table);
   const cfData = parseCustomValues(fd, cfDefs);
@@ -1278,30 +1297,7 @@ export async function updateServiceSaleFull(fd: FormData) {
     salePrice = num(fd, 'rate_per_night') * Number(patch.nights) * Math.max(num(fd, 'rooms_count'), 1);
   }
   const cost = num(fd, 'cost');
-  const extras: Record<string, unknown>[] = [];
-  let extrasPrice = 0, extrasCost = 0;
-  for (let i = 0; i < 10; i++) {
-    const price = num(fd, `extra_sale_price_${i}`);
-    const ecost = num(fd, `extra_cost_${i}`);
-    if (!price && !ecost) continue;
-    extrasPrice += price; extrasCost += ecost;
-    if (table === 'hotel_sales') {
-      const ci = str(fd, `extra_checkin_${i}`) || null;
-      const co = str(fd, `extra_checkout_${i}`) || null;
-      let en: number | null = null;
-      if (ci && co) { const d = Math.round((new Date(co).getTime() - new Date(ci).getTime()) / 86400000); if (d > 0) en = d; }
-      extras.push({ agency_id: aid, city: str(fd, `extra_city_${i}`) || null, hotel_name: str(fd, `extra_hotel_${i}`) || null,
-        check_in: ci, check_out: co, nights: en, room_type: str(fd, `extra_roomtype_${i}`) || null,
-        rooms_count: num(fd, `extra_rooms_${i}`), meal_plan: str(fd, `extra_meal_${i}`) || null, sale_price: price, cost: ecost });
-    } else if (table === 'transport_sales') {
-      extras.push({ agency_id: aid, leg_no: extras.length + 1,
-        from_location: str(fd, `extra_from_${i}`) || null, to_location: str(fd, `extra_to_${i}`) || null,
-        transport_date: str(fd, `extra_date_${i}`) || null, transport_time: str(fd, `extra_time_${i}`) || null,
-        vehicle_type: str(fd, `extra_vehicle_${i}`) || null, seats: num(fd, `extra_seats_${i}`),
-        driver_name: str(fd, `extra_driver_${i}`) || null, driver_phone: str(fd, `extra_phone_${i}`) || null,
-        sale_price: price, cost: ecost });
-    }
-  }
+  const { extras, extrasPrice, extrasCost } = parseServiceExtras(fd, table, aid);
   const taxV = num(fd, 'tax');
   const cfDefs = await getCustomFields(db, aid, table);
   const cfData = parseCustomValues(fd, cfDefs);

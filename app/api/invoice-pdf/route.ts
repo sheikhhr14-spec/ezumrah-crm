@@ -150,7 +150,7 @@ export async function GET(req: Request) {
       if (!Number(x.sale_price)) continue;
       items.push({
         desc: type === 'hotel_sale'
-          ? `Extra stay: ${x.hotel_name || 'Hotel'}${x.city ? ', ' + String(x.city).toUpperCase() : ''} - ${x.nights || 0} night(s)${x.room_type ? ', ' + x.room_type : ''}`
+          ? `Extra stay: ${x.hotel_name || 'Hotel'}${x.city ? ', ' + String(x.city).toUpperCase() : ''} - ${x.nights || 0} night(s)${x.check_in ? ` (${x.check_in} → ${x.check_out})` : ''}${x.room_type ? ', ' + x.room_type : ''}${x.adults ? `, ${x.adults}A + ${x.children || 0}C` : ''}`
           : `Extra trip: ${x.from_location || ''} -> ${x.to_location || ''}${x.transport_date ? ' on ' + x.transport_date : ''}`,
         qty: '1', unit: '', amount: Number(x.sale_price) || 0,
       });
