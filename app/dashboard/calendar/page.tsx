@@ -89,7 +89,7 @@ export default async function CalendarPage({ searchParams }: { searchParams?: { 
     const key = p.package_category === 'umrah' ? 'umrah' : p.package_category === 'hajj' ? 'hajj' : 'tour';
     if (!ok(key)) continue;
     const c = CATS.find((x) => x.key === key)!;
-    const href = key === 'tour' ? '/dashboard/tour-sales/records' : `/dashboard/${key}-sales/${p.id}`;
+    const href = key === 'tour' ? '/dashboard/tour-sales/records' : `/dashboard/package-sales/${p.id}`;
     push(d(p.departure_date), { cat: key, icon: c.icon, ref: p.ref, name: cust(p), detail: `dep · ${p.package_name || ''}`, cls: c.cls, href });
     push(d(p.return_date), { cat: key, icon: c.icon, ref: p.ref, name: cust(p), detail: `return · ${p.package_name || ''}`, cls: c.cls, href });
     if (p.ziyarat_scope && p.ziyarat_scope !== 'none' && ok('ziyarat')) {

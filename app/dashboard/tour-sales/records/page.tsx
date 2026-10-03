@@ -11,7 +11,7 @@ export default async function Tour_SalesPage() {
   const db = createAdminClient();
   const { data } = await db.from('package_sales')
     .select('id, ref, package_name, pax, departure_date, return_date, sale_price, supplement, admin_fee, discount, amount_paid, balance, profit, payment_status, status, due_date, customers(full_name)')
-    .eq('package_category', 'tour').order('created_at', { ascending: false });
+    .eq('package_category', 'tour').eq('agency_id', agctx.profile.agency_id).order('created_at', { ascending: false });
   const { data: customers } = await db.from('customers').select('id, full_name, phone').eq('agency_id', agctx.profile.agency_id).order('full_name');
   const cfDefs = await getCustomFields(db, agctx.profile.agency_id, 'tour_sales');
 
