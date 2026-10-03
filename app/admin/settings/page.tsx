@@ -1,16 +1,17 @@
 import { createAdminClient } from '@/lib/supabase/admin';
-import { savePortalTheme, setPlatformLogoAdmin, getPlatformLogo, savePlatformEmailSettings, testPlatformEmail } from '@/lib/admin-actions';
+import { savePortalTheme, setPlatformLogoAdmin, getPlatformLogo, savePlatformEmailSettings, testPlatformEmail, saveKelviqSettings } from '@/lib/admin-actions';
 import { getPlatformSettings } from '@/lib/platform-settings';
 import { PageHeader, Field } from '@/components/ui';
 import { requireSuperadmin } from '@/lib/data';
 import AccentPicker from '@/components/AccentPicker';
 
-export default async function SettingsPage({ searchParams }: { searchParams?: { tested?: string } }) {
+export default async function SettingsPage({ searchParams }: { searchParams?: { tested?: string; kelviq?: string } }) {
   const ctx = await requireSuperadmin();
   const current = (ctx.profile as any)?.portal_accent || '#b8923f';
   const logoUrl = await getPlatformLogo();
   const smtp = await getPlatformSettings();
   const flag = searchParams?.tested || '';
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL || '';
   const db = createAdminClient();
   const [{ count: agencies }, { count: users }] = await Promise.all([
     db.from('agencies').select('id', { count: 'exact', head: true }),
@@ -38,6 +39,34 @@ export default async function SettingsPage({ searchParams }: { searchParams?: { 
             </form>
           )}
         </div>
+      </div>
+
+      {/* Kelviq — Merchant of Record */}
+      <div className="card mb-6 p-6">
+        <h2 className="mb-1 text-sm font-bold text-slate-900">Payments — Kelviq (Merchant of Record)</h2>
+        <p className="mb-4 text-xs text-slate-400">
+          Sell subscriptions through Kelviq — it collects payments, handles global VAT/tax, chargebacks and payouts. When enabled, the /billing checkout goes through Kelviq instead of Stripe.
+          {' '}{smtp.kelviq_enabled ? <span className="font-semibold text-emerald-600">● Enabled ({smtp.kelviq_env || 'sandbox'}).</span> : <span className="font-semibold text-amber-600">○ Disabled — Stripe checkout is used.</span>}
+        </p>
+        {searchParams?.kelviq === 'saved' && <p className="mb-3 rounded-lg bg-emerald-50 p-2 text-xs font-semibold text-emerald-700">✓ Kelviq settings saved.</p>}
+        <div className="mb-4 rounded-lg bg-slate-50 p-3 text-xs text-slate-500">
+          <p className="font-semibold text-slate-700">Setup checklist</p>
+          <ol className="mt-1 list-decimal space-y-0.5 pl-4">
+            <li>Create your plans in the Kelviq dashboard (Plans → e.g. identifier <code>professional</code>) and copy the identifiers below.</li>
+            <li>Get your <b>Server API key</b> from Kelviq → Settings → API keys and paste it below.</li>
+            <li>Register the webhook URL <code className="break-all font-mono">{appUrl}/api/kelviq/webhook</code> in Kelviq → Settings → Webhooks and subscribe to: <code>checkout.completed</code>, <code>subscription.created</code>, <code>subscription.updated</code>, <code>subscription.cancelled</code>, <code>subscription.plan_changed</code>, <code>invoice.payment_failed</code>.</li>
+            <li>Copy the webhook signing secret (<code>kq_whsec_…</code>) below.</li>
+          </ol>
+        </div>
+        <form action={saveKelviqSettings} className="grid gap-4 sm:grid-cols-3">
+          <Field label="Environment"><select className="input" name="kelviq_env" defaultValue={smtp.kelviq_env === 'production' ? 'production' : 'sandbox'}><option value="sandbox">sandbox</option><option value="production">production</option></select></Field>
+          <Field label="Enabled"><select className="input" name="kelviq_enabled" defaultValue={String(smtp.kelviq_enabled === true)}><option value="false">false — use Stripe</option><option value="true">true — use Kelviq</option></select></Field>
+          <Field label="Server API key"><input className="input" name="kelviq_server_key" type="password" defaultValue={smtp.kelviq_server_key || ''} placeholder="server-xxxxxxxx" /></Field>
+          <Field label="Webhook signing secret"><input className="input" name="kelviq_webhook_secret" type="password" defaultValue={smtp.kelviq_webhook_secret || ''} placeholder="kq_whsec_…" /></Field>
+          <Field label="Plan identifier — Professional"><input className="input" name="kelviq_plan_professional" defaultValue={smtp.kelviq_plan_professional || 'professional'} /></Field>
+          <Field label="Plan identifier — Enterprise"><input className="input" name="kelviq_plan_enterprise" defaultValue={smtp.kelviq_plan_enterprise || 'enterprise'} /></Field>
+          <div className="flex items-end"><button className="btn-primary" type="submit">Save Kelviq settings</button></div>
+        </form>
       </div>
 
       {/* Email configuration */}

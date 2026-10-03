@@ -378,6 +378,22 @@ export async function savePlatformEmailSettings(fd: FormData) {
   revalidatePath('/admin/settings');
 }
 
+/* ============ KELVIQ (MERCHANT OF RECORD) SETTINGS ============ */
+export async function saveKelviqSettings(fd: FormData) {
+  await requireSuperadmin();
+  const { savePlatformSettings } = await import('@/lib/platform-settings');
+  await savePlatformSettings({
+    kelviq_enabled: fd.get('kelviq_enabled') === 'true',
+    kelviq_env: fd.get('kelviq_env') === 'production' ? 'production' : 'sandbox',
+    kelviq_server_key: String(fd.get('kelviq_server_key') || '').trim(),
+    kelviq_webhook_secret: String(fd.get('kelviq_webhook_secret') || '').trim(),
+    kelviq_plan_professional: String(fd.get('kelviq_plan_professional') || 'professional').trim(),
+    kelviq_plan_enterprise: String(fd.get('kelviq_plan_enterprise') || 'enterprise').trim(),
+  });
+  revalidatePath('/admin/settings');
+  redirect('/admin/settings?kelviq=saved');
+}
+
 export async function testPlatformEmail(fd: FormData) {
   await requireSuperadmin();
   const to = String(fd.get('to') || '').trim();

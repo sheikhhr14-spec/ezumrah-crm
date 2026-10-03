@@ -3,16 +3,18 @@ import { redirect } from 'next/navigation';
 
 import { PLANS, PLAN_IDS, type PlanId } from '@/lib/billing';
 import { logout } from '@/lib/auth-actions';
-import { createCheckout } from '@/lib/stripe-actions';
+import { startCheckout } from '@/lib/checkout-actions';
+import { getKelviqConfig } from '@/lib/kelviq';
 import Link from 'next/link';
 
-export default async function BillingPage({ searchParams }: { searchParams?: { error?: string; enterprise?: string } }) {
+export default async function BillingPage({ searchParams }: { searchParams?: { error?: string; enterprise?: string; kelviq?: string } }) {
   const ctx = await requireUser();
   if (ctx.profile?.role !== 'owner' && ctx.profile?.role !== 'superadmin') redirect('/dashboard?denied=1');
   const agency = ctx?.profile?.agencies;
   const currentPlan = (agency?.plan as PlanId) || 'professional';
   const planInfo = (PLANS as any)[currentPlan] || (PLANS as any).professional;
   const status = agency?.subscription_status || 'incomplete';
+  const kelviq = await getKelviqConfig();
 
   return (
     <main className="flex min-h-screen items-center justify-center bg-slate-50 px-4 py-10">
@@ -27,6 +29,11 @@ export default async function BillingPage({ searchParams }: { searchParams?: { e
         {status !== 'active' && status !== 'trialing' ? (
           <>
             {searchParams?.error && <div className="mb-6 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-600">{searchParams.error}</div>}
+            {searchParams?.kelviq === 'success' && (
+              <div className="mb-6 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-700">
+                ✓ Payment received. Your subscription is being activated — this page unlocks automatically within a minute. <a className="font-semibold underline" href="/billing">Refresh</a>
+              </div>
+            )}
             {searchParams?.enterprise === '1' && (
               <div className="mb-6 rounded-xl border border-gold/40 bg-gold/10 px-4 py-3 text-sm accent">
                 Enterprise request received. Our team will contact you shortly to set up custom pricing — your workspace is being prepared.
@@ -40,7 +47,7 @@ export default async function BillingPage({ searchParams }: { searchParams?: { e
             ) : (
               <>
             <div className="mb-6 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-700">
-              A credit card is required to use the CRM. Your card is charged securely by Stripe.
+              A card is required to use the CRM. Payments are collected securely by Kelviq — global taxes are handled for you at checkout.
             </div>
             <div className="grid gap-4 sm:grid-cols-2">
               {PLAN_IDS.map((id) => {
@@ -56,7 +63,7 @@ export default async function BillingPage({ searchParams }: { searchParams?: { e
                     {custom ? (
                       <a className="btn-secondary mt-4 w-full text-center" href={`mailto:hamza@ezumrah.com?subject=Enterprise%20pricing%20—%20${encodeURIComponent(agency?.name || 'my agency')}`}>Contact for pricing</a>
                     ) : (
-                      <form action={createCheckout} className="mt-4"><input type="hidden" name="plan" value={id} /><button className="btn-primary w-full" type="submit">Pay by card</button></form>
+                      <form action={startCheckout} className="mt-4"><input type="hidden" name="plan" value={id} /><button className="btn-primary w-full" type="submit">Pay by card</button></form>
                     )}
                   </div>
                 );

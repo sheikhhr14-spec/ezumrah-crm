@@ -4,6 +4,13 @@ export type PlatformSettings = {
   smtp_host?: string; smtp_port?: number; smtp_secure?: boolean;
   smtp_user?: string; smtp_password?: string;
   smtp_from_name?: string; smtp_from_email?: string;
+  // Kelviq (Merchant of Record) — managed in /admin/settings
+  kelviq_enabled?: boolean;
+  kelviq_env?: string; // 'sandbox' | 'production'
+  kelviq_server_key?: string;
+  kelviq_webhook_secret?: string;
+  kelviq_plan_professional?: string;
+  kelviq_plan_enterprise?: string;
 };
 const BUCKET = 'platform-settings';
 
