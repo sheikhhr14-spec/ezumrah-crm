@@ -207,11 +207,11 @@ def sale_common(ag, cust_i, ref, status, pay_status, sale, cost, admin, paid, du
     if pay_status == 'paid': pay_status = 'full'
     return {'id': U(), 'agency_id': AG[ag], 'customer_id': C[ag][cust_i]['id'], 'ref': ref, 'status': status,
             'payment_status': pay_status, 'sale_total': sale, 'cost': cost, 'admin_fee': admin, 'amount_paid': paid,
-            'balance': sale - paid, 'profit': sale - cost - (admin or 0), 'payment_method': random.choice(['cash','bank_transfer','card']),
+            'balance': sale - paid, 'profit': sale - cost - (admin or 0), 'payment_method': random.choice(['cash','bank','card']),
             'due_date': due, 'sold_by': sold_by, 'source': src, 'tags': tags, 'follow_up_date': follow,
             'notes': None, 'created_at': 'now()', 'updated_at': 'now()'}
 
-def flight(ag, i, ref, kind, pax, sale, cost, admin, paid, pay_status, status, pnr, airline_route, issue='2026-09-12', refundable='yes', due=None, follow=None):
+def flight(ag, i, ref, kind, pax, sale, cost, admin, paid, pay_status, status, pnr, airline_route, issue='2026-09-12', refundable='refundable', due=None, follow=None):
     r = sale_common(ag, i, ref, status, pay_status, sale, cost, admin, paid, due, 'Ayesha Siddiqua' if ag=='pk' else None, follow)
     del r['cost']
     r.update({'trip_kind': kind, 'pax': pax, 'cost_total': cost, 'pnr': pnr, 'ticket_numbers': 'ETKT-' + str(random.randint(100000, 999999)),

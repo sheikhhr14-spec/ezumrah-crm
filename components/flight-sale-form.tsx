@@ -71,8 +71,16 @@ export default function FlightSaleForm({ customers, currency, taxRate, customFie
   const [commission, setCommission] = useState(edit ? s2(sale.commission) : '');
   const [paid, setPaid] = useState(edit ? s2(sale.amount_paid) : '');
   const [useExisting, setUseExisting] = useState(!!edit);
+  // when the sale has no passenger rows (legacy/seeded data), build one lead row that preserves the stored totals
+  const fallbackPax = (): Pax => {
+    const nm = String(sale.customers?.full_name || '');
+    return { title: 'Mr', first: nm.split(' ')[0] || '', last: nm.split(' ').slice(1).join(' '),
+      passport: sale.customers?.passport_no || '', nat: sale.customers?.country || '', ticket: '',
+      type: 'ADT', gender: '', dob: '', pnr: sale.pnr || '',
+      fare: s2(sale.cost_total), ptax: '', oc: '', samt: s2(sale.sale_total), tamt: '', pft: '' };
+  };
   const [paxRows, setPaxRows] = useState<Pax[]>(
-    edit && (salePassengers || []).length ? (salePassengers as any[]).map(toPax) : [emptyPax()]);
+    edit ? ((salePassengers || []).length ? (salePassengers as any[]).map(toPax) : [fallbackPax()]) : [emptyPax()]);
 
   const setLegCount = (k: string) => {
     setKind(k);
