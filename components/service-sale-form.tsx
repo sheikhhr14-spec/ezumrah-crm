@@ -53,9 +53,9 @@ export default function ServiceSaleForm({
       : [{ name: edit ? (sale.customer_name || '') : '', passport_no: '' }]);
   const setG = (i: number, k: string) => (e: any) => setGuests(guests.map((g, j) => (j === i ? { ...g, [k]: e.target.value } : g)));
   const up = (i: number, k: string) => (e: any) => setExtras(extras.map((x, j) => (j === i ? { ...x, [k]: e.target.value } : x)));
+  const n = (v: string) => Number(v) || 0;
   const extrasPrice = extras.reduce((sm, x) => sm + n(x.sale_price), 0);
   const extrasCost = extras.reduce((sm, x) => sm + n(x.cost), 0);
-  const n = (v: string) => Number(v) || 0;
   const taxAuto = (n(money.sale_price) + n(money.admin_fee) - n(money.discount)) * (taxRate || 0) / 100;
 
   const cfAdj = cfFields.reduce((s, f) => {
