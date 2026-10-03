@@ -16,6 +16,8 @@ export default async function BillingPage({ searchParams }: { searchParams?: { e
   const planInfo = (PLANS as any)[currentPlan] || (PLANS as any).professional;
   let status = agency?.subscription_status || 'incomplete';
   const kelviq = await getKelviqConfig();
+  const trialEnds = agency?.trial_ends_at ? new Date(agency.trial_ends_at) : null;
+  const trialDaysLeft = trialEnds ? Math.ceil((trialEnds.getTime() - Date.now()) / 86400000) : -1;
 
   // Direct verification: after returning from Kelviq checkout, query Kelviq
   // for this agency's subscription and activate instantly (works even
@@ -46,7 +48,7 @@ export default async function BillingPage({ searchParams }: { searchParams?: { e
           </p>
         </div>
 
-        {status !== 'active' && status !== 'trialing' ? (
+        {status !== 'active' ? (
           <>
             {searchParams?.error && <div className="mb-6 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-600">{searchParams.error}</div>}
             {searchParams?.kelviq === 'success' && (
@@ -67,9 +69,11 @@ export default async function BillingPage({ searchParams }: { searchParams?: { e
             ) : (
               <>
             <div className="mb-6 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-700">
-              A card is required to use the CRM. Payments are collected securely by Kelviq — global taxes are handled for you at checkout.
+              {status === 'trialing'
+                ? 'You have full access during your 5-day trial. Add your card below — Kelviq only charges it when the trial ends, so nothing is lost.'
+                : 'A card is required to use the CRM. Payments are collected securely by Kelviq — global taxes are handled for you at checkout.'}
             </div>
-            <div className="grid gap-4 sm:grid-cols-2">
+            <div className="grid gap-4 sm:grid-cols-3">
               {PLAN_IDS.map((id) => {
                 const p: any = (PLANS as any)[id];
                 const custom = p.price_monthly === null;
@@ -83,7 +87,7 @@ export default async function BillingPage({ searchParams }: { searchParams?: { e
                     {custom ? (
                       <a className="btn-secondary mt-4 w-full text-center" href={`mailto:hamza@ezumrah.com?subject=Enterprise%20pricing%20—%20${encodeURIComponent(agency?.name || 'my agency')}`}>Contact for pricing</a>
                     ) : (
-                      <form action={startCheckout} className="mt-4"><input type="hidden" name="plan" value={id} /><button className="btn-primary w-full" type="submit">Pay by card</button></form>
+                      <form action={startCheckout} className="mt-4"><input type="hidden" name="plan" value={id} /><button className="btn-primary w-full" type="submit">{status === 'trialing' ? 'Add card' : 'Pay by card'}</button></form>
                     )}
                   </div>
                 );
@@ -95,6 +99,7 @@ export default async function BillingPage({ searchParams }: { searchParams?: { e
         ) : (
           <div className="card p-6 text-center">
             <p className="text-lg font-semibold text-green-600">Subscription active ✓</p>
+            <p className="mt-1 text-sm text-slate-500">{planInfo.name} — {planInfo.price_monthly ? `$${planInfo.price_monthly}/month` : 'custom pricing'}{agency?.current_period_end ? ` · next billing ${new Date(agency.current_period_end).toLocaleDateString()}` : ''}</p>
             <Link className="btn-primary mt-4" href="/dashboard">Go to dashboard →</Link>
           </div>
         )}

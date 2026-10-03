@@ -29,7 +29,7 @@ export default async function AdminInvoiceDetail({ params, searchParams }: { par
               </form>
               <form action={markInvoicePaid} className="flex items-center gap-1">
                 <input type="hidden" name="id" value={inv.id} />
-                <input className="input max-w-44 text-xs" name="stripe_payment_id" placeholder="Payment ref (optional)" />
+                <input className="input max-w-44 text-xs" name="payment_ref" placeholder="Payment ref (optional)" />
                 <button className="btn-primary text-xs" type="submit">✓ Mark paid</button>
               </form>
               <form action={voidInvoice}>
@@ -88,7 +88,7 @@ export default async function AdminInvoiceDetail({ params, searchParams }: { par
             <div className="flex justify-between"><span className="text-slate-500">Subtotal</span><b>{inv.currency} {Number(inv.amount).toFixed(2)}</b></div>
             <div className="flex justify-between"><span className="text-slate-500">Tax</span><b>{inv.currency} 0.00</b></div>
             <div className="flex justify-between border-t border-slate-200 pt-1"><span className="font-semibold">Total due</span><b className="text-red-500">{inv.currency} {Number(inv.amount).toFixed(2)}</b></div>
-            {inv.status === 'paid' && <p className="pt-1 text-right text-xs font-semibold text-emerald-600">Paid {inv.paid_at ? new Date(inv.paid_at).toLocaleDateString() : ''} {inv.stripe_payment_id ? `· ${inv.stripe_payment_id}` : ''}</p>}
+            {inv.status === 'paid' && <p className="pt-1 text-right text-xs font-semibold text-emerald-600">Paid {inv.paid_at ? new Date(inv.paid_at).toLocaleDateString() : ''} {inv.payment_ref ? `· ${inv.payment_ref}` : ''}</p>}
           </div>
         </div>
         <p className="mt-6 border-t border-slate-200 pt-3 text-[10px] text-slate-400">

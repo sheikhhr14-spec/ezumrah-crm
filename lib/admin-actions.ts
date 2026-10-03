@@ -159,7 +159,7 @@ export async function markInvoicePaid(fd: FormData) {
   const { data: inv } = await db.from('platform_invoices').select('agency_id, period_start').eq('id', id).single();
   await db.from('platform_invoices').update({
     status: 'paid', paid_at: new Date().toISOString(),
-    stripe_payment_id: String(fd.get('stripe_payment_id') || '').trim() || null,
+    payment_ref: String(fd.get('payment_ref') || '').trim() || null,
   }).eq('id', id);
   if (inv?.agency_id) {
     // sync the tenant-facing saas invoice and reactivate the agency

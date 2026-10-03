@@ -83,7 +83,7 @@ export default async function InvoicesPage({ searchParams }: { searchParams: { s
                 {i.status === 'open' && (
                   <form action={markInvoicePaid} className="flex items-center gap-1">
                     <input type="hidden" name="id" value={i.id} />
-                    <input className="input max-w-32" name="stripe_payment_id" placeholder="Payment ref (optional)" />
+                    <input className="input max-w-32" name="payment_ref" placeholder="Payment ref (optional)" />
                     <button className="text-xs font-semibold accent hover:underline" type="submit">Mark paid</button>
                   </form>
                 )}

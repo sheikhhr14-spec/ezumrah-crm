@@ -39,9 +39,10 @@ export async function signup(formData: FormData) {
   const db = createAdminClient();
   const isEnterprise = plan === 'enterprise';
   const seats = isEnterprise ? null : (Number((PLANS as any)[plan]?.users_included) || 2);
+  const trialEndsAt = new Date(Date.now() + 5 * 24 * 3600 * 1000).toISOString();
   const { data: agency } = await db
     .from('agencies')
-    .insert({ name: agencyName, plan, subscription_status: 'incomplete', seats })
+    .insert({ name: agencyName, plan, subscription_status: 'trialing', trial_ends_at: trialEndsAt, seats })
     .select()
     .single();
 
