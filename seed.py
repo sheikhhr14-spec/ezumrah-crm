@@ -305,7 +305,7 @@ ins('transport_sales', [
 ])
 print('transport_sales done')
 
-def psale(ag, i, ref, cat, pname, dep, days, pax, sale, cost, paid, pay_status, status, dep_flight, mk_hotel, mk_n, md_hotel, md_n, rooms_quad=1, supplement=0, due=None, ret_airline=None):
+def psale(ag, i, ref, cat, pname, dep, days, pax, sale, cost, paid, pay_status, status, dep_flight, mk_hotel, mk_n, md_hotel, md_n, rooms_quad=1, supplement=0, due=None, ret_airline=None, tdest=None, thotel=None, tnights=None, airline=None, fmethod=None, src=None, follow=None, note=None, tags=None):
     r = sale_common(ag, i, ref, status, pay_status, sale, cost, 0, paid, due)
     ret_date = (datetime.date.fromisoformat(dep) + datetime.timedelta(days=days)).isoformat()
     r['sale_price'] = r.pop('sale_total')
@@ -318,6 +318,15 @@ def psale(ag, i, ref, cat, pname, dep, days, pax, sale, cost, paid, pay_status, 
               'rooms_quint': 0, 'rooms_quad': rooms_quad, 'rooms_triple': 0, 'rooms_double': 0, 'rooms_single': 0,
               'supplement': supplement, 'commission': 0, 'discount': 0, 'tax': 0, 'ziyarat_scope': 'Included', 'ziyarat_guide': False,
               'ziyarat_notes': 'Standard ziyarat program both cities', 'notes': None})
+    if tdest:
+        r['tour_destination'] = tdest; r['tour_hotel'] = thotel or '-'; r['tour_nights'] = tnights or 0
+        r['ziyarat_scope'] = 'Not included'; r['ziyarat_notes'] = '—'
+    if airline: r['airline'] = airline
+    if fmethod: r['payment_method'] = fmethod
+    if src: r['source'] = src
+    if tags: r['tags'] = tags
+    if follow: r['follow_up_date'] = follow
+    if note is not None: r['notes'] = note
     return r
 ins('package_sales', [
     psale('pk',0,'PS-PK-001','umrah','14 Days Economy Umrah','2026-11-20',14,4,1540000,1290000,770000,'partial','confirmed','SV716','Makkah Towers',7,'Al Ebaa Hotel',5,1,due='2026-11-10'),
@@ -331,6 +340,13 @@ ins('package_sales', [
     psale('sa',5,'PS-SA-001','umrah','Umrah for GCC Residents','2026-11-05',7,4,10400,8500,5200,'partial','confirmed','SV1408','Makkah Clock Tower',4,'Movenpick Anwar',2,1,due='2026-10-30'),
     psale('sa',0,'PS-SA-002','ziyarah','Madinah Spiritual Retreat','2026-10-18',5,2,8400,6900,8400,'paid','completed','SV1445','-',0,'Fairmont Madinah',5,1),
     psale('sa',6,'PS-SA-003','tour','Taif Summer Escape','2026-11-15',2,2,1900,1500,1900,'paid','completed','SV1616','-',0,'-',0,0),
+    psale('pk',5,'PS-PK-005','tour','Turkey 7 Nights — Istanbul & Cappadocia','2026-12-10',8,2,420000,355000,420000,'paid','completed','TK715','-',0,'-',0,2,airline='Turkish Airlines',fmethod='card',src='referral',tags='turkey,honeymoon',due='2026-11-25',tdest='Turkey',thotel='DoubleTree by Hilton Istanbul',tnights=7,note='Hot air balloon ride in Cappadocia included; Bosphorus dinner cruise on day 3.'),
+    psale('pk',4,'PS-PK-006','tour','Dubai City Break 4 Nights','2026-11-12',5,4,480000,410000,240000,'partial','confirmed','EK607','-',0,'-',0,2,airline='Emirates',fmethod='bank',src='website',tags='dubai,family',follow='2026-10-28',due='2026-11-05',tdest='Dubai',thotel='Roda Al Maktoum Hotel Deira',tnights=4,note='Family trip with Desert Safari + Burj Khalifa tickets; 2 quad rooms at Deira.'),
+    psale('ae',1,'PS-AE-005','tour','Egypt 5 Nights — Cairo & Alexandria','2026-12-18',6,3,3400,2800,1700,'partial','confirmed','MS912','-',0,'-',0,2,airline='EgyptAir',fmethod='card',src='website',tags='egypt,couple',due='2026-12-10',tdest='Egypt',thotel='Steigenberger Hotel El Tahrir Cairo',tnights=5,note='Pyramids, Egyptian Museum and Alexandria day trip. English-speaking guide throughout.'),
+    psale('ae',5,'PS-AE-006','tour','Baku 4 Nights Getaway','2027-01-15',5,2,2800,2250,0,'unpaid','pending','FZ707','-',0,'-',0,2,airline='flydubai',fmethod='online',src='instagram',tags='baku,winter',due='2027-01-05',tdest='Azerbaijan',thotel='Divan City Center Baku',tnights=4,note='New Year getaway — Flame Towers, Old City walk, Shahdag day trip optional.'),
+    psale('sa',6,'PS-SA-004','tour','AlUla Winter — 3 Nights','2026-12-24',4,2,4200,3300,4200,'paid','completed','SV1626','-',0,'-',0,2,airline='Saudia',fmethod='card',src='referral',tags='alula,winter',due='2026-12-01',tdest='AlUla',thotel='Habitas AlUla',tnights=3,note='Maraya concert + Elephant Rock tour. Christmas-week premium booking.'),
+    psale('sa',5,'PS-SA-005','tour','Edge of the World Day Hike','2026-10-24',1,6,900,550,0,'unpaid','pending',None,'-',0,'-',0,2,airline='-',fmethod='cash',src='counter',tags='hiking,group',follow='2026-10-12',due='2026-10-20',tdest='Riyadh region',thotel='-',tnights=0,note='Guided group hike with transport from Jeddah; lunch included.'),
+    psale('sa',7,'PS-SA-006','tour','Abha Summer Retreat 4 Nights','2026-06-18',5,4,2600,2100,0,'unpaid','cancelled','SV1628','-',0,'-',0,2,airline='Saudia',fmethod='bank',src='counter',tags='abha,summer',tdest='Abha',thotel='Blue Inn Abha',tnights=4,note='Cancelled — customer rescheduled to Taif weekend instead.'),
 ])
 print('package_sales done')
 
