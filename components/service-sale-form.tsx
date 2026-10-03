@@ -48,6 +48,11 @@ export default function ServiceSaleForm({
     ? { hotel_name: s2(x.hotel_name), city: s2(x.city), check_in: s2(x.check_in), check_out: s2(x.check_out), room_type: s2(x.room_type), rooms_count: s2(x.rooms_count), meal_plan: s2(x.meal_plan), sale_price: s2(x.sale_price), cost: s2(x.cost) }
     : { from_location: s2(x.from_location), to_location: s2(x.to_location), transport_date: s2(x.transport_date), transport_time: s2(x.transport_time), vehicle_type: s2(x.vehicle_type), seats: s2(x.seats), driver_name: s2(x.driver_name), driver_phone: s2(x.driver_phone), sale_price: s2(x.sale_price), cost: s2(x.cost) };
   const [extras, setExtras] = useState<Record<string, string>[]>(edit ? (saleExtras || []).map(extraFrom) : []);
+  const GUEST = () => ({ name: '', passport_no: '' });
+  const [guests, setGuests] = useState<{ name: string; passport_no: string }[]>(
+    edit && Array.isArray(sale.guests) && sale.guests.length ? sale.guests.map((g: any) => ({ name: g.name || '', passport_no: g.passport_no || '' }))
+      : [{ name: edit ? (sale.customer_name || '') : '', passport_no: '' }]);
+  const setG = (i: number, k: string) => (e: any) => setGuests(guests.map((g, j) => (j === i ? { ...g, [k]: e.target.value } : g)));
   const up = (i: number, k: string) => (e: any) => setExtras(extras.map((x, j) => (j === i ? { ...x, [k]: e.target.value } : x)));
   const extrasPrice = extras.reduce((sm, x) => sm + n(x.sale_price), 0);
   const extrasCost = extras.reduce((sm, x) => sm + n(x.cost), 0);
@@ -116,6 +121,30 @@ export default function ServiceSaleForm({
       </div>
       {hasStay && nights !== null && nights > 0 && (
         <p className="-mt-4 text-xs font-semibold accent">✓ Auto-calculated: {nights} night(s)</p>
+      )}
+
+      {/* guests repeater (hotel) — every occupant, not just the lead customer */}
+      {isHotel && (
+        <div className="rounded-xl border border-slate-200 bg-white p-4">
+          <div className="mb-2 flex items-center justify-between">
+            <h3 className="text-sm font-bold text-slate-900">Guests on this booking ({guests.filter((g) => g.name.trim()).length})</h3>
+            <button type="button" className="btn-secondary text-xs" onClick={() => setGuests([...guests, GUEST()])}>＋ Add guest</button>
+          </div>
+          <div className="space-y-2">
+            {guests.map((g, i) => (
+              <div key={i} className="flex items-end gap-2">
+                <label className="flex-1"><span className="text-xs text-slate-500">Guest {i + 1} name</span>
+                  <input className="input" name={`guest_name_${i}`} placeholder="full name" value={g.name} onChange={setG(i, 'name')} />
+                </label>
+                <label className="w-40"><span className="text-xs text-slate-500">Passport no.</span>
+                  <input className="input" name={`guest_pass_${i}`} placeholder="optional" value={g.passport_no} onChange={setG(i, 'passport_no')} />
+                </label>
+                <button type="button" className="btn-secondary text-xs text-red-500" onClick={() => setGuests(guests.filter((_, j) => j !== i))} title="Remove this guest">✕</button>
+              </div>
+            ))}
+          </div>
+          <p className="mt-2 text-xs text-slate-400">The first guest is usually the customer. Names flow to the booking confirmation and PDF invoice.</p>
+        </div>
       )}
 
       <p className={SECT}>3 · Pricing & payment</p>

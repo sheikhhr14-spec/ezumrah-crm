@@ -258,7 +258,7 @@ ins('visa_sales', [
 ])
 print('visa_sales done')
 
-def hotel(ag, i, ref, name, city, ci, nights, rooms, rtype, meal, sale, cost, paid, pay_status, status, conf=None, due=None):
+def hotel(ag, i, ref, name, city, ci, nights, rooms, rtype, meal, sale, cost, paid, pay_status, status, conf=None, due=None, guests=None):
     r = sale_common(ag, i, ref, status, pay_status, sale, cost, 0, paid, due)
     co = (datetime.date.fromisoformat(ci) + datetime.timedelta(days=nights)).isoformat()
     r['sale_price'] = r.pop('sale_total')
@@ -267,19 +267,23 @@ def hotel(ag, i, ref, name, city, ci, nights, rooms, rtype, meal, sale, cost, pa
               'adults': 2 * rooms, 'children': 0, 'supplier': 'Direct contract', 'rate_per_night': round(sale / nights / rooms),
               'guest_names': C[ag][i]['full_name'], 'commission': 0, 'discount': 0, 'tax': 0,
               'cancellation_policy': 'Free until 7 days before check-in', 'hotel_phone': '+966 12 000 0000'})
+    if guests:
+        r['guests'] = [{'name': n, 'passport_no': p} for n, p in guests]
+        r['guest_names'] = ', '.join(n for n, _ in guests)
+    return r
     return r
 ins('hotel_sales', [
-    hotel('pk',0,'HS-PK-001','Hilton Makkah Convention Palace','Makkah','2026-10-20',5,1,'Quad','Half board',420000,350000,420000,'paid','completed','HIL-88213'),
-    hotel('pk',2,'HS-PK-002','Anwar Al Madinah Mövenpick','Madinah','2026-10-25',5,2,'Triple','Breakfast',380000,320000,190000,'partial','confirmed',due='2026-10-18'),
-    hotel('pk',4,'HS-PK-003','Elaf Ajyad Hotel','Makkah','2026-11-05',7,1,'Quad','Room only',245000,205000,245000,'paid','completed','ELF-44190'),
-    hotel('pk',6,'HS-PK-004','Makkah Towers','Makkah','2026-11-20',6,1,'Quad','Half board',288000,242000,0,'unpaid','pending',due='2026-10-25'),
-    hotel('ae',0,'HS-AE-001','Swissotel Al Maqam Makkah','Makkah','2026-10-15',5,1,'Quad','Half board',7800,6400,7800,'paid','completed','SWI-77201'),
-    hotel('ae',1,'HS-AE-002','Hilton Suites Makkah','Makkah','2026-11-10',4,1,'Family','Breakfast',9200,7600,4600,'partial','confirmed',due='2026-11-02'),
-    hotel('ae',5,'HS-AE-003','InterContinental Dar Al Tawhid','Makkah','2026-10-28',3,1,'Double','Breakfast',5400,4500,5400,'paid','completed','ICT-31988'),
-    hotel('ae',7,'HS-AE-004','Anwar Al Madinah Mövenpick','Madinah','2026-12-01',5,1,'Triple','Half board',6800,5600,0,'unpaid','pending',due='2026-11-20'),
-    hotel('sa',0,'HS-SA-001','Fairmont Makkah Clock Royal Tower','Makkah','2026-10-12',3,2,'Double','Breakfast',4800,3900,4800,'paid','completed','FAI-90233'),
-    hotel('sa',3,'HS-SA-002','Anwar Al Madinah Mövenpick','Madinah','2026-10-18',4,1,'Quad','Half board',3400,2800,1700,'partial','confirmed',due='2026-10-15'),
-    hotel('sa',7,'HS-SA-003','Jeddah Hilton','Jeddah','2026-11-01',2,1,'Double','Room only',1400,1150,1400,'paid','completed','JED-55014'),
+    hotel('pk',0,'HS-PK-001','Hilton Makkah Convention Palace','Makkah','2026-10-20',5,1,'Quad','Half board',420000,350000,420000,'paid','completed','HIL-88213',guests=[('Muhammad Asif Khan','PB1928374'),('Rubina Asif','PB1928401')]),
+    hotel('pk',2,'HS-PK-002','Anwar Al Madinah Mövenpick','Madinah','2026-10-25',5,2,'Triple','Breakfast',380000,320000,190000,'partial','confirmed',due='2026-10-18',guests=[('Chaudhry Naveed Ahmed','PA7261539'),('Bilqees Naveed','PA7261546'),('Ahmed Naveed','PA7261553'),('Fatima Naveed','PA7261560')]),
+    hotel('pk',4,'HS-PK-003','Elaf Ajyad Hotel','Makkah','2026-11-05',7,1,'Quad','Room only',245000,205000,245000,'paid','completed','ELF-44190',guests=[('Malik Sohail Akhtar','PC5541029'),('Ayesha Sohail','PC5541036')]),
+    hotel('pk',6,'HS-PK-004','Makkah Towers','Makkah','2026-11-20',6,1,'Quad','Half board',288000,242000,0,'unpaid','pending',due='2026-10-25',guests=[('Hafiz Abdul Rehman','PD8809172'),('Sana Abdul Rehman','PD8809189')]),
+    hotel('ae',0,'HS-AE-001','Swissotel Al Maqam Makkah','Makkah','2026-10-15',5,1,'Quad','Half board',7800,6400,7800,'paid','completed','SWI-77201',guests=[('Imran Baig','G2811034'),('Sarah Imran','G2811041')]),
+    hotel('ae',1,'HS-AE-002','Hilton Suites Makkah','Makkah','2026-11-10',4,1,'Family','Breakfast',9200,7600,4600,'partial','confirmed',due='2026-11-02',guests=[('Priya Rajagopal','P9033712'),('Arun Rajagopal','P9033729')]),
+    hotel('ae',5,'HS-AE-003','InterContinental Dar Al Tawhid','Makkah','2026-10-28',3,1,'Double','Breakfast',5400,4500,5400,'paid','completed','ICT-31988',guests=[('Leila Haddad','P7712083'),('Karim Haddad','P7712090')]),
+    hotel('ae',7,'HS-AE-004','Anwar Al Madinah Mövenpick','Madinah','2026-12-01',5,1,'Triple','Half board',6800,5600,0,'unpaid','pending',due='2026-11-20',guests=[('Ramesh Kumar','S4420917'),('Divya Ramesh','S4420924')]),
+    hotel('sa',0,'HS-SA-001','Fairmont Makkah Clock Royal Tower','Makkah','2026-10-12',3,2,'Double','Breakfast',4800,3900,4800,'paid','completed','FAI-90233',guests=[('Sheikh Salman Al Dosari','P2976225'),('Amal Al Dosari','P2976441'),('Yusuf Al Dosari','P2977102'),('Layla Al Dosari','P2977388')]),
+    hotel('sa',3,'HS-SA-002','Anwar Al Madinah Mövenpick','Madinah','2026-10-18',4,1,'Quad','Half board',3400,2800,1700,'partial','confirmed',due='2026-10-15',guests=[('Nora Al Shehri','P4151952'),('Waleed Al Harbi','P4152203')]),
+    hotel('sa',7,'HS-SA-003','Jeddah Hilton','Jeddah','2026-11-01',2,1,'Double','Room only',1400,1150,1400,'paid','completed','JED-55014',guests=[('Reem Al Ghamdi','P4177881'),('Saud Al Ghamdi','P4177900')]),
 ])
 print('hotel_sales done')
 

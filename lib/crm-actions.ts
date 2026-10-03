@@ -1152,6 +1152,18 @@ function saleStatus(grand: number, paid: number) {
   return paid <= 0 ? 'unpaid' : paid >= grand ? 'full' : 'partial';
 }
 
+// hotel guests repeater -> [{name, passport_no}] on hotel_sales; guest_names kept in sync for PDFs
+function parseGuests(fd: FormData) {
+  const guests: { name: string; passport_no?: string }[] = [];
+  for (let i = 0; i < 20; i++) {
+    const name = (String(fd.get(`guest_name_${i}`) || '')).trim();
+    if (!name) continue;
+    const pass = (String(fd.get(`guest_pass_${i}`) || '')).trim();
+    guests.push(pass ? { name, passport_no: pass } : { name });
+  }
+  return guests;
+}
+
 export async function createServiceSale(fd: FormData) {
   const { SERVICE_SALES } = await import('@/lib/service-sales');
   const table = String(fd.get('table'));
@@ -1167,6 +1179,9 @@ export async function createServiceSale(fd: FormData) {
   if (table === 'hotel_sales' && patch.check_in && patch.check_out) {
     const n = Math.round((new Date(String(patch.check_out)).getTime() - new Date(String(patch.check_in)).getTime()) / 86400000);
     if (n > 0) patch.nights = n;
+    const g = parseGuests(fd);
+    patch.guests = g;
+    patch.guest_names = g.map((x) => x.name).join(', ') || null;
   }
   const adminFee = num(fd, 'admin_fee');
   const discount = num(fd, 'discount');
@@ -1250,6 +1265,9 @@ export async function updateServiceSaleFull(fd: FormData) {
   if (table === 'hotel_sales' && patch.check_in && patch.check_out) {
     const n = Math.round((new Date(String(patch.check_out)).getTime() - new Date(String(patch.check_in)).getTime()) / 86400000);
     if (n > 0) patch.nights = n;
+    const g = parseGuests(fd);
+    patch.guests = g;
+    patch.guest_names = g.map((x) => x.name).join(', ') || null;
   }
   const adminFee = num(fd, 'admin_fee');
   const discount = num(fd, 'discount');

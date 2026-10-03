@@ -39,7 +39,6 @@ export const SERVICE_SALES: Record<string, SvcConfig> = {
       { name: 'confirmation_code', label: 'Confirmation code' },
       { name: 'adults', label: 'Adults', type: 'number' },
       { name: 'children', label: 'Children', type: 'number' },
-      { name: 'guest_names', label: 'Guest names', ph: 'all room occupants' },
       { name: 'supplier', label: 'Supplier / source', ph: 'hotel direct / GDS / wholesaler' },
       { name: 'rate_per_night', label: 'Rate per night (per room)', type: 'number' },
       { name: 'cancellation_policy', label: 'Cancellation policy', ph: 'free until … / non-refundable' },

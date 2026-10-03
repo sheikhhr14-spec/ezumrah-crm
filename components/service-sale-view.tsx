@@ -148,6 +148,18 @@ export default async function ServiceSaleView({ table, id, emailFlag, editFlag }
         </div>
       </div>
 
+      {/* guests (hotel) — everyone staying, not just the lead customer */}
+      {table === 'hotel_sales' && Array.isArray((rec as any).guests) && (rec as any).guests.length > 0 && (
+        <div className="card mb-8 p-5">
+          <h2 className="mb-3 text-lg font-semibold">Guests ({(rec as any).guests.length})</h2>
+          <div className="grid gap-2 text-sm sm:grid-cols-3">
+            {(rec as any).guests.map((g: any, i: number) => (
+              <p key={i}><span className="text-xs text-slate-400 block">{i + 1}. {g.passport_no ? `Passport ${g.passport_no}` : '—'}</span> <b>{g.name}</b></p>
+            ))}
+          </div>
+        </div>
+      )}
+
       {/* details at a glance */}
       <div className="card mb-8 p-5">
         <h2 className="mb-3 text-lg font-semibold">Details</h2>
