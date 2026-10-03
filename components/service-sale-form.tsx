@@ -106,9 +106,9 @@ export default function ServiceSaleForm({
         <p className="-mt-4 text-xs font-semibold accent">✓ Auto-calculated: {nights} night(s)</p>
       )}
 
+      <p className={SECT}>3 · Pricing & payment</p>
       {/* payment */}
       <div className="rounded-xl border border-slate-200 bg-white p-4">
-        <p className="mb-3 text-xs font-bold uppercase tracking-wide text-slate-500">Pricing & payment</p>
         <div className="grid gap-3 sm:grid-cols-4">
           <M label="Sale price (to customer)" k="sale_price" money={money} set={set} sym={sym} />
           <M label="Cost (our price)" k="cost" money={money} set={set} sym={sym} />

@@ -113,6 +113,7 @@ export default function FlightSaleForm({ customers, currency, taxRate, customFie
       {custBottom.length > 0 && <CustomFieldInputs fields={custBottom} cf={cf} setCf={setCf} />}
       {cfa('top').length > 0 && <CustomFieldInputs fields={cfa('top')} cf={cf} setCf={setCf} />}
 
+      <p className={SECT}>2 · Passengers</p>
       {/* passengers */}
       <div className="rounded-xl border border-slate-200 p-4">
         <div className="mb-2 flex items-center justify-between">
@@ -167,7 +168,7 @@ export default function FlightSaleForm({ customers, currency, taxRate, customFie
         </div>
       </div>
 
-<p className={SECT}>2 · Trip details</p>
+<p className={SECT}>3 · Trip details — legs</p>
       {/* trip */}
       <div className="grid gap-4 sm:grid-cols-3">
         <label className="block"><span className="text-xs font-semibold text-slate-600">Trip type</span>
@@ -222,9 +223,9 @@ export default function FlightSaleForm({ customers, currency, taxRate, customFie
         <button type="button" className="btn-secondary text-xs" onClick={() => setLegs([...legs, emptyLeg()])}>+ Add leg</button>
       )}
 
+      <p className={SECT}>4 · Payment</p>
       {/* payment */}
       <div className="rounded-xl border border-slate-200 bg-white p-4">
-        <p className="mb-3 text-xs font-bold uppercase tracking-wide text-slate-500">Payment</p>
         <div className="grid gap-3 sm:grid-cols-4">
           <label className="block"><span className="text-xs font-semibold text-slate-600">Admin fee</span>
             <div className="relative"><span className="pointer-events-none absolute left-2 top-1/2 -translate-y-1/2 whitespace-nowrap text-[10px] font-bold accent">{sym}</span><input className="input" style={{ paddingLeft: symPad }} name="admin_fee" type="number" step="0.01" value={adminFee}
