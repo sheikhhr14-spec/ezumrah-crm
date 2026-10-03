@@ -268,10 +268,10 @@ export default function PackageSaleForm({ category, customers, currency, taxRate
         <L label="Notes" name="notes" />
       </div>
       <div className="grid gap-3 text-sm sm:grid-cols-4">
-        <div className="rounded-lg bg-slate-50 p-3"><p className="text-xs text-slate-400">Package total ({travelers} pax)</p><p className="font-bold">${fmtMoney(base, cur)}</p></div>
-        <div className="rounded-lg bg-slate-50 p-3"><p className="text-xs text-slate-400">Grand total</p><p className="font-bold">${fmtMoney(grand, cur)}</p></div>
-        <div className="rounded-lg bg-slate-50 p-3"><p className="text-xs text-slate-400">Balance</p><p className={`font-bold ${balance > 0 ? 'text-red-500' : 'text-emerald-600'}`}>${fmtMoney(balance, cur)}</p></div>
-        <div className="rounded-lg accent-soft-bg p-3"><p className="text-xs text-slate-400">Profit</p><p className="font-bold accent">${fmtMoney(profit, cur)}</p></div>
+        <div className="rounded-lg bg-slate-50 p-3"><p className="text-xs text-slate-400">Package total ({travelers} pax)</p><p className="font-bold">{fmtMoney(base, cur)}</p></div>
+        <div className="rounded-lg bg-slate-50 p-3"><p className="text-xs text-slate-400">Grand total</p><p className="font-bold">{fmtMoney(grand, cur)}</p></div>
+        <div className="rounded-lg bg-slate-50 p-3"><p className="text-xs text-slate-400">Balance</p><p className={`font-bold ${balance > 0 ? 'text-red-500' : 'text-emerald-600'}`}>{fmtMoney(balance, cur)}</p></div>
+        <div className="rounded-lg accent-soft-bg p-3"><p className="text-xs text-slate-400">Profit</p><p className="font-bold accent">{fmtMoney(profit, cur)}</p></div>
       </div>
 
       {/* 8 — DOCUMENTATION */}
